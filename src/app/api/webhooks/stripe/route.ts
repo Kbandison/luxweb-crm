@@ -71,7 +71,7 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
     .from('invoices')
     .update({ status: 'paid', paid_at: paidAt })
     .eq('stripe_invoice_id', inv.id)
-    .select('id, contact_id, amount_cents, description, hosted_invoice_url')
+    .select('id, contact_id, project_id, amount_cents, description, hosted_invoice_url')
     .single();
 
   if (!row) return;
@@ -86,6 +86,7 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
 
   const userId = await getContactUserId(row.contact_id as string);
   if (userId) {
+    const projectId = row.project_id as string | null;
     await notify({
       type: 'invoice_paid',
       userId,
@@ -94,6 +95,9 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
       amountCents: Number(row.amount_cents ?? 0),
       paidAt,
       hostedInvoiceUrl: (row.hosted_invoice_url as string | null) ?? null,
+      invoicePath: projectId
+        ? `/portal/project/${projectId}/invoices`
+        : '/portal/dashboard',
     });
   }
 }

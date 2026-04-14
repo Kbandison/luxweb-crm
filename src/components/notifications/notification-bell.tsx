@@ -272,13 +272,17 @@ function describe(n: Notification): Described {
       return {
         title: 'New invoice',
         body: str('description') || formatUSD(num('amountCents')),
-        href: str('hostedInvoiceUrl') || undefined,
+        href: str('invoicePath')
+          ? normalizePath(str('invoicePath'))
+          : str('hostedInvoiceUrl') || undefined,
       };
     case 'invoice_paid':
       return {
         title: 'Payment received',
         body: `${str('description')} · ${formatUSD(num('amountCents'))}`,
-        href: str('hostedInvoiceUrl') || undefined,
+        href: str('invoicePath')
+          ? normalizePath(str('invoicePath'))
+          : str('hostedInvoiceUrl') || undefined,
       };
     case 'proposal_sent':
       return {
@@ -302,6 +306,14 @@ function describe(n: Notification): Described {
         body: `${str('milestoneTitle')} · ${str('status')}`,
         href: str('projectPath')
           ? normalizePath(str('projectPath'))
+          : undefined,
+      };
+    case 'message':
+      return {
+        title: `${str('senderName') || 'New message'}`,
+        body: str('snippet') || undefined,
+        href: str('threadPath')
+          ? normalizePath(str('threadPath'))
           : undefined,
       };
     case 'invite':

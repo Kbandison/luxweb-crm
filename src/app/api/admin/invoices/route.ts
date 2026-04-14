@@ -154,6 +154,7 @@ export async function POST(req: Request) {
             ? new Date(finalized.due_date * 1000).toISOString().slice(0, 10)
             : null,
         hostedInvoiceUrl: finalized.hosted_invoice_url,
+        invoicePath: `/portal/project/${parsed.data.project_id}/invoices`,
       });
     }
 

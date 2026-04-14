@@ -77,17 +77,14 @@ export async function POST(req: Request) {
         const clientUserId = await getContactUserId(contactId);
         if (clientUserId && clientUserId !== session.userId) {
           await notify({
-            type: 'message' as unknown as 'milestone_updated',
+            type: 'message',
             userId: clientUserId,
-            // Reusing payload shape loosely — the bell handler reads by type
-            // and looks up raw fields, so this is safe.
-            ...({
-              snippet,
-              projectId: parsed.data.project_id,
-              threadId: thread.id,
-              senderName: 'LuxWeb Studio',
-            } as unknown as object),
-          } as unknown as Parameters<typeof notify>[0]);
+            projectId: parsed.data.project_id,
+            threadId: thread.id,
+            senderName: 'LuxWeb Studio',
+            snippet,
+            threadPath: `/portal/project/${parsed.data.project_id}/messages`,
+          });
         }
       }
     } else {
@@ -95,15 +92,14 @@ export async function POST(req: Request) {
       const adminId = await getAdminUserId();
       if (adminId && adminId !== session.userId) {
         await notify({
-          type: 'message' as unknown as 'milestone_updated',
+          type: 'message',
           userId: adminId,
-          ...({
-            snippet,
-            projectId: parsed.data.project_id,
-            threadId: thread.id,
-            senderName: session.email,
-          } as unknown as object),
-        } as unknown as Parameters<typeof notify>[0]);
+          projectId: parsed.data.project_id,
+          threadId: thread.id,
+          senderName: session.email,
+          snippet,
+          threadPath: `/admin/projects/${parsed.data.project_id}/messages`,
+        });
       }
     }
 

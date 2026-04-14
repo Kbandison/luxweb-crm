@@ -33,6 +33,8 @@ export type NotifyEvent =
       amountCents: number;
       dueDate?: string | null;
       hostedInvoiceUrl: string;
+      /** in-app path to the invoices list (recipient-contextualized) */
+      invoicePath: string;
     }
   | {
       type: 'invoice_paid';
@@ -42,6 +44,18 @@ export type NotifyEvent =
       amountCents: number;
       paidAt: string;
       hostedInvoiceUrl?: string | null;
+      /** in-app path to the invoices list (recipient-contextualized) */
+      invoicePath: string;
+    }
+  | {
+      type: 'message';
+      userId: string;
+      projectId: string;
+      threadId: string;
+      senderName: string;
+      snippet: string;
+      /** in-app path to the thread (recipient-contextualized) */
+      threadPath: string;
     }
   | {
       type: 'proposal_sent';
@@ -242,6 +256,10 @@ function renderTemplate(
         subject: inviteSubject(),
         react: createElement(InviteEmail, props),
       };
+    }
+    case 'message': {
+      // No email template for messages — in-app bell + unread count only.
+      return null;
     }
   }
 }
