@@ -1,0 +1,282 @@
+import 'server-only';
+import { createElement } from 'react';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { sendEmail } from '@/lib/resend';
+
+import InvoiceSentEmail, {
+  invoiceSentSubject,
+} from '@/emails/invoice-sent-email';
+import InvoicePaidEmail, {
+  invoicePaidSubject,
+} from '@/emails/invoice-paid-email';
+import ProposalSentEmail, {
+  proposalSentSubject,
+} from '@/emails/proposal-sent-email';
+import ProposalAcceptedEmail, {
+  proposalAcceptedSubject,
+} from '@/emails/proposal-accepted-email';
+import MilestoneUpdatedEmail, {
+  milestoneUpdatedSubject,
+} from '@/emails/milestone-updated-email';
+import InviteEmail, { inviteSubject } from '@/emails/invite-email';
+
+/* -------------------------------------------------------------------------
+ * Event shapes
+ * ------------------------------------------------------------------------- */
+
+export type NotifyEvent =
+  | {
+      type: 'invoice_sent';
+      userId: string;
+      invoiceId: string;
+      description: string;
+      amountCents: number;
+      dueDate?: string | null;
+      hostedInvoiceUrl: string;
+    }
+  | {
+      type: 'invoice_paid';
+      userId: string;
+      invoiceId: string;
+      description: string;
+      amountCents: number;
+      paidAt: string;
+      hostedInvoiceUrl?: string | null;
+    }
+  | {
+      type: 'proposal_sent';
+      userId: string;
+      proposalId: string;
+      title: string;
+      totalCents: number | null;
+      /** absolute or relative URL; resolved against NEXT_PUBLIC_APP_URL */
+      proposalPath: string;
+    }
+  | {
+      type: 'proposal_accepted';
+      /** admin user id (the one being notified) */
+      userId: string;
+      proposalId: string;
+      title: string;
+      totalCents: number | null;
+      clientName: string;
+      acceptedAt: string;
+      /** admin-side URL */
+      proposalPath: string;
+    }
+  | {
+      type: 'milestone_updated';
+      userId: string;
+      milestoneId: string;
+      milestoneTitle: string;
+      projectId: string;
+      projectName: string;
+      status: 'pending' | 'in_progress' | 'done' | 'blocked';
+      /** path to the project workspace */
+      projectPath: string;
+    }
+  | {
+      type: 'invite';
+      userId: string;
+      /** email the invite was sent to (used for deduping in logs) */
+      email: string;
+      inviteUrl: string;
+    };
+
+type EmailPrefs = Record<string, boolean>;
+
+/* -------------------------------------------------------------------------
+ * Dispatcher
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Writes an in-app notification row and, if email prefs allow, sends a
+ * transactional email via Resend. Fails soft — a broken email provider
+ * must never block the mutation that triggered it.
+ */
+export async function notify(event: NotifyEvent): Promise<void> {
+  // 1. In-app notification — payload stores the full event for the bell UI
+  try {
+    await supabaseAdmin().from('notifications').insert({
+      user_id: event.userId,
+      type: event.type,
+      payload: event,
+    });
+  } catch (err) {
+    console.warn('[notify] failed to write notifications row:', err);
+  }
+
+  // 2. Look up recipient + email prefs
+  let user: { email: string; full_name: string | null; email_prefs: EmailPrefs } | null =
+    null;
+  try {
+    const { data } = await supabaseAdmin()
+      .from('users')
+      .select('email, full_name, email_prefs')
+      .eq('id', event.userId)
+      .single();
+    if (data) {
+      user = {
+        email: data.email as string,
+        full_name: (data.full_name as string | null) ?? null,
+        email_prefs: (data.email_prefs as EmailPrefs) ?? {},
+      };
+    }
+  } catch (err) {
+    console.warn('[notify] failed to read user email prefs:', err);
+  }
+
+  if (!user) return;
+
+  // 3. Invite emails always go (opting out of your own invite doesn't
+  //    make sense). All other types respect email_prefs.
+  const prefKey = event.type;
+  if (event.type !== 'invite' && user.email_prefs[prefKey] === false) {
+    return;
+  }
+
+  // 4. Render + send
+  try {
+    const rendered = renderTemplate(event, user);
+    if (!rendered) return;
+    await sendEmail({
+      to: user.email,
+      subject: rendered.subject,
+      react: rendered.react,
+      tag: event.type,
+    });
+  } catch (err) {
+    console.warn('[notify] failed to send email:', err);
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Template resolution
+ * ------------------------------------------------------------------------- */
+
+function appUrl(path: string): string {
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
+  if (!base) return path;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
+function renderTemplate(
+  event: NotifyEvent,
+  user: { email: string; full_name: string | null },
+): { subject: string; react: React.ReactElement } | null {
+  const recipientName = user.full_name ?? user.email.split('@')[0];
+
+  switch (event.type) {
+    case 'invoice_sent': {
+      const props = {
+        recipientName,
+        description: event.description,
+        amountCents: event.amountCents,
+        dueDate: event.dueDate ?? null,
+        hostedInvoiceUrl: event.hostedInvoiceUrl,
+      };
+      return {
+        subject: invoiceSentSubject(props),
+        react: createElement(InvoiceSentEmail, props),
+      };
+    }
+    case 'invoice_paid': {
+      const props = {
+        recipientName,
+        description: event.description,
+        amountCents: event.amountCents,
+        paidAt: event.paidAt,
+        hostedInvoiceUrl: event.hostedInvoiceUrl ?? null,
+      };
+      return {
+        subject: invoicePaidSubject(props),
+        react: createElement(InvoicePaidEmail, props),
+      };
+    }
+    case 'proposal_sent': {
+      const props = {
+        recipientName,
+        title: event.title,
+        totalCents: event.totalCents,
+        proposalUrl: appUrl(event.proposalPath),
+      };
+      return {
+        subject: proposalSentSubject(props),
+        react: createElement(ProposalSentEmail, props),
+      };
+    }
+    case 'proposal_accepted': {
+      const props = {
+        adminName: recipientName,
+        clientName: event.clientName,
+        title: event.title,
+        totalCents: event.totalCents,
+        proposalUrl: appUrl(event.proposalPath),
+        acceptedAt: event.acceptedAt,
+      };
+      return {
+        subject: proposalAcceptedSubject(props),
+        react: createElement(ProposalAcceptedEmail, props),
+      };
+    }
+    case 'milestone_updated': {
+      const props = {
+        recipientName,
+        projectName: event.projectName,
+        milestoneTitle: event.milestoneTitle,
+        status: event.status,
+        projectUrl: appUrl(event.projectPath),
+      };
+      return {
+        subject: milestoneUpdatedSubject(props),
+        react: createElement(MilestoneUpdatedEmail, props),
+      };
+    }
+    case 'invite': {
+      const props = {
+        recipientName,
+        inviteUrl: event.inviteUrl,
+      };
+      return {
+        subject: inviteSubject(),
+        react: createElement(InviteEmail, props),
+      };
+    }
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Helpers for common lookups
+ * ------------------------------------------------------------------------- */
+
+/** Resolve the single admin user id. Falls back gracefully when missing. */
+export async function getAdminUserId(): Promise<string | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('users')
+      .select('id')
+      .eq('role', 'admin')
+      .limit(1)
+      .single();
+    return (data?.id as string | undefined) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Find the client user_id linked to a contact (null if not invited yet). */
+export async function getContactUserId(
+  contactId: string,
+): Promise<string | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('contacts')
+      .select('user_id')
+      .eq('id', contactId)
+      .single();
+    return (data?.user_id as string | null) ?? null;
+  } catch {
+    return null;
+  }
+}

@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+/* -------------------------------------------------------------------------
+ * LuxWeb CRM — Light Clinical + Copper Override
+ * Archetype: Tech Utilitarian (locked)
+ * Dials: VARIANCE 4 / MOTION 4 / DENSITY 6 / DARK 0
+ * ------------------------------------------------------------------------- */
+
+@theme {
+  /* Surfaces */
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-2: #f5f5f4;
+
+  /* Ink */
+  --color-ink: #1a1a1a;
+  --color-ink-muted: #64748b;
+  --color-ink-subtle: #94a3b8;
+  --color-border: #e5e5e5;
+  --color-border-strong: #d4d4d4;
+
+  /* Brand */
+  --color-copper: #b45309;
+  --color-copper-soft: #fef3c7;
+  --color-copper-foreground: #ffffff;
+  --color-gold: #fcd34d;
+
+  /* Semantic */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #b91c1c;
+  --color-info: #475569;
+
+  /* Radii — Density 6 is moderately tight */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+}
+
+/* next/font CSS variables surfaced as Tailwind font utilities.
+   `inline` preserves the var() reference so next/font can swap in the
+   self-hosted family at runtime. */
+@theme inline {
+  --font-display: var(--font-geist);
+  --font-sans: var(--font-inter-tight);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Base */
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Utilities */
+@layer utilities {
+  /* The per-page decorative moment — use at most ONCE per surface.
+     Place behind a header or in a corner to anchor the page with
+     a single intentional copper accent. */
+  .copper-mesh {
+    background-image:
+      radial-gradient(80% 60% at 0% 0%, rgb(180 83 9 / 0.10), transparent 60%),
+      radial-gradient(60% 50% at 100% 20%, rgb(252 211 77 / 0.08), transparent 70%);
+  }
+
+  .copper-rule {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--color-copper) 60%, transparent) 20%,
+      color-mix(in oklab, var(--color-copper) 60%, transparent) 80%,
+      transparent
+    );
+  }
+}
+
+/* Print — tuned for the proposal and any future printable surface.
+   Keeps copper accents, drops decorative meshes, forces black text
+   for readability on monochrome office printers. */
+@media print {
+  @page {
+    margin: 0.75in;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Drop decorative washes that print as muddy gray. */
+  .copper-mesh {
+    background-image: none !important;
+  }
+
+  /* Containers lose their surface/borders — the printed page is the container. */
+  .print-plain {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  /* Keep tight elements together across page breaks. */
+  .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
