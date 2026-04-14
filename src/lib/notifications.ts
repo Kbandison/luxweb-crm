@@ -9,6 +9,9 @@ import InvoiceSentEmail, {
 import InvoicePaidEmail, {
   invoicePaidSubject,
 } from '@/emails/invoice-paid-email';
+import InvoiceOverdueEmail, {
+  invoiceOverdueSubject,
+} from '@/emails/invoice-overdue-email';
 import ProposalSentEmail, {
   proposalSentSubject,
 } from '@/emails/proposal-sent-email';
@@ -273,9 +276,17 @@ function renderTemplate(
       return null;
     }
     case 'invoice_overdue': {
-      // No dedicated email template — admin watches this in-app. A future
-      // "overdue" email can slot in here without touching call sites.
-      return null;
+      const props = {
+        recipientName,
+        description: event.description,
+        amountCents: event.amountCents,
+        dueDate: event.dueDate ?? null,
+        hostedInvoiceUrl: event.hostedInvoiceUrl ?? null,
+      };
+      return {
+        subject: invoiceOverdueSubject(props),
+        react: createElement(InvoiceOverdueEmail, props),
+      };
     }
   }
 }
