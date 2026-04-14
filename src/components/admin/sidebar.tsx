@@ -5,27 +5,17 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Wordmark } from '@/components/brand/wordmark';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
+import {
+  ADMIN_NAV,
+  IconAudit,
+  IconLogout,
+  IconSettings,
+} from './nav-items';
 
 export type SidebarProps = {
   userEmail: string;
   userName?: string | null;
 };
-
-type NavItem = {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  shortcut: number;
-};
-
-const nav: NavItem[] = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: IconGauge, shortcut: 1 },
-  { href: '/admin/leads', label: 'Leads', icon: IconInbox, shortcut: 2 },
-  { href: '/admin/pipeline', label: 'Pipeline', icon: IconKanban, shortcut: 3 },
-  { href: '/admin/clients', label: 'Clients', icon: IconUsers, shortcut: 4 },
-  { href: '/admin/projects', label: 'Projects', icon: IconBriefcase, shortcut: 5 },
-  { href: '/admin/earnings', label: 'Earnings', icon: IconCoins, shortcut: 6 },
-];
 
 export function Sidebar({ userEmail, userName }: SidebarProps) {
   const pathname = usePathname();
@@ -36,7 +26,7 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
       if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
       const digit = Number(e.key);
       if (!Number.isInteger(digit)) return;
-      const item = nav.find((n) => n.shortcut === digit);
+      const item = ADMIN_NAV.find((n) => n.shortcut === digit);
       if (!item) return;
       e.preventDefault();
       router.push(item.href);
@@ -82,7 +72,7 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
           </p>
         </div>
         <nav className="space-y-1 px-3 pb-6">
-          {nav.map((item) => {
+          {ADMIN_NAV.map((item) => {
             const active =
               item.href === '/admin/dashboard'
                 ? pathname === item.href
@@ -285,90 +275,6 @@ function UserCard({ userEmail, userName }: SidebarProps) {
   );
 }
 
-/* -------------------------------------------------------------------------
- * Inline icons — 24px viewbox, 1.75 stroke, currentColor
- * ------------------------------------------------------------------------- */
-function IconGauge({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <path d="M12 14l4-4" />
-      <path d="M3.34 19a10 10 0 1 1 17.32 0" />
-    </svg>
-  );
-}
-function IconInbox({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
-      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z" />
-    </svg>
-  );
-}
-function IconKanban({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <path d="M6 5v11" />
-      <path d="M12 5v6" />
-      <path d="M18 5v14" />
-    </svg>
-  );
-}
-function IconUsers({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
-function IconBriefcase({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <rect x="2" y="7" width="20" height="14" rx="2" />
-      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-    </svg>
-  );
-}
-function IconSettings({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-    </svg>
-  );
-}
-function IconLogout({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  );
-}
-function IconAudit({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="9" y1="13" x2="15" y2="13" />
-      <line x1="9" y1="17" x2="15" y2="17" />
-      <line x1="9" y1="9" x2="11" y2="9" />
-    </svg>
-  );
-}
-function IconCoins({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <circle cx="8" cy="8" r="6" />
-      <path d="M18.09 10.37A6 6 0 1 1 10.34 18" />
-      <path d="M7 6h1v4" />
-      <path d="m16.71 13.88.7.71-2.82 2.82" />
-    </svg>
-  );
-}
 function IconChevron({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
