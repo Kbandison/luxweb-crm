@@ -13,8 +13,6 @@ const CreateSchema = z.object({
   source: z.string().max(80).optional().nullable(),
   tags: z.array(z.string().max(40)).max(20).optional(),
   lead_score: z.number().int().min(0).max(100).optional(),
-  // Manual override: true = force client, false = force lead, null/undefined = auto.
-  is_client: z.boolean().nullable().optional(),
 });
 
 export async function POST(req: Request) {
@@ -39,7 +37,6 @@ export async function POST(req: Request) {
         source: parsed.data.source ?? null,
         tags: parsed.data.tags ?? [],
         lead_score: parsed.data.lead_score ?? 0,
-        is_client: parsed.data.is_client ?? null,
       })
       .select()
       .single();
