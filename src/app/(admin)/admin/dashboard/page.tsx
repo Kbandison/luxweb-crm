@@ -29,7 +29,15 @@ export default async function AdminDashboardPage() {
 
         {/* 02 — Snapshot */}
         <Section number="02" title="Snapshot" subtitle="Live counts across projects, invoices, and the inbox.">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <MetricTile
+              label="This month · paid"
+              value={formatUSD(o.thisMonthEarningsCents)}
+              delta={{
+                value: `${o.thisMonthEarningsCount} ${o.thisMonthEarningsCount === 1 ? 'invoice' : 'invoices'}`,
+                trend: 'flat',
+              }}
+            />
             <MetricTile
               label="Active projects"
               value={String(o.activeProjectCount)}

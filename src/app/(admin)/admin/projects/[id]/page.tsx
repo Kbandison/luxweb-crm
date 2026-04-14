@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   getProjectDetail,
+  getProjectInvoices,
   getProjectMilestones,
   getProjectTimeLogs,
 } from '@/lib/queries/admin';
@@ -9,7 +10,8 @@ import {
   MILESTONE_STATUS_LABEL,
   MILESTONE_STATUS_TONE,
 } from '@/components/admin/projects/status-meta';
-import { formatDate, formatHours } from '@/lib/formatters';
+import { HourlyRateForm } from '@/components/admin/projects/hourly-rate-form';
+import { formatDate, formatHours, formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 export default async function ProjectOverviewPage({
@@ -18,14 +20,30 @@ export default async function ProjectOverviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [project, milestones, timeLogs] = await Promise.all([
+  const [project, milestones, timeLogs, invoices] = await Promise.all([
     getProjectDetail(id),
     getProjectMilestones(id),
     getProjectTimeLogs(id),
+    getProjectInvoices(id),
   ]);
   if (!project) notFound();
 
   const totalHours = timeLogs.reduce((s, t) => s + t.hours, 0);
+  const paidCents = invoices
+    .filter((i) => i.status === 'paid')
+    .reduce((s, i) => s + i.amountCents, 0);
+  const invoicedCents = invoices
+    .filter((i) => i.status !== 'void' && i.status !== 'draft')
+    .reduce((s, i) => s + i.amountCents, 0);
+  const costCents =
+    project.hourlyRateCents != null
+      ? Math.round(totalHours * project.hourlyRateCents)
+      : null;
+  const profitCents = costCents != null ? paidCents - costCents : null;
+  const burnPct =
+    project.budgetCents && costCents != null && project.budgetCents > 0
+      ? Math.round((costCents / project.budgetCents) * 100)
+      : null;
   const doneCount = milestones.filter((m) => m.status === 'done').length;
   const upcoming = milestones
     .filter((m) => m.status !== 'done' && m.dueDate)
@@ -63,10 +81,108 @@ export default async function ProjectOverviewPage({
         </div>
       </section>
 
-      {/* Upcoming milestones */}
+      {/* Budget & profitability — admin-only */}
       <section>
         <SectionHead
           number="02"
+          title="Budget & profitability"
+          right={<HourlyRateForm projectId={project.id} initialRateCents={project.hourlyRateCents} />}
+        />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat
+            label="Budget"
+            value={
+              project.budgetCents != null
+                ? formatUSD(project.budgetCents)
+                : '—'
+            }
+            hint={burnPct != null ? `${burnPct}% spent` : 'No rate or budget set'}
+          />
+          <Stat
+            label="Time cost"
+            value={costCents != null ? formatUSD(costCents) : '—'}
+            hint={
+              project.hourlyRateCents != null
+                ? `${formatHours(totalHours, 1)}h × ${formatUSD(project.hourlyRateCents)}/h`
+                : 'Set rate above'
+            }
+          />
+          <Stat
+            label="Paid"
+            value={formatUSD(paidCents)}
+            hint={
+              invoicedCents > paidCents
+                ? `${formatUSD(invoicedCents - paidCents)} pending`
+                : invoicedCents > 0
+                  ? 'All invoices paid'
+                  : 'Nothing invoiced'
+            }
+          />
+          <Stat
+            label="Profit"
+            value={profitCents != null ? formatUSD(profitCents) : '—'}
+            hint={
+              profitCents == null
+                ? 'Set hourly rate to compute'
+                : profitCents > 0
+                  ? 'In the black'
+                  : profitCents < 0
+                    ? 'Underwater — review rate'
+                    : 'Break-even'
+            }
+            tone={
+              profitCents != null
+                ? profitCents > 0
+                  ? 'success'
+                  : profitCents < 0
+                    ? 'danger'
+                    : 'default'
+                : 'default'
+            }
+          />
+        </div>
+        {/* Burn bar — only when both budget and cost are known */}
+        {project.budgetCents != null && costCents != null && project.budgetCents > 0 ? (
+          <div className="mt-5 rounded-xl border border-border bg-surface p-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+                Budget burn
+              </p>
+              <p
+                className={cn(
+                  'font-mono text-xs tabular-nums',
+                  (burnPct ?? 0) > 100
+                    ? 'text-danger'
+                    : (burnPct ?? 0) > 80
+                      ? 'text-warning'
+                      : 'text-ink-muted',
+                )}
+              >
+                {formatUSD(costCents)} of {formatUSD(project.budgetCents)} ·{' '}
+                {burnPct}%
+              </p>
+            </div>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-border">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all duration-500',
+                  (burnPct ?? 0) > 100
+                    ? 'bg-danger'
+                    : (burnPct ?? 0) > 80
+                      ? 'bg-warning'
+                      : 'bg-copper',
+                )}
+                style={{ width: `${Math.min(burnPct ?? 0, 100)}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      {/* Upcoming milestones */}
+      <section>
+        <SectionHead
+          number="03"
           title="Upcoming milestones"
           right={
             <Link
@@ -117,7 +233,7 @@ export default async function ProjectOverviewPage({
       {/* Recent time */}
       <section>
         <SectionHead
-          number="03"
+          number="04"
           title="Recent time"
           right={
             <Link
@@ -197,17 +313,35 @@ function Stat({
   label,
   value,
   hint,
+  tone = 'default',
 }: {
   label: string;
   value: string;
   hint?: string;
+  tone?: 'default' | 'success' | 'danger';
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
+    <div
+      className={cn(
+        'rounded-xl border bg-surface p-5',
+        tone === 'success' && 'border-success/30',
+        tone === 'danger' && 'border-danger/30',
+        tone === 'default' && 'border-border',
+      )}
+    >
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
         {label}
       </p>
-      <p className="mt-3 font-mono text-3xl font-medium tabular-nums tracking-tight text-ink">
+      <p
+        className={cn(
+          'mt-3 font-mono text-3xl font-medium tabular-nums tracking-tight',
+          tone === 'success'
+            ? 'text-success'
+            : tone === 'danger'
+              ? 'text-danger'
+              : 'text-ink',
+        )}
+      >
         {value}
       </p>
       {hint ? (

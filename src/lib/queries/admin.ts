@@ -58,6 +58,8 @@ export type DashboardOverview = {
   activeProjectCount: number;
   unpaidInvoiceCents: number;
   unpaidInvoiceCount: number;
+  thisMonthEarningsCents: number;
+  thisMonthEarningsCount: number;
   unreadMessagesCount: number;
   recentActivity: ActivityRow[];
 };
@@ -78,12 +80,14 @@ type AuditRow = {
  * Each query is wrapped so one broken piece doesn't kill the page.
  */
 export async function getAdminDashboardOverview(): Promise<DashboardOverview> {
-  const [pipeline, activeProjectCount, invoices, activity] = await Promise.all([
-    pipelineAggregate(),
-    activeProjects(),
-    unpaidInvoices(),
-    recentActivity(),
-  ]);
+  const [pipeline, activeProjectCount, invoices, earnings, activity] =
+    await Promise.all([
+      pipelineAggregate(),
+      activeProjects(),
+      unpaidInvoices(),
+      thisMonthEarnings(),
+      recentActivity(),
+    ]);
 
   return {
     pipelineValueCents: pipeline.valueCents,
@@ -93,6 +97,8 @@ export async function getAdminDashboardOverview(): Promise<DashboardOverview> {
     activeProjectCount,
     unpaidInvoiceCents: invoices.valueCents,
     unpaidInvoiceCount: invoices.count,
+    thisMonthEarningsCents: earnings.valueCents,
+    thisMonthEarningsCount: earnings.count,
     unreadMessagesCount: 0, // wired in step 10 with notifications
     recentActivity: activity,
   };
@@ -169,6 +175,27 @@ async function unpaidInvoices(): Promise<{ valueCents: number; count: number }> 
       .from('invoices')
       .select('amount_cents')
       .in('status', ['sent', 'overdue']);
+    const rows = (data ?? []) as { amount_cents: number | null }[];
+    return {
+      valueCents: rows.reduce((s, r) => s + (r.amount_cents ?? 0), 0),
+      count: rows.length,
+    };
+  } catch {
+    return { valueCents: 0, count: 0 };
+  }
+}
+
+async function thisMonthEarnings(): Promise<{ valueCents: number; count: number }> {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+    ).toISOString();
+    const { data } = await supabaseAdmin()
+      .from('invoices')
+      .select('amount_cents')
+      .eq('status', 'paid')
+      .gte('paid_at', startOfMonth);
     const rows = (data ?? []) as { amount_cents: number | null }[];
     return {
       valueCents: rows.reduce((s, r) => s + (r.amount_cents ?? 0), 0),
@@ -571,6 +598,7 @@ export type ProjectDetail = {
   endDate: string | null;
   budgetCents: number | null;
   profitabilityCents: number | null;
+  hourlyRateCents: number | null;
   contactId: string;
   contactName: string;
   contactCompany: string | null;
@@ -685,7 +713,7 @@ export async function getProjectDetail(
     const { data } = await supabaseAdmin()
       .from('projects')
       .select(
-        'id, name, status, start_date, end_date, budget_cents, profitability_cents, contact_id, deal_id, created_at, contacts!inner(full_name, company)',
+        'id, name, status, start_date, end_date, budget_cents, profitability_cents, hourly_rate_cents, contact_id, deal_id, created_at, contacts!inner(full_name, company)',
       )
       .eq('id', id)
       .single();
@@ -699,6 +727,7 @@ export async function getProjectDetail(
       end_date: string | null;
       budget_cents: number | null;
       profitability_cents: number | null;
+      hourly_rate_cents: number | null;
       contact_id: string;
       deal_id: string | null;
       created_at: string;
@@ -717,6 +746,7 @@ export async function getProjectDetail(
       endDate: r.end_date,
       budgetCents: r.budget_cents,
       profitabilityCents: r.profitability_cents,
+      hourlyRateCents: r.hourly_rate_cents,
       contactId: r.contact_id,
       contactName: c?.full_name ?? '—',
       contactCompany: c?.company ?? null,
@@ -1224,4 +1254,174 @@ async function recentActivity(): Promise<ActivityRow[]> {
   } catch {
     return [];
   }
+}
+
+/* -------------------------------------------------------------------------
+ * Earnings — Step 14
+ *
+ * Cost = sum(time_logs.hours) × project.hourly_rate_cents per project.
+ * Revenue = sum(invoices.amount_cents where status = 'paid').
+ * Profit = revenue − cost.
+ *
+ * Projects without an hourly rate are still shown but report cost as null
+ * (treated as 0 in profit math; surfaces show "—" for the cost column).
+ * ------------------------------------------------------------------------- */
+
+export type EarningsProjectRow = {
+  projectId: string;
+  projectName: string;
+  contactName: string;
+  hourlyRateCents: number | null;
+  hours: number;
+  costCents: number;
+  invoicedCents: number;
+  paidCents: number;
+  profitCents: number;
+};
+
+export type EarningsOverview = {
+  thisMonth: { paidCents: number; invoiceCount: number };
+  lastMonth: { paidCents: number; invoiceCount: number };
+  ytd: { paidCents: number; invoiceCount: number };
+  outstanding: { sentCents: number; sentCount: number; overdueCents: number; overdueCount: number };
+  projects: EarningsProjectRow[];
+};
+
+export async function getEarningsOverview(): Promise<EarningsOverview> {
+  const sb = supabaseAdmin();
+  const now = new Date();
+  const startOfThisMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const startOfLastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString();
+  const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1)).toISOString();
+
+  const [paidRes, openRes, projectsRes, timeRes] = await Promise.all([
+    sb
+      .from('invoices')
+      .select('amount_cents, paid_at, project_id')
+      .eq('status', 'paid')
+      .gte('paid_at', startOfYear),
+    sb
+      .from('invoices')
+      .select('amount_cents, status, project_id')
+      .in('status', ['sent', 'overdue']),
+    sb
+      .from('projects')
+      .select('id, name, hourly_rate_cents, contact_id, contacts!inner(full_name)'),
+    sb.from('time_logs').select('project_id, hours'),
+  ]);
+
+  type PaidRow = { amount_cents: number; paid_at: string; project_id: string | null };
+  type OpenRow = { amount_cents: number; status: 'sent' | 'overdue'; project_id: string | null };
+  type ProjectRow = {
+    id: string;
+    name: string;
+    hourly_rate_cents: number | null;
+    contact_id: string;
+    contacts:
+      | { full_name: string }
+      | { full_name: string }[];
+  };
+  type TimeRow = { project_id: string; hours: number | string | null };
+
+  const paid = (paidRes.data ?? []) as PaidRow[];
+  const open = (openRes.data ?? []) as OpenRow[];
+  const projects = (projectsRes.data ?? []) as unknown as ProjectRow[];
+  const time = (timeRes.data ?? []) as TimeRow[];
+
+  const sumPaid = (since: string) =>
+    paid
+      .filter((p) => p.paid_at >= since)
+      .reduce(
+        (acc, p) => ({
+          paidCents: acc.paidCents + Number(p.amount_cents),
+          invoiceCount: acc.invoiceCount + 1,
+        }),
+        { paidCents: 0, invoiceCount: 0 },
+      );
+
+  const thisMonth = sumPaid(startOfThisMonth);
+  const lastMonthAll = paid.filter(
+    (p) => p.paid_at >= startOfLastMonth && p.paid_at < startOfThisMonth,
+  );
+  const lastMonth = lastMonthAll.reduce(
+    (acc, p) => ({
+      paidCents: acc.paidCents + Number(p.amount_cents),
+      invoiceCount: acc.invoiceCount + 1,
+    }),
+    { paidCents: 0, invoiceCount: 0 },
+  );
+  const ytd = sumPaid(startOfYear);
+
+  const outstanding = open.reduce(
+    (acc, o) => {
+      const cents = Number(o.amount_cents);
+      if (o.status === 'overdue') {
+        return {
+          ...acc,
+          overdueCents: acc.overdueCents + cents,
+          overdueCount: acc.overdueCount + 1,
+        };
+      }
+      return {
+        ...acc,
+        sentCents: acc.sentCents + cents,
+        sentCount: acc.sentCount + 1,
+      };
+    },
+    { sentCents: 0, sentCount: 0, overdueCents: 0, overdueCount: 0 },
+  );
+
+  const hoursByProject = new Map<string, number>();
+  for (const t of time) {
+    const prev = hoursByProject.get(t.project_id) ?? 0;
+    hoursByProject.set(t.project_id, prev + Number(t.hours ?? 0));
+  }
+  const paidByProject = new Map<string, number>();
+  const invoicedByProject = new Map<string, number>();
+  for (const p of paid) {
+    if (!p.project_id) continue;
+    paidByProject.set(p.project_id, (paidByProject.get(p.project_id) ?? 0) + Number(p.amount_cents));
+    invoicedByProject.set(
+      p.project_id,
+      (invoicedByProject.get(p.project_id) ?? 0) + Number(p.amount_cents),
+    );
+  }
+  for (const o of open) {
+    if (!o.project_id) continue;
+    invoicedByProject.set(
+      o.project_id,
+      (invoicedByProject.get(o.project_id) ?? 0) + Number(o.amount_cents),
+    );
+  }
+
+  const projectRows: EarningsProjectRow[] = projects.map((p) => {
+    const c = Array.isArray(p.contacts) ? p.contacts[0] : p.contacts;
+    const hours = hoursByProject.get(p.id) ?? 0;
+    const rate = p.hourly_rate_cents;
+    const costCents = rate != null ? Math.round(hours * rate) : 0;
+    const paidCents = paidByProject.get(p.id) ?? 0;
+    const invoicedCents = invoicedByProject.get(p.id) ?? 0;
+    return {
+      projectId: p.id,
+      projectName: p.name,
+      contactName: c?.full_name ?? '—',
+      hourlyRateCents: rate,
+      hours,
+      costCents,
+      invoicedCents,
+      paidCents,
+      profitCents: paidCents - costCents,
+    };
+  });
+
+  // Sort by profit desc — most profitable on top.
+  projectRows.sort((a, b) => b.profitCents - a.profitCents);
+
+  return {
+    thisMonth,
+    lastMonth,
+    ytd,
+    outstanding,
+    projects: projectRows,
+  };
 }

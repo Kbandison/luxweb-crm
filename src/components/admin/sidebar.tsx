@@ -24,6 +24,7 @@ const nav: NavItem[] = [
   { href: '/admin/pipeline', label: 'Pipeline', icon: IconKanban, shortcut: 3 },
   { href: '/admin/clients', label: 'Clients', icon: IconUsers, shortcut: 4 },
   { href: '/admin/projects', label: 'Projects', icon: IconBriefcase, shortcut: 5 },
+  { href: '/admin/earnings', label: 'Earnings', icon: IconCoins, shortcut: 6 },
 ];
 
 export function Sidebar({ userEmail, userName }: SidebarProps) {
@@ -355,6 +356,16 @@ function IconAudit({ className }: { className?: string }) {
       <line x1="9" y1="13" x2="15" y2="13" />
       <line x1="9" y1="17" x2="15" y2="17" />
       <line x1="9" y1="9" x2="11" y2="9" />
+    </svg>
+  );
+}
+function IconCoins({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M18.09 10.37A6 6 0 1 1 10.34 18" />
+      <path d="M7 6h1v4" />
+      <path d="m16.71 13.88.7.71-2.82 2.82" />
     </svg>
   );
 }
