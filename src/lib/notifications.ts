@@ -48,6 +48,17 @@ export type NotifyEvent =
       invoicePath: string;
     }
   | {
+      type: 'invoice_overdue';
+      userId: string;
+      invoiceId: string;
+      description: string;
+      amountCents: number;
+      dueDate?: string | null;
+      hostedInvoiceUrl?: string | null;
+      /** in-app path to the invoices list (recipient-contextualized) */
+      invoicePath: string;
+    }
+  | {
       type: 'message';
       userId: string;
       projectId: string;
@@ -259,6 +270,11 @@ function renderTemplate(
     }
     case 'message': {
       // No email template for messages — in-app bell + unread count only.
+      return null;
+    }
+    case 'invoice_overdue': {
+      // No dedicated email template — admin watches this in-app. A future
+      // "overdue" email can slot in here without touching call sites.
       return null;
     }
   }

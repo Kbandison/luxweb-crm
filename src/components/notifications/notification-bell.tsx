@@ -284,6 +284,14 @@ function describe(n: Notification): Described {
           ? normalizePath(str('invoicePath'))
           : str('hostedInvoiceUrl') || undefined,
       };
+    case 'invoice_overdue':
+      return {
+        title: 'Invoice overdue',
+        body: `${str('description')} · ${formatUSD(num('amountCents'))}`,
+        href: str('invoicePath')
+          ? normalizePath(str('invoicePath'))
+          : str('hostedInvoiceUrl') || undefined,
+      };
     case 'proposal_sent':
       return {
         title: 'Proposal ready',
