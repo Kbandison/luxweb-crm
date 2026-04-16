@@ -1,0 +1,97 @@
+<!--
+  LuxWeb Studio — "Invite user" email template.
+  Paste the <body>…</body> contents into:
+    Supabase Dashboard → Authentication → Email Templates → Invite user
+
+  Supabase variables used:
+    {{ .ConfirmationURL }}  — finishes the invite flow on /accept-invite
+    {{ .Email }}            — recipient address (used in lead-in copy)
+
+  Subject line (set above the template body in the Supabase UI):
+    You're invited to the LuxWeb Studio portal
+-->
+<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#fafafa;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fafafa;">
+      <tr>
+        <td align="center" style="padding:40px 16px;">
+          <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#ffffff;border:1px solid #e5e5e5;border-radius:16px;overflow:hidden;">
+            <!-- Copper rule -->
+            <tr>
+              <td style="height:3px;background:linear-gradient(90deg,#b45309 0%,#fcd34d 50%,#b45309 100%);"></td>
+            </tr>
+
+            <!-- Wordmark + eyebrow -->
+            <tr>
+              <td style="padding:32px 40px 8px 40px;">
+                <p style="margin:0 0 18px 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:500;letter-spacing:0.24em;text-transform:uppercase;color:#b45309;">
+                  LuxWeb Studio · Portal invite
+                </p>
+                <h1 style="margin:0;font-size:26px;line-height:1.2;font-weight:500;letter-spacing:-0.01em;color:#1a1a1a;">
+                  You've been invited to the portal.
+                </h1>
+              </td>
+            </tr>
+
+            <!-- Body copy -->
+            <tr>
+              <td style="padding:16px 40px 8px 40px;">
+                <p style="margin:0 0 12px 0;font-size:15px;line-height:1.55;color:#1a1a1a;">
+                  Hi there,
+                </p>
+                <p style="margin:0 0 12px 0;font-size:15px;line-height:1.55;color:#1a1a1a;">
+                  You've been added to the LuxWeb Studio client portal with
+                  <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;color:#1a1a1a;">{{ .Email }}</span>.
+                  The portal is where you'll review proposals, approve
+                  milestones, pay invoices, and share messages with the team.
+                </p>
+                <p style="margin:0;font-size:15px;line-height:1.55;color:#1a1a1a;">
+                  Accept your invite below to set a password and finish
+                  creating your account.
+                </p>
+              </td>
+            </tr>
+
+            <!-- CTA -->
+            <tr>
+              <td align="center" style="padding:28px 40px 12px 40px;">
+                <a href="{{ .ConfirmationURL }}"
+                   style="display:inline-block;padding:12px 24px;background:#b45309;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:500;letter-spacing:0.01em;">
+                  Accept invite
+                </a>
+              </td>
+            </tr>
+
+            <!-- Fallback link -->
+            <tr>
+              <td style="padding:4px 40px 24px 40px;">
+                <p style="margin:0;font-size:12px;line-height:1.5;color:#64748b;">
+                  Button not working? Copy and paste this link into your browser:
+                </p>
+                <p style="margin:6px 0 0 0;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#475569;">
+                  {{ .ConfirmationURL }}
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="border-top:1px solid #e5e5e5;padding:20px 40px;background:#fafafa;">
+                <p style="margin:0;font-size:11px;line-height:1.5;color:#94a3b8;">
+                  This invite was sent to
+                  <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">{{ .Email }}</span>.
+                  If you weren't expecting it, you can safely ignore this email —
+                  it will expire after a short time.
+                </p>
+                <p style="margin:10px 0 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8;">
+                  LuxWeb Studio · luxwebstudio.dev
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

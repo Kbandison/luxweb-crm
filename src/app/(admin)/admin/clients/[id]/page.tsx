@@ -20,6 +20,7 @@ import {
 } from '@/components/admin/clients/deals-section';
 import { NotesPanel } from '@/components/admin/clients/notes-panel';
 import { ActivityList } from '@/components/admin/clients/activity-list';
+import { DeleteContactButton } from '@/components/admin/contacts/delete-button';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 
 export default async function ClientDetailPage({
@@ -58,7 +59,7 @@ export default async function ClientDetailPage({
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Sub-header / breadcrumb */}
-        <div className="border-b border-border bg-surface px-8 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-8 py-3">
           <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-subtle">
             <Link href="/admin/clients" className="hover:text-ink">
               Clients
@@ -66,6 +67,12 @@ export default async function ClientDetailPage({
             <span className="text-copper">/</span>
             <span className="text-ink">{client.fullName}</span>
           </nav>
+          <DeleteContactButton
+            contactId={client.id}
+            contactName={client.fullName}
+            kind="client"
+            redirectTo="/admin/clients"
+          />
         </div>
 
         {/* Hero — copper moment for this page */}

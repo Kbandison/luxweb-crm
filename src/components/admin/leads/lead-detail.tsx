@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ContactRow, ProposalRow } from '@/lib/queries/admin';
 import { InviteToPortalButton } from '@/components/admin/contacts/invite-button';
+import { DeleteContactButton } from '@/components/admin/contacts/delete-button';
 import { LeadProposalsSection } from './lead-proposals-section';
 import { LeadScore } from './lead-score';
 import { TagPill } from './tag-pill';
@@ -59,13 +60,21 @@ export function LeadDetail({
             </div>
           </div>
 
-          {/* Back-to-list on tablet */}
-          <Link
-            href="/admin/leads"
-            className="shrink-0 rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted transition-colors hover:border-border-strong hover:text-ink lg:hidden"
-          >
-            ← Back
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <DeleteContactButton
+              contactId={lead.id}
+              contactName={lead.fullName}
+              kind="lead"
+              redirectTo="/admin/leads"
+            />
+            {/* Back-to-list on tablet */}
+            <Link
+              href="/admin/leads"
+              className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted transition-colors hover:border-border-strong hover:text-ink lg:hidden"
+            >
+              ← Back
+            </Link>
+          </div>
         </div>
       </header>
 

@@ -1,0 +1,101 @@
+<!--
+  LuxWeb Studio — "Magic Link" email template.
+  Paste the <body>…</body> contents into:
+    Supabase Dashboard → Authentication → Email Templates → Magic Link
+
+  Supabase variables used:
+    {{ .ConfirmationURL }}  — one-shot sign-in URL
+    {{ .Email }}            — recipient address (footer)
+    {{ .Token }}            — 6-digit code (shown for OTP fallback)
+
+  Subject line (set above the template body in the Supabase UI):
+    Your LuxWeb Studio sign-in link
+-->
+<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#fafafa;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fafafa;">
+      <tr>
+        <td align="center" style="padding:40px 16px;">
+          <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#ffffff;border:1px solid #e5e5e5;border-radius:16px;overflow:hidden;">
+            <!-- Copper rule -->
+            <tr>
+              <td style="height:3px;background:linear-gradient(90deg,#b45309 0%,#fcd34d 50%,#b45309 100%);"></td>
+            </tr>
+
+            <!-- Eyebrow + headline -->
+            <tr>
+              <td style="padding:32px 40px 8px 40px;">
+                <p style="margin:0 0 18px 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:500;letter-spacing:0.24em;text-transform:uppercase;color:#b45309;">
+                  LuxWeb Studio · Sign-in link
+                </p>
+                <h1 style="margin:0;font-size:26px;line-height:1.2;font-weight:500;letter-spacing:-0.01em;color:#1a1a1a;">
+                  Here's your sign-in link.
+                </h1>
+              </td>
+            </tr>
+
+            <!-- Body copy -->
+            <tr>
+              <td style="padding:16px 40px 8px 40px;">
+                <p style="margin:0 0 12px 0;font-size:15px;line-height:1.55;color:#1a1a1a;">
+                  Click below to sign in. The link is one-shot and expires in
+                  a short while — if it doesn't work, just request a new one.
+                </p>
+              </td>
+            </tr>
+
+            <!-- CTA -->
+            <tr>
+              <td align="center" style="padding:24px 40px 8px 40px;">
+                <a href="{{ .ConfirmationURL }}"
+                   style="display:inline-block;padding:12px 24px;background:#b45309;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:500;letter-spacing:0.01em;">
+                  Sign in to LuxWeb Studio
+                </a>
+              </td>
+            </tr>
+
+            <!-- OTP fallback -->
+            <tr>
+              <td align="center" style="padding:20px 40px 8px 40px;">
+                <p style="margin:0;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#64748b;">
+                  Or enter this code
+                </p>
+                <p style="margin:10px 0 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:28px;letter-spacing:0.2em;color:#1a1a1a;">
+                  {{ .Token }}
+                </p>
+              </td>
+            </tr>
+
+            <!-- Fallback link -->
+            <tr>
+              <td style="padding:16px 40px 24px 40px;">
+                <p style="margin:0;font-size:12px;line-height:1.5;color:#64748b;">
+                  Button not working? Copy and paste this link:
+                </p>
+                <p style="margin:6px 0 0 0;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#475569;">
+                  {{ .ConfirmationURL }}
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="border-top:1px solid #e5e5e5;padding:20px 40px;background:#fafafa;">
+                <p style="margin:0;font-size:11px;line-height:1.5;color:#94a3b8;">
+                  Requested for
+                  <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">{{ .Email }}</span>.
+                  If you didn't ask to sign in, you can ignore this email.
+                  No one can access your account without this link.
+                </p>
+                <p style="margin:10px 0 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8;">
+                  LuxWeb Studio · luxwebstudio.dev
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
