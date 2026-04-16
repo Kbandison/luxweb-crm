@@ -22,6 +22,7 @@ import MilestoneUpdatedEmail, {
   milestoneUpdatedSubject,
 } from '@/emails/milestone-updated-email';
 import InviteEmail, { inviteSubject } from '@/emails/invite-email';
+import NewLeadEmail, { newLeadSubject } from '@/emails/new-lead-email';
 
 /* -------------------------------------------------------------------------
  * Event shapes
@@ -109,6 +110,18 @@ export type NotifyEvent =
       /** email the invite was sent to (used for deduping in logs) */
       email: string;
       inviteUrl: string;
+    }
+  | {
+      type: 'new_lead';
+      userId: string;
+      contactId: string;
+      fullName: string;
+      email: string | null;
+      company: string | null;
+      source: string | null;
+      message: string | null;
+      /** admin-side lead detail path */
+      leadPath: string;
     };
 
 type EmailPrefs = Record<string, boolean>;
@@ -269,6 +282,21 @@ function renderTemplate(
       return {
         subject: inviteSubject(),
         react: createElement(InviteEmail, props),
+      };
+    }
+    case 'new_lead': {
+      const props = {
+        recipientName,
+        fullName: event.fullName,
+        email: event.email,
+        company: event.company,
+        source: event.source,
+        message: event.message,
+        leadUrl: appUrl(event.leadPath),
+      };
+      return {
+        subject: newLeadSubject(props),
+        react: createElement(NewLeadEmail, props),
       };
     }
     case 'message': {

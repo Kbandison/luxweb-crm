@@ -116,8 +116,9 @@ export const config = {
   // - Next internals (_next/static, _next/image)
   // - favicon
   // - webhooks (they verify their own signatures — Stripe, Resend)
+  // - /api/public (explicitly unauthenticated — marketing-site lead capture etc.)
   // - /auth/callback (session being established; proxy can't gate yet)
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/webhooks|auth/callback).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/webhooks|api/public|auth/callback).*)',
   ],
 };
