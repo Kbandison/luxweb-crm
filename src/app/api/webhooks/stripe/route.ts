@@ -63,38 +63,79 @@ export async function POST(req: Request) {
 
 async function handleInvoicePaid(inv: Stripe.Invoice) {
   if (!inv.id) return;
+  const stripeInvoiceId = inv.id;
   const paidAt = new Date().toISOString();
 
-  // Mirror the status — naturally idempotent on replay since the UPDATE
-  // only sets the same columns to the same values.
-  const { data: row } = await supabaseAdmin()
+  // Notification data comes from the Stripe payload — authoritative and
+  // independent of our schema cache. If `description` / `hosted_invoice_url`
+  // ever drift out of PostgREST's cache, notifications still fire correctly.
+  const description = pickDescription(inv);
+  const amountCents = inv.amount_paid ?? inv.amount_due ?? 0;
+  const hostedInvoiceUrl = inv.hosted_invoice_url ?? null;
+
+  // Minimal-column SELECT — only depends on schema fields that have existed
+  // since the original migration. No `description`, no `due_date`, no URLs.
+  const { data: existing, error: fetchErr } = await supabaseAdmin()
+    .from('invoices')
+    .select('id, contact_id, project_id, status')
+    .eq('stripe_invoice_id', stripeInvoiceId)
+    .maybeSingle();
+
+  if (fetchErr || !existing) {
+    await logWebhookIssue({
+      stripeInvoiceId,
+      eventType: 'invoice.paid',
+      stage: 'fetch',
+      message: fetchErr?.message ?? 'No matching crm.invoices row',
+    });
+    return;
+  }
+
+  const crmInvoiceId = existing.id as string;
+  const contactId = existing.contact_id as string;
+  const projectId = existing.project_id as string | null;
+  const previousStatus = existing.status as string;
+
+  // Separate UPDATE. Tolerant to schema-cache drift since we don't SELECT
+  // any possibly-unknown columns back.
+  const { error: updateErr } = await supabaseAdmin()
     .from('invoices')
     .update({ status: 'paid', paid_at: paidAt })
-    .eq('stripe_invoice_id', inv.id)
-    .select('id, contact_id, project_id, amount_cents, description, hosted_invoice_url')
-    .single();
+    .eq('id', crmInvoiceId);
 
-  if (!row) return;
+  if (updateErr) {
+    await logWebhookIssue({
+      stripeInvoiceId,
+      eventType: 'invoice.paid',
+      stage: 'update',
+      message: updateErr.message,
+      crmInvoiceId,
+    });
+    return;
+  }
 
   await writeAudit({
-    actor_id: null as unknown as string, // system event
+    actor_id: null as unknown as string,
     action: 'update',
     entity_type: 'invoice',
-    entity_id: row.id as string,
-    diff: { status: { from: 'sent', to: 'paid' }, paid_at: paidAt },
+    entity_id: crmInvoiceId,
+    diff: {
+      status: { from: previousStatus, to: 'paid' },
+      paid_at: paidAt,
+      source: 'stripe_webhook',
+    },
   });
 
-  const projectId = row.project_id as string | null;
-  const description = (row.description as string | null) ?? 'Invoice';
-  const amountCents = Number(row.amount_cents ?? 0);
-  const hostedInvoiceUrl = (row.hosted_invoice_url as string | null) ?? null;
+  // Idempotency: if the row was already marked paid, don't re-fire emails
+  // or notifications. Stripe retries + our own manual resends both covered.
+  if (previousStatus === 'paid') return;
 
-  const clientUserId = await getContactUserId(row.contact_id as string);
+  const clientUserId = await getContactUserId(contactId);
   if (clientUserId) {
     await notify({
       type: 'invoice_paid',
       userId: clientUserId,
-      invoiceId: row.id as string,
+      invoiceId: crmInvoiceId,
       description,
       amountCents,
       paidAt,
@@ -105,13 +146,12 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
     });
   }
 
-  // Admin also wants to know the money landed.
   const adminId = await getAdminUserId();
   if (adminId) {
     await notify({
       type: 'invoice_paid',
       userId: adminId,
-      invoiceId: row.id as string,
+      invoiceId: crmInvoiceId,
       description,
       amountCents,
       paidAt,
@@ -125,35 +165,75 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
 
 async function handleInvoiceOverdue(inv: Stripe.Invoice) {
   if (!inv.id) return;
-  const { data: row } = await supabaseAdmin()
+  const stripeInvoiceId = inv.id;
+
+  const description = pickDescription(inv);
+  const amountCents = inv.amount_due ?? inv.amount_remaining ?? 0;
+  const hostedInvoiceUrl = inv.hosted_invoice_url ?? null;
+  const dueDate = inv.due_date
+    ? new Date(inv.due_date * 1000).toISOString().slice(0, 10)
+    : null;
+
+  const { data: existing, error: fetchErr } = await supabaseAdmin()
+    .from('invoices')
+    .select('id, contact_id, project_id, status')
+    .eq('stripe_invoice_id', stripeInvoiceId)
+    .maybeSingle();
+
+  if (fetchErr || !existing) {
+    await logWebhookIssue({
+      stripeInvoiceId,
+      eventType: 'invoice.overdue',
+      stage: 'fetch',
+      message: fetchErr?.message ?? 'No matching crm.invoices row',
+    });
+    return;
+  }
+
+  const crmInvoiceId = existing.id as string;
+  const contactId = existing.contact_id as string;
+  const projectId = existing.project_id as string | null;
+  const previousStatus = existing.status as string;
+
+  // Don't downgrade a paid or voided invoice back to overdue.
+  if (previousStatus === 'paid' || previousStatus === 'void') return;
+
+  const { error: updateErr } = await supabaseAdmin()
     .from('invoices')
     .update({ status: 'overdue' })
-    .eq('stripe_invoice_id', inv.id)
-    .select('id, contact_id, project_id, amount_cents, description, due_date, hosted_invoice_url')
-    .single();
-  if (!row) return;
+    .eq('id', crmInvoiceId);
+
+  if (updateErr) {
+    await logWebhookIssue({
+      stripeInvoiceId,
+      eventType: 'invoice.overdue',
+      stage: 'update',
+      message: updateErr.message,
+      crmInvoiceId,
+    });
+    return;
+  }
 
   await writeAudit({
     actor_id: null as unknown as string,
     action: 'update',
     entity_type: 'invoice',
-    entity_id: row.id as string,
-    diff: { status: 'overdue' },
+    entity_id: crmInvoiceId,
+    diff: {
+      status: { from: previousStatus, to: 'overdue' },
+      source: 'stripe_webhook',
+    },
   });
 
-  const projectId = row.project_id as string | null;
-  const description = (row.description as string | null) ?? 'Invoice';
-  const amountCents = Number(row.amount_cents ?? 0);
-  const dueDate = (row.due_date as string | null) ?? null;
-  const hostedInvoiceUrl = (row.hosted_invoice_url as string | null) ?? null;
+  // Idempotency — only notify on actual transition into overdue.
+  if (previousStatus === 'overdue') return;
 
-  // Client: "your invoice is overdue"
-  const clientUserId = await getContactUserId(row.contact_id as string);
+  const clientUserId = await getContactUserId(contactId);
   if (clientUserId) {
     await notify({
       type: 'invoice_overdue',
       userId: clientUserId,
-      invoiceId: row.id as string,
+      invoiceId: crmInvoiceId,
       description,
       amountCents,
       dueDate,
@@ -164,13 +244,12 @@ async function handleInvoiceOverdue(inv: Stripe.Invoice) {
     });
   }
 
-  // Admin: "time to chase"
   const adminId = await getAdminUserId();
   if (adminId) {
     await notify({
       type: 'invoice_overdue',
       userId: adminId,
-      invoiceId: row.id as string,
+      invoiceId: crmInvoiceId,
       description,
       amountCents,
       dueDate,
@@ -180,6 +259,50 @@ async function handleInvoiceOverdue(inv: Stripe.Invoice) {
         : '/admin/dashboard',
     });
   }
+}
+
+/* ------------------------- internal helpers ----------------------------- */
+
+function pickDescription(inv: Stripe.Invoice): string {
+  if (typeof inv.description === 'string' && inv.description.trim()) {
+    return inv.description;
+  }
+  const first = inv.lines?.data?.[0]?.description;
+  if (typeof first === 'string' && first.trim()) return first;
+  return 'Invoice';
+}
+
+/**
+ * Writes a diagnostic row to crm.audit_log when the webhook silently
+ * fails. Surfaces in the admin audit viewer so you never have to grep
+ * Vercel logs to figure out why a Stripe payment didn't sync.
+ */
+async function logWebhookIssue(args: {
+  stripeInvoiceId: string;
+  eventType: string;
+  stage: 'fetch' | 'update';
+  message: string;
+  crmInvoiceId?: string;
+}) {
+  try {
+    await writeAudit({
+      actor_id: null as unknown as string,
+      action: 'stripe_webhook_failure',
+      entity_type: 'invoice',
+      entity_id: args.crmInvoiceId,
+      diff: {
+        stripe_invoice_id: args.stripeInvoiceId,
+        event_type: args.eventType,
+        stage: args.stage,
+        message: args.message,
+      },
+    });
+  } catch (err) {
+    // Last-resort log — if even audit_log is broken, there's nothing else
+    // to do from the webhook thread.
+    console.warn('[stripe webhook] audit_log write failed:', err);
+  }
+  console.warn('[stripe webhook]', args.eventType, args.stage, 'failed:', args);
 }
 
 async function handleSubscriptionActive(sub: Stripe.Subscription) {
