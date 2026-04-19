@@ -38,6 +38,11 @@ export async function POST(req: Request) {
       case 'invoice.marked_uncollectible':
         await handleInvoiceOverdue(event.data.object as Stripe.Invoice);
         break;
+      case 'payment_intent.succeeded':
+        await handlePaymentIntentSucceeded(
+          event.data.object as Stripe.PaymentIntent,
+        );
+        break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
         await handleSubscriptionActive(event.data.object as Stripe.Subscription);
@@ -303,6 +308,36 @@ async function logWebhookIssue(args: {
     console.warn('[stripe webhook] audit_log write failed:', err);
   }
   console.warn('[stripe webhook]', args.eventType, args.stage, 'failed:', args);
+}
+
+/**
+ * Fires when a PaymentIntent we created for an invoice (see
+ * /portal/.../invoices/.../pay) completes. We mark the underlying Stripe
+ * invoice as paid_out_of_band so Stripe's books stay consistent — that in
+ * turn fires `invoice.paid`, which our existing handler picks up to flip
+ * the CRM row and send notifications.
+ */
+async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent) {
+  const stripeInvoiceId =
+    typeof pi.metadata?.stripe_invoice_id === 'string'
+      ? pi.metadata.stripe_invoice_id
+      : null;
+  if (!stripeInvoiceId) return; // not one of ours
+
+  const s = stripe();
+  try {
+    await s.invoices.pay(stripeInvoiceId, { paid_out_of_band: true });
+  } catch (err) {
+    // Already paid or finalized in a non-payable state — invoice.paid may
+    // have already fired, or this is a duplicate retry. Swallow.
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(
+      '[stripe webhook] paid_out_of_band on',
+      stripeInvoiceId,
+      'failed:',
+      message,
+    );
+  }
 }
 
 async function handleSubscriptionActive(sub: Stripe.Subscription) {

@@ -38,9 +38,46 @@ export default async function InvoicePayPage({
   const s = stripe();
   const stripeInvoice = await s.invoices.retrieve(invoice.stripe_invoice_id);
 
-  // Stripe 2024+ surfaces the PaymentIntent's client_secret as
-  // `confirmation_secret` on the invoice itself — no expand needed.
-  const clientSecret = stripeInvoice.confirmation_secret?.client_secret ?? null;
+  // `send_invoice` invoices don't auto-create a PaymentIntent on finalize —
+  // Stripe only does that when the customer hits the hosted page. For our
+  // custom pay page we create one ourselves, linked back to the invoice via
+  // metadata. The payment_intent.succeeded webhook marks the Stripe invoice
+  // paid_out_of_band, which then fires invoice.paid and our existing handler
+  // flips the CRM row.
+  let clientSecret: string | null =
+    stripeInvoice.confirmation_secret?.client_secret ?? null;
+
+  if (!clientSecret) {
+    const customerId =
+      typeof stripeInvoice.customer === 'string'
+        ? stripeInvoice.customer
+        : (stripeInvoice.customer?.id ?? null);
+
+    if (!customerId) {
+      return (
+        <PaymentUnavailable reason="This invoice is missing a Stripe customer." />
+      );
+    }
+
+    // idempotencyKey makes repeated page loads return the same PaymentIntent
+    // instead of racking up fresh ones every refresh.
+    const pi = await s.paymentIntents.create(
+      {
+        amount: Number(invoice.amount_cents ?? 0),
+        currency: (stripeInvoice.currency as string) || 'usd',
+        customer: customerId,
+        payment_method_types: ['card'],
+        description: invoice.description ?? 'Invoice',
+        metadata: {
+          crm_invoice_id: invoice.id,
+          stripe_invoice_id: invoice.stripe_invoice_id,
+        },
+      },
+      { idempotencyKey: `pay_invoice_${invoice.id}` },
+    );
+
+    clientSecret = pi.client_secret;
+  }
 
   if (!clientSecret) {
     return (
