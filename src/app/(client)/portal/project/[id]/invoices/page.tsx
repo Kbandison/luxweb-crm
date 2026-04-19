@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { getSession } from '@/lib/supabase/session';
 import { getClientProjectInvoices } from '@/lib/queries/client';
@@ -86,12 +87,9 @@ export default async function ClientProjectInvoicesPage({
                   <span className="font-mono text-sm font-medium tabular-nums text-ink">
                     {formatUSD(inv.amountCents)}
                   </span>
-                  {(inv.status === 'sent' || inv.status === 'overdue') &&
-                  inv.hostedInvoiceUrl ? (
-                    <a
-                      href={inv.hostedInvoiceUrl}
-                      target="_blank"
-                      rel="noreferrer"
+                  {inv.status === 'sent' || inv.status === 'overdue' ? (
+                    <Link
+                      href={`/portal/project/${id}/invoices/${inv.id}/pay`}
                       className="inline-flex items-center gap-1 rounded-md bg-copper px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-copper-foreground transition-colors hover:bg-copper/90"
                     >
                       Pay
@@ -108,7 +106,7 @@ export default async function ClientProjectInvoicesPage({
                         <line x1="5" y1="12" x2="19" y2="12" />
                         <polyline points="12 5 19 12 12 19" />
                       </svg>
-                    </a>
+                    </Link>
                   ) : inv.status === 'paid' && inv.hostedInvoiceUrl ? (
                     <a
                       href={inv.hostedInvoiceUrl}
