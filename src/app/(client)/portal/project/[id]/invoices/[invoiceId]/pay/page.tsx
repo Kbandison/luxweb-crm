@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { requireProjectAccess } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
@@ -31,9 +32,7 @@ export default async function InvoicePayPage({
     redirect(`/portal/project/${projectId}/invoices`);
   }
   if (!invoice.stripe_invoice_id) {
-    // Legacy or broken — fall back to hosted page if we have one, otherwise list.
-    if (invoice.hosted_invoice_url) redirect(invoice.hosted_invoice_url);
-    redirect(`/portal/project/${projectId}/invoices`);
+    return <PaymentUnavailable reason="This invoice isn't linked to Stripe." />;
   }
 
   const s = stripe();
@@ -44,9 +43,9 @@ export default async function InvoicePayPage({
   const clientSecret = stripeInvoice.confirmation_secret?.client_secret ?? null;
 
   if (!clientSecret) {
-    // Missing secret — fall back to hosted page so the client isn't stuck.
-    if (invoice.hosted_invoice_url) redirect(invoice.hosted_invoice_url);
-    redirect(`/portal/project/${projectId}/invoices`);
+    return (
+      <PaymentUnavailable reason="Stripe didn't return a payment secret for this invoice." />
+    );
   }
 
   const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
@@ -86,6 +85,28 @@ export default async function InvoicePayPage({
           returnUrl={`/portal/project/${projectId}/invoices?paid=${invoice.id}`}
           cancelHref={`/portal/project/${projectId}/invoices`}
         />
+      </div>
+    </main>
+  );
+}
+
+function PaymentUnavailable({ reason }: { reason: string }) {
+  return (
+    <main className="min-h-full px-6 py-10 md:px-10">
+      <div className="mx-auto max-w-xl space-y-6">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-copper">
+          Invoice
+        </p>
+        <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
+          Payment not available
+        </h1>
+        <p className="font-sans text-sm text-ink-muted">{reason}</p>
+        <Link
+          href="/portal/dashboard"
+          className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+        >
+          ← Back to dashboard
+        </Link>
       </div>
     </main>
   );
