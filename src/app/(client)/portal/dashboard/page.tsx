@@ -360,11 +360,9 @@ function UnpaidInvoices({
                 <span className="font-mono text-sm font-medium tabular-nums text-ink">
                   {formatUSD(inv.amountCents)}
                 </span>
-                {inv.hostedInvoiceUrl ? (
-                  <a
-                    href={inv.hostedInvoiceUrl}
-                    target="_blank"
-                    rel="noreferrer"
+                {inv.projectId ? (
+                  <Link
+                    href={`/portal/project/${inv.projectId}/invoices/${inv.id}/pay`}
                     className="inline-flex items-center gap-1 rounded-md bg-copper px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-copper-foreground transition-colors hover:bg-copper/90"
                   >
                     Pay
@@ -381,7 +379,7 @@ function UnpaidInvoices({
                       <line x1="5" y1="12" x2="19" y2="12" />
                       <polyline points="12 5 19 12 12 19" />
                     </svg>
-                  </a>
+                  </Link>
                 ) : null}
               </div>
             </li>

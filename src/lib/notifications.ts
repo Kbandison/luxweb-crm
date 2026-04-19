@@ -210,12 +210,14 @@ function renderTemplate(
 
   switch (event.type) {
     case 'invoice_sent': {
+      // invoice_sent is always dispatched to the client, so the in-portal
+      // pay URL is always the right CTA.
       const props = {
         recipientName,
         description: event.description,
         amountCents: event.amountCents,
         dueDate: event.dueDate ?? null,
-        hostedInvoiceUrl: event.hostedInvoiceUrl,
+        payUrl: appUrl(`${event.invoicePath}/${event.invoiceId}/pay`),
       };
       return {
         subject: invoiceSentSubject(props),
@@ -304,12 +306,17 @@ function renderTemplate(
       return null;
     }
     case 'invoice_overdue': {
+      // Only render a pay CTA when the recipient is a client (portal path).
+      // Admin gets an informational overdue email with no pay button.
+      const isClient = event.invoicePath.startsWith('/portal');
       const props = {
         recipientName,
         description: event.description,
         amountCents: event.amountCents,
         dueDate: event.dueDate ?? null,
-        hostedInvoiceUrl: event.hostedInvoiceUrl ?? null,
+        payUrl: isClient
+          ? appUrl(`${event.invoicePath}/${event.invoiceId}/pay`)
+          : null,
       };
       return {
         subject: invoiceOverdueSubject(props),

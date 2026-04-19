@@ -7,12 +7,12 @@ export type InvoiceOverdueEmailProps = {
   description: string;
   amountCents: number;
   dueDate?: string | null;
-  hostedInvoiceUrl?: string | null;
+  /** In-portal pay URL — present for client recipients, null for admin. */
+  payUrl?: string | null;
 };
 
 export default function InvoiceOverdueEmail(props: InvoiceOverdueEmailProps) {
-  const { recipientName, description, amountCents, dueDate, hostedInvoiceUrl } =
-    props;
+  const { recipientName, description, amountCents, dueDate, payUrl } = props;
   return (
     <BaseLayout
       preview={`Past due — ${formatUSD(amountCents)} invoice needs attention`}
@@ -42,9 +42,7 @@ export default function InvoiceOverdueEmail(props: InvoiceOverdueEmailProps) {
         ) : null}
       </Section>
 
-      {hostedInvoiceUrl ? (
-        <EmailButton href={hostedInvoiceUrl}>Pay now</EmailButton>
-      ) : null}
+      {payUrl ? <EmailButton href={payUrl}>Pay now</EmailButton> : null}
 
       <Text className="mt-6 text-sm text-ink-muted">
         Trouble paying or want to adjust terms? Reply to this email and we&apos;ll

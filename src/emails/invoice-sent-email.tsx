@@ -7,12 +7,12 @@ export type InvoiceSentEmailProps = {
   description: string;
   amountCents: number;
   dueDate?: string | null;
-  hostedInvoiceUrl: string;
+  /** In-portal pay URL — preferred CTA so clients land on our custom page. */
+  payUrl: string;
 };
 
 export default function InvoiceSentEmail(props: InvoiceSentEmailProps) {
-  const { recipientName, description, amountCents, dueDate, hostedInvoiceUrl } =
-    props;
+  const { recipientName, description, amountCents, dueDate, payUrl } = props;
   return (
     <BaseLayout
       preview={`New invoice from LuxWeb Studio — ${formatUSD(amountCents)}`}
@@ -41,7 +41,7 @@ export default function InvoiceSentEmail(props: InvoiceSentEmailProps) {
         ) : null}
       </Section>
 
-      <EmailButton href={hostedInvoiceUrl}>Pay invoice</EmailButton>
+      <EmailButton href={payUrl}>Pay invoice</EmailButton>
 
       <Text className="mt-6 text-sm text-ink-muted">
         Pay by card or ACH. Payment is processed securely through Stripe.
