@@ -70,20 +70,16 @@ export async function POST(req: Request) {
         metadata: { contact_id: p.contact_id },
       }));
 
-    // 2. Add the line item.
-    await s.invoiceItems.create({
-      customer: customer.id,
-      amount: parsed.data.amount_cents,
-      currency: 'usd',
-      description: parsed.data.description,
-    });
-
-    // 3. Create the invoice in 'send_invoice' mode so Stripe emails the client.
+    // 2. Create the invoice FIRST as a draft with no pending items. We'll
+    //    attach the line item explicitly in step 3 — this way we can't pick
+    //    up stray items from earlier failed runs, and we can't end up with
+    //    a $0 invoice because the item went to a different invoice.
     const created = await s.invoices.create({
       customer: customer.id,
       collection_method: 'send_invoice',
       days_until_due: parsed.data.days_until_due,
       description: parsed.data.description,
+      pending_invoice_items_behavior: 'exclude',
       metadata: {
         project_id: parsed.data.project_id,
         contact_id: p.contact_id,
@@ -96,10 +92,32 @@ export async function POST(req: Request) {
         { status: 500 },
       );
     }
+    const stripeInvoiceId: string = created.id;
+
+    // 3. Attach the line item directly to THIS invoice (not the customer's
+    //    pending queue). Rolls back the draft on failure so we never ship
+    //    a zero-dollar invoice.
+    try {
+      await s.invoiceItems.create({
+        customer: customer.id,
+        invoice: stripeInvoiceId,
+        amount: parsed.data.amount_cents,
+        currency: 'usd',
+        description: parsed.data.description,
+      });
+    } catch (err) {
+      try {
+        await s.invoices.voidInvoice(stripeInvoiceId);
+      } catch {
+        /* best effort */
+      }
+      const message = err instanceof Error ? err.message : 'Invoice item failed';
+      return Response.json({ error: message }, { status: 500 });
+    }
 
     // 4. Finalize + send.
-    const finalized = await s.invoices.finalizeInvoice(created.id);
-    await s.invoices.sendInvoice(created.id);
+    const finalized = await s.invoices.finalizeInvoice(stripeInvoiceId);
+    await s.invoices.sendInvoice(stripeInvoiceId);
 
     // 5. Mirror into crm.invoices.
     const dueDate = finalized.due_date
@@ -122,6 +140,16 @@ export async function POST(req: Request) {
       .single();
 
     if (error || !data) {
+      // Roll back the Stripe invoice so we don't leave an orphan live invoice
+      // that the client could pay while we never know about it.
+      try {
+        await s.invoices.voidInvoice(stripeInvoiceId);
+      } catch (voidErr) {
+        console.warn(
+          '[invoices/create] mirror insert failed + void failed:',
+          voidErr,
+        );
+      }
       return Response.json(
         { error: error?.message ?? 'Mirror insert failed' },
         { status: 500 },
