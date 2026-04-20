@@ -709,12 +709,29 @@ function EditorForm({
       <FormSection
         number="09"
         title="Why LuxWeb"
-        description="Differentiators to reinforce the pitch. One per line."
+        description="Differentiators to reinforce the pitch. Give each a short title and a sentence."
       >
-        <LineArea
-          rows={3}
-          value={content.why_luxweb}
-          onChange={(lines) => patch('why_luxweb', lines)}
+        <RepeatingList
+          items={content.why_luxweb}
+          onChange={(next) => patch('why_luxweb', next)}
+          newItem={() => ({ title: '', description: '' })}
+          addLabel="Add reason"
+          renderItem={(item, update) => (
+            <div className="grid gap-3 sm:grid-cols-[220px_1fr]">
+              <Input
+                value={item.title}
+                placeholder="Reason title"
+                onChange={(e) => update({ ...item, title: e.target.value })}
+              />
+              <Input
+                value={item.description}
+                placeholder="Description"
+                onChange={(e) =>
+                  update({ ...item, description: e.target.value })
+                }
+              />
+            </div>
+          )}
         />
       </FormSection>
 

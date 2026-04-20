@@ -253,10 +253,39 @@ export function ProposalPreview({
       {/* Why LuxWeb */}
       {content.why_luxweb.length > 0 ? (
         <Section number="08" title="Why LuxWeb">
-          <ul className="list-disc space-y-1 rounded-xl border border-border bg-surface p-6 pl-10 text-sm text-ink">
-            {content.why_luxweb.map((a, i) => (
-              <li key={i}>{a}</li>
-            ))}
+          <ul className="space-y-4">
+            {content.why_luxweb.map((item, i) => {
+              // Tolerate legacy rows stored as string[] before the titled
+              // shape landed — render those as a single bullet line.
+              const legacy = typeof item === 'string';
+              const title = legacy ? null : item.title;
+              const description = legacy
+                ? (item as unknown as string)
+                : item.description;
+              return (
+                <li
+                  key={i}
+                  className="rounded-xl border border-border bg-surface p-5"
+                >
+                  {title ? (
+                    <p className="font-display text-base font-medium text-ink">
+                      {title}
+                    </p>
+                  ) : null}
+                  {description ? (
+                    <p
+                      className={
+                        title
+                          ? 'mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink-muted'
+                          : 'whitespace-pre-wrap text-sm leading-relaxed text-ink'
+                      }
+                    >
+                      {description}
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </Section>
       ) : null}
