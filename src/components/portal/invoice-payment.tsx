@@ -8,11 +8,13 @@ import {
   type Stripe as StripeJs,
   type StripeElementStyle,
 } from '@stripe/stripe-js';
+import { cn } from '@/lib/utils';
 import {
   CardCvcElement,
   CardExpiryElement,
   CardNumberElement,
   Elements,
+  ExpressCheckoutElement,
   useElements,
   useStripe,
 } from '@stripe/react-stripe-js';
@@ -85,8 +87,46 @@ function PaymentForm({
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [walletReady, setWalletReady] = useState(false);
 
-  async function onSubmit(e: React.FormEvent) {
+  // Stripe returns a relative return URL as-is to the wallet sheet; wallets
+  // need an absolute URL so they can redirect back after 3DS or bank hand-off.
+  const absoluteReturnUrl = useMemo(() => {
+    if (typeof window === 'undefined') return returnUrl;
+    return new URL(returnUrl, window.location.origin).toString();
+  }, [returnUrl]);
+
+  async function onExpressConfirm() {
+    if (!stripe || !elements) return;
+    setError(null);
+    setSubmitting(true);
+
+    // Validates the active express checkout payment method (Apple/Google/Link).
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      setError(submitError.message ?? 'Wallet validation failed');
+      setSubmitting(false);
+      return;
+    }
+
+    const { error: stripeError } = await stripe.confirmPayment({
+      elements,
+      clientSecret,
+      confirmParams: { return_url: absoluteReturnUrl },
+      redirect: 'if_required',
+    });
+
+    if (stripeError) {
+      setError(stripeError.message ?? 'Payment failed');
+      setSubmitting(false);
+      return;
+    }
+
+    router.push(returnUrl);
+    router.refresh();
+  }
+
+  async function onCardSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!stripe || !elements) return;
 
@@ -98,11 +138,6 @@ function PaymentForm({
 
     setSubmitting(true);
     setError(null);
-
-    const absoluteReturnUrl =
-      typeof window !== 'undefined'
-        ? new URL(returnUrl, window.location.origin).toString()
-        : returnUrl;
 
     const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
       clientSecret,
@@ -122,7 +157,9 @@ function PaymentForm({
     }
 
     if (paymentIntent?.status === 'succeeded') {
-      router.push(cancelHref + '?paid=1');
+      // returnUrl already carries ?paid=<invoice_id>, which the invoices
+      // page uses to eager-reconcile against Stripe before rendering.
+      router.push(returnUrl);
       router.refresh();
       return;
     }
@@ -132,7 +169,47 @@ function PaymentForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
+    <form onSubmit={onCardSubmit} className="space-y-5">
+      {/* Wallet row — Apple Pay / Google Pay / Link / etc.
+          Stripe only renders buttons the current browser + customer + merchant
+          combination actually supports. On localhost, Google Pay works in
+          Chrome; Apple Pay needs Safari + a verified domain in the Stripe
+          dashboard (Settings → Payment methods → Apple Pay → Add domain). */}
+      <div
+        className={cn(
+          'rounded-xl border border-border bg-surface p-4 transition-opacity',
+          walletReady ? 'opacity-100' : 'pointer-events-none opacity-0',
+        )}
+        aria-hidden={!walletReady}
+      >
+        <ExpressCheckoutElement
+          onConfirm={onExpressConfirm}
+          onReady={(event) => {
+            // onReady returns an empty availablePaymentMethods if no wallet
+            // is eligible; hide the whole row in that case so users don't
+            // see an empty box.
+            const methods = event.availablePaymentMethods;
+            const any = methods
+              ? Object.values(methods).some(Boolean)
+              : false;
+            setWalletReady(any);
+          }}
+          options={{
+            buttonType: { applePay: 'plain', googlePay: 'plain' },
+          }}
+        />
+      </div>
+
+      {walletReady ? (
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+            or pay with card
+          </span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+      ) : null}
+
       <div className="rounded-xl border border-border bg-surface p-6">
         <div className="space-y-5">
           <Field label="Name on card">

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { getSession } from '@/lib/supabase/session';
 import { getClientProjectInvoices } from '@/lib/queries/client';
+import { reconcileInvoicePaid } from '@/lib/reconcile-invoice';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import {
   INVOICE_STATUS_LABEL,
@@ -12,12 +13,23 @@ import { cn } from '@/lib/utils';
 
 export default async function ClientProjectInvoicesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ paid?: string }>;
 }) {
   const { id } = await params;
   const session = await getSession();
   if (!session) redirect('/login');
+
+  // If the client just returned from a successful payment, reconcile the
+  // invoice against Stripe before rendering. Closes the window between
+  // Stripe's payment_intent.succeeded webhook and our page render.
+  const sp = await searchParams;
+  if (sp.paid) {
+    await reconcileInvoicePaid(sp.paid, session.userId);
+  }
+
   const invoices = await getClientProjectInvoices(id, session.userId);
   if (invoices === null) notFound();
 

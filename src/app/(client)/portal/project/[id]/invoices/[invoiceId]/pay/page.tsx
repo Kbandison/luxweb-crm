@@ -61,12 +61,19 @@ export default async function InvoicePayPage({
 
     // idempotencyKey makes repeated page loads return the same PaymentIntent
     // instead of racking up fresh ones every refresh.
+    //
+    // automatic_payment_methods: { enabled: true } tells Stripe to surface
+    // every eligible method configured in the dashboard — card, Apple Pay,
+    // Google Pay, Link, US bank account, Cash App, etc. Payment method
+    // availability is then filtered at render time by browser/device and
+    // customer location. Replaces the old `payment_method_types: ['card']`
+    // which hardcoded card-only and opted out of every wallet.
     const pi = await s.paymentIntents.create(
       {
         amount: Number(invoice.amount_cents ?? 0),
         currency: (stripeInvoice.currency as string) || 'usd',
         customer: customerId,
-        payment_method_types: ['card'],
+        automatic_payment_methods: { enabled: true },
         description: invoice.description ?? 'Invoice',
         metadata: {
           crm_invoice_id: invoice.id,
