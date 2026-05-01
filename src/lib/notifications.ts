@@ -23,6 +23,18 @@ import MilestoneUpdatedEmail, {
 } from '@/emails/milestone-updated-email';
 import InviteEmail, { inviteSubject } from '@/emails/invite-email';
 import NewLeadEmail, { newLeadSubject } from '@/emails/new-lead-email';
+import ContractSignedEmail, {
+  contractSignedSubject,
+} from '@/emails/contract-signed-email';
+import RevisionRequestedEmail, {
+  revisionRequestedSubject,
+} from '@/emails/revision-requested-email';
+import RevisionUpdatedEmail, {
+  revisionUpdatedSubject,
+} from '@/emails/revision-updated-email';
+import CarePlanActivatedEmail, {
+  carePlanActivatedSubject,
+} from '@/emails/care-plan-activated-email';
 
 /* -------------------------------------------------------------------------
  * Event shapes
@@ -122,6 +134,62 @@ export type NotifyEvent =
       message: string | null;
       /** admin-side lead detail path */
       leadPath: string;
+    }
+  | {
+      type: 'contract_signed';
+      /** admin user id (the one being notified) */
+      userId: string;
+      contractId: string;
+      proposalId: string;
+      title: string;
+      totalCents: number | null;
+      clientName: string;
+      signedAt: string;
+      agreementVersion: string;
+      /** admin-side URL */
+      contractPath: string;
+    }
+  | {
+      type: 'revision_requested';
+      /** admin user id */
+      userId: string;
+      revisionId: string;
+      title: string;
+      bodySnippet: string;
+      projectId: string;
+      projectName: string;
+      clientName: string;
+      /** 'created' on initial filing, 'comment' on subsequent client replies */
+      kind: 'created' | 'comment';
+      /** admin-side URL */
+      revisionPath: string;
+    }
+  | {
+      type: 'revision_updated';
+      /** client user id */
+      userId: string;
+      revisionId: string;
+      title: string;
+      projectId: string;
+      projectName: string;
+      /** 'status' for status changes, 'comment' for admin replies */
+      kind: 'status' | 'comment';
+      statusLabel?: string;
+      snippet?: string;
+      /** client-portal URL */
+      revisionPath: string;
+    }
+  | {
+      type: 'care_plan_activated';
+      /** client user id */
+      userId: string;
+      subscriptionId: string;
+      projectId: string | null;
+      projectName: string | null;
+      amountCents: number;
+      interval: 'month' | 'year';
+      /** client-portal URL */
+      portalPath: string;
     };
 
 type EmailPrefs = Record<string, boolean>;
@@ -304,6 +372,64 @@ function renderTemplate(
     case 'message': {
       // No email template for messages — in-app bell + unread count only.
       return null;
+    }
+    case 'contract_signed': {
+      const props = {
+        adminName: recipientName,
+        clientName: event.clientName,
+        title: event.title,
+        totalCents: event.totalCents,
+        agreementVersion: event.agreementVersion,
+        signedAt: event.signedAt,
+        contractUrl: appUrl(event.contractPath),
+      };
+      return {
+        subject: contractSignedSubject(props),
+        react: createElement(ContractSignedEmail, props),
+      };
+    }
+    case 'revision_requested': {
+      const props = {
+        adminName: recipientName,
+        clientName: event.clientName,
+        projectName: event.projectName,
+        title: event.title,
+        bodySnippet: event.bodySnippet,
+        kind: event.kind,
+        revisionUrl: appUrl(event.revisionPath),
+      };
+      return {
+        subject: revisionRequestedSubject(props),
+        react: createElement(RevisionRequestedEmail, props),
+      };
+    }
+    case 'revision_updated': {
+      const props = {
+        recipientName,
+        projectName: event.projectName,
+        title: event.title,
+        kind: event.kind,
+        statusLabel: event.statusLabel,
+        snippet: event.snippet,
+        revisionUrl: appUrl(event.revisionPath),
+      };
+      return {
+        subject: revisionUpdatedSubject(props),
+        react: createElement(RevisionUpdatedEmail, props),
+      };
+    }
+    case 'care_plan_activated': {
+      const props = {
+        recipientName,
+        projectName: event.projectName,
+        amountCents: event.amountCents,
+        interval: event.interval,
+        portalUrl: appUrl(event.portalPath),
+      };
+      return {
+        subject: carePlanActivatedSubject(props),
+        react: createElement(CarePlanActivatedEmail, props),
+      };
     }
     case 'invoice_overdue': {
       // Only render a pay CTA when the recipient is a client (portal path).

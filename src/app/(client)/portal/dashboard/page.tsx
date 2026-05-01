@@ -38,6 +38,10 @@ export default async function ClientDashboardPage() {
         </p>
       </header>
 
+      {dash.pendingContracts.length > 0 ? (
+        <PendingContractsBanner contracts={dash.pendingContracts} />
+      ) : null}
+
       {focus ? (
         <FocusProject project={focus} />
       ) : dash.pendingProposals.length > 0 ? (
@@ -54,17 +58,75 @@ export default async function ClientDashboardPage() {
         </div>
       )}
 
-      <section className="mt-10 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-        <UnpaidInvoices invoices={dash.unpaidInvoices} />
-        <OtherProjects projects={others} />
-      </section>
+      {(() => {
+        // Proposals tile takes the right slot when there's a focus project AND
+        // pending proposals — pushing other-projects to the bottom row, since
+        // an open proposal is more time-sensitive than a list of past projects.
+        const showProposalsAside =
+          !!focus && dash.pendingProposals.length > 0;
+        return (
+          <>
+            <section className="mt-10 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+              <UnpaidInvoices invoices={dash.unpaidInvoices} />
+              {showProposalsAside ? (
+                <ProposalsTile proposals={dash.pendingProposals} />
+              ) : (
+                <OtherProjects projects={others} />
+              )}
+            </section>
 
-      {focus && dash.pendingProposals.length > 0 ? (
-        <section className="mt-10">
-          <ProposalsTile proposals={dash.pendingProposals} />
-        </section>
-      ) : null}
+            {showProposalsAside ? (
+              <section className="mt-10">
+                <OtherProjects projects={others} />
+              </section>
+            ) : null}
+          </>
+        );
+      })()}
     </main>
+  );
+}
+
+function PendingContractsBanner({
+  contracts,
+}: {
+  contracts: import('@/lib/queries/client').ClientDashboardContract[];
+}) {
+  const primary = contracts[0];
+  return (
+    <section className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-copper/30 bg-copper-soft/25 p-6">
+      <div>
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+          Step 2 · Sign your agreement
+        </p>
+        <p className="mt-1 font-display text-lg font-medium text-ink">
+          {primary.proposalTitle}
+        </p>
+        <p className="mt-1 font-sans text-sm text-ink-muted">
+          You&apos;ve accepted the proposal. One more signature to lock in the
+          legal terms.
+        </p>
+      </div>
+      <Link
+        href={`/portal/contracts/${primary.id}`}
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-copper px-4 py-2 font-sans text-sm font-medium text-copper-foreground transition-colors hover:bg-copper/90"
+      >
+        Open agreement
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-3.5 w-3.5"
+          aria-hidden
+        >
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
+        </svg>
+      </Link>
+    </section>
   );
 }
 

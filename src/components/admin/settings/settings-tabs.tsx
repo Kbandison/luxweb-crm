@@ -38,9 +38,20 @@ const PREFS: Array<{ key: string; label: string; description: string }> = [
     description: 'Email when a proposal is shared with a client.',
   },
   {
+    key: 'contract_signed',
+    label: 'Contract signed',
+    description: 'Email when a client counter-signs the agreement.',
+  },
+  {
     key: 'milestone_updated',
     label: 'Milestone update',
     description: 'Email when a milestone changes state.',
+  },
+  {
+    key: 'revision_requested',
+    label: 'Revision request',
+    description:
+      'Email when a client files a revision or replies on one.',
   },
 ];
 
@@ -49,7 +60,9 @@ const DEFAULTS: Prefs = {
   invoice_sent: true,
   invoice_paid: true,
   proposal_sent: true,
+  contract_signed: true,
   milestone_updated: true,
+  revision_requested: true,
 };
 
 const TABS: Array<{ key: TabKey; label: string }> = [

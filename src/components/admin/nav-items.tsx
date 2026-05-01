@@ -4,11 +4,21 @@
  */
 import type { ComponentType, SVGProps } from 'react';
 
+export type AdminNavGroup = 'Pipeline' | 'Delivery' | 'Lifecycle' | 'Money';
+
+export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
+  'Pipeline',
+  'Delivery',
+  'Lifecycle',
+  'Money',
+];
+
 export type AdminNavItem = {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
   shortcut: number;
+  group: AdminNavGroup;
 };
 
 function IconGauge(props: SVGProps<SVGSVGElement>) {
@@ -93,11 +103,39 @@ export function IconLogout(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function IconRefresh(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...props}>
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
+      <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
+    </svg>
+  );
+}
+function IconMessageSquare(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...props}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+function IconStar(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...props}>
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
 export const ADMIN_NAV: AdminNavItem[] = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: IconGauge, shortcut: 1 },
-  { href: '/admin/leads', label: 'Leads', icon: IconInbox, shortcut: 2 },
-  { href: '/admin/pipeline', label: 'Pipeline', icon: IconKanban, shortcut: 3 },
-  { href: '/admin/clients', label: 'Clients', icon: IconUsers, shortcut: 4 },
-  { href: '/admin/projects', label: 'Projects', icon: IconBriefcase, shortcut: 5 },
-  { href: '/admin/earnings', label: 'Earnings', icon: IconCoins, shortcut: 6 },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: IconGauge, shortcut: 1, group: 'Pipeline' },
+  { href: '/admin/leads', label: 'Leads', icon: IconInbox, shortcut: 2, group: 'Pipeline' },
+  { href: '/admin/pipeline', label: 'Pipeline', icon: IconKanban, shortcut: 3, group: 'Pipeline' },
+  { href: '/admin/clients', label: 'Clients', icon: IconUsers, shortcut: 4, group: 'Delivery' },
+  { href: '/admin/projects', label: 'Projects', icon: IconBriefcase, shortcut: 5, group: 'Delivery' },
+  { href: '/admin/care-plans', label: 'Care Plans', icon: IconRefresh, shortcut: 6, group: 'Lifecycle' },
+  { href: '/admin/revisions', label: 'Revisions', icon: IconMessageSquare, shortcut: 7, group: 'Lifecycle' },
+  { href: '/admin/reviews', label: 'Reviews', icon: IconStar, shortcut: 8, group: 'Lifecycle' },
+  { href: '/admin/earnings', label: 'Earnings', icon: IconCoins, shortcut: 9, group: 'Money' },
 ];

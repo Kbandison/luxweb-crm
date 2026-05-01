@@ -862,6 +862,10 @@ export async function getProjectInvoices(
  * ------------------------------------------------------------------------- */
 
 import type { ProposalContent, ProposalStatus } from '@/lib/types/proposal';
+import type { ContractStatus } from '@/lib/types/contract';
+import type { CredentialKind } from '@/lib/types/credential';
+import type { CarePlanStatus } from '@/lib/care-plan/types';
+import type { RevisionStatus } from '@/lib/types/revision';
 
 export type ProposalRow = {
   id: string;
@@ -1424,4 +1428,660 @@ export async function getEarningsOverview(): Promise<EarningsOverview> {
     outstanding,
     projects: projectRows,
   };
+}
+
+/* -------------------------------------------------------------------------
+ * Contracts
+ * ------------------------------------------------------------------------- */
+
+export type ContractRow = {
+  id: string;
+  proposalId: string;
+  projectId: string | null;
+  agreementVersion: string;
+  status: ContractStatus;
+  createdAt: string;
+  signedAt: string | null;
+  signedName: string | null;
+};
+
+export type ContractDetail = ContractRow & {
+  bodyMd: string;
+  signedIp: string | null;
+  signedUserAgent: string | null;
+  proposalTitle: string;
+  clientName: string;
+};
+
+type ContractSelectRow = {
+  id: string;
+  proposal_id: string;
+  project_id: string | null;
+  agreement_version: string;
+  status: ContractStatus;
+  created_at: string;
+  signed_at: string | null;
+  signed_name: string | null;
+};
+
+function toContractRow(r: ContractSelectRow): ContractRow {
+  return {
+    id: r.id,
+    proposalId: r.proposal_id,
+    projectId: r.project_id,
+    agreementVersion: r.agreement_version,
+    status: r.status,
+    createdAt: r.created_at,
+    signedAt: r.signed_at,
+    signedName: r.signed_name,
+  };
+}
+
+export async function getProjectContracts(
+  projectId: string,
+): Promise<ContractRow[]> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('contracts')
+      .select(
+        'id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name',
+      )
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+    return ((data ?? []) as ContractSelectRow[]).map(toContractRow);
+  } catch {
+    return [];
+  }
+}
+
+export async function getContract(id: string): Promise<ContractDetail | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('contracts')
+      .select(
+        'id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name, signed_ip, signed_user_agent, body_md, proposals!inner(title), contacts!inner(full_name)',
+      )
+      .eq('id', id)
+      .single();
+    if (!data) return null;
+    type Shape = ContractSelectRow & {
+      signed_ip: string | null;
+      signed_user_agent: string | null;
+      body_md: string;
+      proposals: { title: string } | { title: string }[];
+      contacts: { full_name: string } | { full_name: string }[];
+    };
+    const r = data as unknown as Shape;
+    const proposal = Array.isArray(r.proposals) ? r.proposals[0] : r.proposals;
+    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    return {
+      ...toContractRow(r),
+      bodyMd: r.body_md,
+      signedIp: r.signed_ip,
+      signedUserAgent: r.signed_user_agent,
+      proposalTitle: proposal?.title ?? 'Proposal',
+      clientName: contact?.full_name ?? '—',
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Project credentials (encrypted vault)
+ *
+ * Listing/detail returns metadata only — secrets are decrypted on demand
+ * via the reveal endpoint, which writes an audit row each time.
+ * ------------------------------------------------------------------------- */
+
+export type CredentialRow = {
+  id: string;
+  projectId: string;
+  kind: CredentialKind;
+  label: string;
+  username: string | null;
+  url: string | null;
+  notes: string | null;
+  visibleToClient: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type CredentialSelectRow = {
+  id: string;
+  project_id: string;
+  kind: CredentialKind;
+  label: string;
+  username: string | null;
+  url: string | null;
+  notes: string | null;
+  visible_to_client: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+function toCredentialRow(r: CredentialSelectRow): CredentialRow {
+  return {
+    id: r.id,
+    projectId: r.project_id,
+    kind: r.kind,
+    label: r.label,
+    username: r.username,
+    url: r.url,
+    notes: r.notes,
+    visibleToClient: r.visible_to_client,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+export async function getProjectCredentials(
+  projectId: string,
+): Promise<CredentialRow[]> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('project_credentials')
+      .select(
+        'id, project_id, kind, label, username, url, notes, visible_to_client, created_at, updated_at',
+      )
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+    return ((data ?? []) as CredentialSelectRow[]).map(toCredentialRow);
+  } catch {
+    return [];
+  }
+}
+
+export type CredentialSecretRow = {
+  id: string;
+  projectId: string;
+  ciphertext: string;
+  iv: string;
+  tag: string;
+};
+
+export async function getCredentialSecret(
+  id: string,
+): Promise<CredentialSecretRow | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('project_credentials')
+      .select('id, project_id, secret_ciphertext, secret_iv, secret_tag')
+      .eq('id', id)
+      .single();
+    if (!data) return null;
+    type Row = {
+      id: string;
+      project_id: string;
+      secret_ciphertext: string;
+      secret_iv: string;
+      secret_tag: string;
+    };
+    const r = data as Row;
+    return {
+      id: r.id,
+      projectId: r.project_id,
+      ciphertext: r.secret_ciphertext,
+      iv: r.secret_iv,
+      tag: r.secret_tag,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Care Plan subscriptions
+ * ------------------------------------------------------------------------- */
+
+export type CarePlanRow = {
+  id: string;
+  stripeSubscriptionId: string;
+  stripeCustomerId: string;
+  projectId: string | null;
+  contactId: string;
+  amountCents: number;
+  currency: string;
+  interval: string;
+  status: CarePlanStatus;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  canceledAt: string | null;
+  paymentMethodBrand: string | null;
+  paymentMethodLast4: string | null;
+  pendingClientSecret: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CarePlanWithContext = CarePlanRow & {
+  projectName: string | null;
+  contactName: string;
+};
+
+type CarePlanSelectRow = {
+  id: string;
+  stripe_subscription_id: string;
+  stripe_customer_id: string;
+  project_id: string | null;
+  contact_id: string;
+  amount_cents: number;
+  currency: string;
+  interval: string;
+  status: CarePlanStatus;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  canceled_at: string | null;
+  payment_method_brand: string | null;
+  payment_method_last4: string | null;
+  pending_client_secret: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function toCarePlanRow(r: CarePlanSelectRow): CarePlanRow {
+  return {
+    id: r.id,
+    stripeSubscriptionId: r.stripe_subscription_id,
+    stripeCustomerId: r.stripe_customer_id,
+    projectId: r.project_id,
+    contactId: r.contact_id,
+    amountCents: r.amount_cents,
+    currency: r.currency,
+    interval: r.interval,
+    status: r.status,
+    currentPeriodStart: r.current_period_start,
+    currentPeriodEnd: r.current_period_end,
+    cancelAtPeriodEnd: r.cancel_at_period_end,
+    canceledAt: r.canceled_at,
+    paymentMethodBrand: r.payment_method_brand,
+    paymentMethodLast4: r.payment_method_last4,
+    pendingClientSecret: r.pending_client_secret,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+export async function getProjectCarePlan(
+  projectId: string,
+): Promise<CarePlanRow | null> {
+  try {
+    // Surface the most recent non-canceled sub for this project (you can
+    // technically have multiple over time if a previous one was canceled
+    // and a new one was started later).
+    const { data } = await supabaseAdmin()
+      .from('care_plan_subscriptions')
+      .select(
+        'id, stripe_subscription_id, stripe_customer_id, project_id, contact_id, amount_cents, currency, interval, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, payment_method_brand, payment_method_last4, pending_client_secret, created_at, updated_at',
+      )
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    const rows = (data ?? []) as CarePlanSelectRow[];
+    if (rows.length === 0) return null;
+    return toCarePlanRow(rows[0]);
+  } catch {
+    return null;
+  }
+}
+
+export async function getAllCarePlans(): Promise<CarePlanWithContext[]> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('care_plan_subscriptions')
+      .select(
+        'id, stripe_subscription_id, stripe_customer_id, project_id, contact_id, amount_cents, currency, interval, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, payment_method_brand, payment_method_last4, pending_client_secret, created_at, updated_at, contacts!inner(full_name), projects(name)',
+      )
+      .order('created_at', { ascending: false });
+    type Row = CarePlanSelectRow & {
+      contacts: { full_name: string } | { full_name: string }[];
+      projects: { name: string } | { name: string }[] | null;
+    };
+    const rows = (data ?? []) as Row[];
+    return rows.map((r) => {
+      const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+      const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
+      return {
+        ...toCarePlanRow(r),
+        contactName: contact?.full_name ?? '—',
+        projectName: project?.name ?? null,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Time tracking — running timer
+ * ------------------------------------------------------------------------- */
+
+export type RunningTimer = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  note: string | null;
+  startedAt: string;
+};
+
+export async function getRunningTimerForUser(
+  userId: string,
+): Promise<RunningTimer | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('time_timers')
+      .select('id, project_id, note, started_at, projects!inner(name)')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (!data) return null;
+    type Row = {
+      id: string;
+      project_id: string;
+      note: string | null;
+      started_at: string;
+      projects: { name: string } | { name: string }[];
+    };
+    const r = data as unknown as Row;
+    const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
+    return {
+      id: r.id,
+      projectId: r.project_id,
+      projectName: project?.name ?? '—',
+      note: r.note,
+      startedAt: r.started_at,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Revision requests (client feedback)
+ * ------------------------------------------------------------------------- */
+
+export type RevisionRow = {
+  id: string;
+  projectId: string;
+  milestoneId: string | null;
+  contactId: string;
+  title: string;
+  body: string;
+  status: RevisionStatus;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RevisionWithContext = RevisionRow & {
+  projectName: string;
+  contactName: string;
+  milestoneTitle: string | null;
+  commentCount: number;
+};
+
+export type RevisionComment = {
+  id: string;
+  body: string;
+  authorName: string;
+  authorRole: 'admin' | 'client';
+  createdAt: string;
+};
+
+type RevisionSelectRow = {
+  id: string;
+  project_id: string;
+  milestone_id: string | null;
+  contact_id: string;
+  title: string;
+  body: string;
+  status: RevisionStatus;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function toRevisionRow(r: RevisionSelectRow): RevisionRow {
+  return {
+    id: r.id,
+    projectId: r.project_id,
+    milestoneId: r.milestone_id,
+    contactId: r.contact_id,
+    title: r.title,
+    body: r.body,
+    status: r.status,
+    resolvedAt: r.resolved_at,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+export async function getProjectRevisions(
+  projectId: string,
+): Promise<RevisionRow[]> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('revision_requests')
+      .select(
+        'id, project_id, milestone_id, contact_id, title, body, status, resolved_at, created_at, updated_at',
+      )
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+    return ((data ?? []) as RevisionSelectRow[]).map(toRevisionRow);
+  } catch {
+    return [];
+  }
+}
+
+export async function getAllOpenRevisions(): Promise<RevisionWithContext[]> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('revision_requests')
+      .select(
+        'id, project_id, milestone_id, contact_id, title, body, status, resolved_at, created_at, updated_at, projects!inner(name), contacts!inner(full_name), milestones(title)',
+      )
+      .in('status', ['open', 'in_progress'])
+      .order('created_at', { ascending: false });
+    type Row = RevisionSelectRow & {
+      projects: { name: string } | { name: string }[];
+      contacts: { full_name: string } | { full_name: string }[];
+      milestones: { title: string } | { title: string }[] | null;
+    };
+    const rows = (data ?? []) as Row[];
+
+    // Pull comment counts in a separate roundtrip — Supabase doesn't aggregate
+    // joins inline, and we want the badge.
+    const ids = rows.map((r) => r.id);
+    const counts = new Map<string, number>();
+    if (ids.length > 0) {
+      const { data: cdata } = await supabaseAdmin()
+        .from('revision_comments')
+        .select('revision_id')
+        .in('revision_id', ids);
+      type C = { revision_id: string };
+      for (const c of (cdata ?? []) as C[]) {
+        counts.set(c.revision_id, (counts.get(c.revision_id) ?? 0) + 1);
+      }
+    }
+
+    return rows.map((r) => {
+      const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
+      const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+      const milestone = Array.isArray(r.milestones)
+        ? r.milestones[0]
+        : r.milestones;
+      return {
+        ...toRevisionRow(r),
+        projectName: project?.name ?? '—',
+        contactName: contact?.full_name ?? '—',
+        milestoneTitle: milestone?.title ?? null,
+        commentCount: counts.get(r.id) ?? 0,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function getRevision(
+  id: string,
+): Promise<{
+  revision: RevisionWithContext;
+  comments: RevisionComment[];
+} | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('revision_requests')
+      .select(
+        'id, project_id, milestone_id, contact_id, title, body, status, resolved_at, created_at, updated_at, projects!inner(name), contacts!inner(full_name), milestones(title)',
+      )
+      .eq('id', id)
+      .single();
+    if (!data) return null;
+    type Row = RevisionSelectRow & {
+      projects: { name: string } | { name: string }[];
+      contacts: { full_name: string } | { full_name: string }[];
+      milestones: { title: string } | { title: string }[] | null;
+    };
+    const r = data as unknown as Row;
+    const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
+    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const milestone = Array.isArray(r.milestones)
+      ? r.milestones[0]
+      : r.milestones;
+
+    const { data: cdata } = await supabaseAdmin()
+      .from('revision_comments')
+      .select('id, body, author_name, author_role, created_at')
+      .eq('revision_id', id)
+      .order('created_at', { ascending: true });
+    type C = {
+      id: string;
+      body: string;
+      author_name: string;
+      author_role: 'admin' | 'client';
+      created_at: string;
+    };
+    const comments = ((cdata ?? []) as C[]).map((c) => ({
+      id: c.id,
+      body: c.body,
+      authorName: c.author_name,
+      authorRole: c.author_role,
+      createdAt: c.created_at,
+    }));
+
+    return {
+      revision: {
+        ...toRevisionRow(r),
+        projectName: project?.name ?? '—',
+        contactName: contact?.full_name ?? '—',
+        milestoneTitle: milestone?.title ?? null,
+        commentCount: comments.length,
+      },
+      comments,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Project reviews
+ * ------------------------------------------------------------------------- */
+
+export type ProjectReview = {
+  projectId: string;
+  clientRating: number | null;
+  clientReview: string | null;
+  clientConsentToPublish: boolean;
+  clientSubmittedAt: string | null;
+  adminRating: number | null;
+  adminNotes: string | null;
+  adminSubmittedAt: string | null;
+};
+
+export type ProjectReviewWithContext = ProjectReview & {
+  projectName: string;
+  contactName: string;
+};
+
+type ReviewSelectRow = {
+  project_id: string;
+  client_rating: number | null;
+  client_review: string | null;
+  client_consent_to_publish: boolean;
+  client_submitted_at: string | null;
+  admin_rating: number | null;
+  admin_notes: string | null;
+  admin_submitted_at: string | null;
+};
+
+function toProjectReview(r: ReviewSelectRow): ProjectReview {
+  return {
+    projectId: r.project_id,
+    clientRating: r.client_rating,
+    clientReview: r.client_review,
+    clientConsentToPublish: r.client_consent_to_publish,
+    clientSubmittedAt: r.client_submitted_at,
+    adminRating: r.admin_rating,
+    adminNotes: r.admin_notes,
+    adminSubmittedAt: r.admin_submitted_at,
+  };
+}
+
+export async function getProjectReview(
+  projectId: string,
+): Promise<ProjectReview | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('project_reviews')
+      .select(
+        'project_id, client_rating, client_review, client_consent_to_publish, client_submitted_at, admin_rating, admin_notes, admin_submitted_at',
+      )
+      .eq('project_id', projectId)
+      .maybeSingle();
+    if (!data) return null;
+    return toProjectReview(data as ReviewSelectRow);
+  } catch {
+    return null;
+  }
+}
+
+export async function getAllProjectReviews(): Promise<
+  ProjectReviewWithContext[]
+> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('project_reviews')
+      .select(
+        'project_id, client_rating, client_review, client_consent_to_publish, client_submitted_at, admin_rating, admin_notes, admin_submitted_at, projects!inner(name, contacts!inner(full_name))',
+      )
+      .order('client_submitted_at', { ascending: false, nullsFirst: false });
+    type Row = ReviewSelectRow & {
+      projects:
+        | {
+            name: string;
+            contacts: { full_name: string } | { full_name: string }[];
+          }
+        | {
+            name: string;
+            contacts: { full_name: string } | { full_name: string }[];
+          }[];
+    };
+    const rows = (data ?? []) as Row[];
+    return rows.map((r) => {
+      const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
+      const contact = Array.isArray(project?.contacts)
+        ? project.contacts[0]
+        : project?.contacts;
+      return {
+        ...toProjectReview(r),
+        projectName: project?.name ?? '—',
+        contactName: contact?.full_name ?? '—',
+      };
+    });
+  } catch {
+    return [];
+  }
 }

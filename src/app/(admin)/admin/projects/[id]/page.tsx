@@ -1,11 +1,17 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
+  getProjectCarePlan,
   getProjectDetail,
   getProjectInvoices,
   getProjectMilestones,
+  getProjectReview,
   getProjectTimeLogs,
 } from '@/lib/queries/admin';
+import { getCarePlanInvoiceHistory } from '@/lib/care-plan/billing-history';
+import { AdminCarePlanSection } from '@/components/admin/care-plan/care-plan-section';
+import { CarePlanBillingHistory } from '@/components/care-plan/billing-history';
+import { AdminReviewCard } from '@/components/admin/reviews/admin-review-card';
 import {
   MILESTONE_STATUS_LABEL,
   MILESTONE_STATUS_TONE,
@@ -20,13 +26,19 @@ export default async function ProjectOverviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [project, milestones, timeLogs, invoices] = await Promise.all([
-    getProjectDetail(id),
-    getProjectMilestones(id),
-    getProjectTimeLogs(id),
-    getProjectInvoices(id),
-  ]);
+  const [project, milestones, timeLogs, invoices, carePlan, review] =
+    await Promise.all([
+      getProjectDetail(id),
+      getProjectMilestones(id),
+      getProjectTimeLogs(id),
+      getProjectInvoices(id),
+      getProjectCarePlan(id),
+      getProjectReview(id),
+    ]);
   if (!project) notFound();
+  const billingHistory = carePlan
+    ? await getCarePlanInvoiceHistory(carePlan.stripeSubscriptionId)
+    : [];
 
   const totalHours = timeLogs.reduce((s, t) => s + t.hours, 0);
   const paidCents = invoices
@@ -230,10 +242,50 @@ export default async function ProjectOverviewPage({
         )}
       </section>
 
+      {/* Care Plan */}
+      <section>
+        <SectionHead number="04" title="Care Plan" />
+        <div className="mt-5">
+          <AdminCarePlanSection
+            projectId={project.id}
+            plan={
+              carePlan
+                ? {
+                    id: carePlan.id,
+                    amountCents: carePlan.amountCents,
+                    interval: carePlan.interval,
+                    status: carePlan.status,
+                    currentPeriodEnd: carePlan.currentPeriodEnd,
+                    cancelAtPeriodEnd: carePlan.cancelAtPeriodEnd,
+                    paymentMethodBrand: carePlan.paymentMethodBrand,
+                    paymentMethodLast4: carePlan.paymentMethodLast4,
+                  }
+                : null
+            }
+          />
+          {carePlan ? (
+            <div className="mt-4 space-y-2">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+                Billing history
+              </p>
+              <CarePlanBillingHistory invoices={billingHistory} />
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      {/* Project review */}
+      <section>
+        <SectionHead number="05" title="Review" />
+        <div className="mt-5">
+          <AdminReviewCard projectId={project.id} review={review} />
+        </div>
+      </section>
+
       {/* Recent time */}
       <section>
         <SectionHead
-          number="04"
+          number="06"
           title="Recent time"
           right={
             <Link

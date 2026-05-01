@@ -11,8 +11,10 @@ const TABS: readonly Tab[] = [
   { slug: 'time', label: 'Time', adminOnly: true },
   { slug: 'files', label: 'Files' },
   { slug: 'messages', label: 'Messages' },
-  { slug: 'proposals', label: 'Proposals' },
+  { slug: 'agreement', label: 'Agreement' },
+  { slug: 'credentials', label: 'Credentials' },
   { slug: 'invoices', label: 'Invoices' },
+  { slug: 'revisions', label: 'Revisions' },
 ];
 
 export function ProjectNav({ projectId }: { projectId: string }) {

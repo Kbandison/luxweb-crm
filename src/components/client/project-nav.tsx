@@ -7,7 +7,9 @@ const TABS = [
   { slug: '', label: 'Overview' },
   { slug: 'files', label: 'Files' },
   { slug: 'invoices', label: 'Invoices' },
-  { slug: 'proposals', label: 'Proposals' },
+  { slug: 'agreement', label: 'Agreement' },
+  { slug: 'credentials', label: 'Credentials' },
+  { slug: 'revisions', label: 'Revisions' },
   { slug: 'messages', label: 'Messages' },
 ] as const;
 

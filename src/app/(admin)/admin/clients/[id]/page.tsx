@@ -36,19 +36,20 @@ export default async function ClientDetailPage({
   if (!client) notFound();
   const proposals = await getContactProposals(id);
 
+  // Legacy ?tab=deals|projects|proposals all map to the new combined tab.
   const activeTab: ClientTabKey =
+    tab === 'engagements' ||
     tab === 'deals' ||
     tab === 'projects' ||
-    tab === 'proposals' ||
-    tab === 'notes' ||
-    tab === 'activity'
-      ? tab
-      : 'overview';
+    tab === 'proposals'
+      ? 'engagements'
+      : tab === 'notes' || tab === 'activity'
+        ? tab
+        : 'overview';
 
   const counts = {
-    deals: client.deals.length,
-    projects: client.projects.length,
-    proposals: proposals.length,
+    engagements:
+      client.deals.length + client.projects.length + proposals.length,
     notes: client.notes.length,
     activity: client.activity.length,
   };
@@ -152,12 +153,11 @@ export default async function ClientDetailPage({
           {activeTab === 'overview' ? (
             <Overview client={client} />
           ) : null}
-          {activeTab === 'deals' ? <DealsSection deals={client.deals} /> : null}
-          {activeTab === 'projects' ? (
-            <ProjectsSection projects={client.projects} />
-          ) : null}
-          {activeTab === 'proposals' ? (
-            <LeadProposalsSection contactId={client.id} proposals={proposals} />
+          {activeTab === 'engagements' ? (
+            <Engagements
+              client={client}
+              proposals={proposals}
+            />
           ) : null}
           {activeTab === 'notes' ? (
             <NotesPanel contactId={client.id} notes={client.notes} />
@@ -221,7 +221,7 @@ function Overview({
         title="Recent deals"
         right={
           <Link
-            href={`/admin/clients/${client.id}?tab=deals`}
+            href={`/admin/clients/${client.id}?tab=engagements`}
             className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
           >
             View all →
@@ -243,6 +243,27 @@ function Overview({
         }
       />
       <ActivityList rows={client.activity.slice(0, 5)} />
+    </div>
+  );
+}
+
+function Engagements({
+  client,
+  proposals,
+}: {
+  client: import('@/lib/queries/admin').ClientWithDetails;
+  proposals: import('@/lib/queries/admin').ProposalRow[];
+}) {
+  return (
+    <div className="space-y-10">
+      <SectionHead number="01" title={`Deals · ${client.deals.length}`} />
+      <DealsSection deals={client.deals} />
+
+      <SectionHead number="02" title={`Proposals · ${proposals.length}`} />
+      <LeadProposalsSection contactId={client.id} proposals={proposals} />
+
+      <SectionHead number="03" title={`Projects · ${client.projects.length}`} />
+      <ProjectsSection projects={client.projects} />
     </div>
   );
 }

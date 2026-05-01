@@ -3,6 +3,10 @@ import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserId, getContactUserId } from '@/lib/notifications';
+import {
+  fetchSubscriptionForSync,
+  syncSubscriptionRow,
+} from '@/lib/care-plan/sync';
 
 export const runtime = 'nodejs';
 
@@ -341,36 +345,105 @@ async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent) {
 }
 
 async function handleSubscriptionActive(sub: Stripe.Subscription) {
+  // Capture the previous DB status BEFORE we sync, so we can detect the
+  // first-time transition into 'active' and notify exactly once.
+  const { data: prevRow } = await supabaseAdmin()
+    .from('care_plan_subscriptions')
+    .select('status')
+    .eq('stripe_subscription_id', sub.id)
+    .maybeSingle();
+  const previousStatus =
+    (prevRow as { status: string } | null)?.status ?? null;
+
+  // Re-fetch with expansions so syncSubscriptionRow has the payment intent
+  // + default payment method. The webhook payload itself isn't expanded.
+  let full: Stripe.Subscription;
+  try {
+    full = await fetchSubscriptionForSync(sub.id);
+  } catch {
+    full = sub;
+  }
+  await syncSubscriptionRow(full);
+
   const projectId =
     typeof sub.metadata?.project_id === 'string' ? sub.metadata.project_id : null;
-  if (!projectId) return;
-  if (sub.status !== 'active') return;
-
-  const { error } = await supabaseAdmin()
-    .from('projects')
-    .update({ status: 'in_progress' })
-    .eq('id', projectId);
-  if (error) return;
 
   await writeAudit({
     actor_id: null as unknown as string,
     action: 'update',
-    entity_type: 'project',
-    entity_id: projectId,
-    diff: { subscription_status: sub.status, source: 'stripe_webhook' },
+    entity_type: 'care_plan_subscription',
+    entity_id: sub.id,
+    diff: {
+      subscription_status: sub.status,
+      project_id: projectId,
+      source: 'stripe_webhook',
+    },
+  });
+
+  // Bump project status when the sub becomes active.
+  if (projectId && sub.status === 'active') {
+    await supabaseAdmin()
+      .from('projects')
+      .update({ status: 'in_progress' })
+      .eq('id', projectId);
+  }
+
+  // Email + in-app notify the client on the first transition into active.
+  if (sub.status === 'active' && previousStatus !== 'active') {
+    await notifyCarePlanActivated({ sub: full, projectId });
+  }
+}
+
+async function notifyCarePlanActivated(opts: {
+  sub: Stripe.Subscription;
+  projectId: string | null;
+}) {
+  const { sub, projectId } = opts;
+
+  // Pull the row we just synced for amount + interval (mirror columns).
+  const { data: row } = await supabaseAdmin()
+    .from('care_plan_subscriptions')
+    .select('amount_cents, interval, contact_id')
+    .eq('stripe_subscription_id', sub.id)
+    .maybeSingle();
+  const r = row as
+    | { amount_cents: number; interval: 'month' | 'year'; contact_id: string }
+    | null;
+  if (!r) return;
+
+  const userId = await getContactUserId(r.contact_id);
+  if (!userId) return;
+
+  let projectName: string | null = null;
+  if (projectId) {
+    const { data: p } = await supabaseAdmin()
+      .from('projects')
+      .select('name')
+      .eq('id', projectId)
+      .maybeSingle();
+    projectName = (p as { name: string } | null)?.name ?? null;
+  }
+
+  await notify({
+    type: 'care_plan_activated',
+    userId,
+    subscriptionId: sub.id,
+    projectId,
+    projectName,
+    amountCents: r.amount_cents,
+    interval: r.interval,
+    portalPath: projectId ? `/portal/project/${projectId}` : '/portal/dashboard',
   });
 }
 
 async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
-  const projectId =
-    typeof sub.metadata?.project_id === 'string' ? sub.metadata.project_id : null;
-  if (!projectId) return;
+  await syncSubscriptionRow(sub);
 
   await writeAudit({
     actor_id: null as unknown as string,
-    action: 'update',
-    entity_type: 'project',
-    entity_id: projectId,
-    diff: { subscription: 'cancelled', source: 'stripe_webhook' },
+    action: 'delete',
+    entity_type: 'care_plan_subscription',
+    entity_id: sub.id,
+    diff: { source: 'stripe_webhook' },
   });
 }

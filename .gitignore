@@ -44,3 +44,6 @@ next-env.d.ts
 # local-only spec / design reference (kept out of the repo)
 /crm-master/
 /luxweb-master/
+
+# Claude Code per-project state
+.claude/

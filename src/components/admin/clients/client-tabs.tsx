@@ -5,17 +5,13 @@ import { cn } from '@/lib/utils';
 
 export type ClientTabKey =
   | 'overview'
-  | 'deals'
-  | 'projects'
-  | 'proposals'
+  | 'engagements'
   | 'notes'
   | 'activity';
 
 const TABS: { key: ClientTabKey; label: string }[] = [
   { key: 'overview', label: 'Overview' },
-  { key: 'deals', label: 'Deals' },
-  { key: 'projects', label: 'Projects' },
-  { key: 'proposals', label: 'Proposals' },
+  { key: 'engagements', label: 'Engagements' },
   { key: 'notes', label: 'Notes' },
   { key: 'activity', label: 'Activity' },
 ];

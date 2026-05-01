@@ -1,6 +1,14 @@
 import { notFound, redirect } from 'next/navigation';
 import { getSession } from '@/lib/supabase/session';
-import { getClientProject } from '@/lib/queries/client';
+import {
+  getClientProject,
+  getClientProjectCarePlan,
+  getClientProjectReview,
+} from '@/lib/queries/client';
+import { CarePlanCard } from '@/components/client/care-plan/care-plan-card';
+import { CarePlanBillingHistory } from '@/components/care-plan/billing-history';
+import { getCarePlanInvoiceHistory } from '@/lib/care-plan/billing-history';
+import { ClientReviewCard } from '@/components/client/reviews/client-review-card';
 import { formatDate } from '@/lib/formatters';
 import {
   MILESTONE_STATUS_LABEL as MILESTONE_LABEL,
@@ -16,8 +24,16 @@ export default async function ClientProjectOverviewPage({
   const { id } = await params;
   const session = await getSession();
   if (!session) redirect('/login');
-  const project = await getClientProject(id, session.userId);
+  const [project, carePlan, review] = await Promise.all([
+    getClientProject(id, session.userId),
+    getClientProjectCarePlan(id, session.userId),
+    getClientProjectReview(id, session.userId),
+  ]);
   if (!project) notFound();
+  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+  const billingHistory = carePlan
+    ? await getCarePlanInvoiceHistory(carePlan.stripeSubscriptionId)
+    : [];
 
   const done = project.milestones.filter((m) => m.status === 'done').length;
   const total = project.milestones.length;
@@ -52,6 +68,39 @@ export default async function ClientProjectOverviewPage({
           />
         </div>
       </section>
+
+      {/* Review prompt / read-only review — only on completed projects */}
+      {project.status === 'completed' ? (
+        <ClientReviewCard projectId={id} review={review} />
+      ) : null}
+
+      {/* Care Plan — only show if enrolled or pending */}
+      {carePlan && publishableKey ? (
+        <div className="space-y-4">
+          <CarePlanCard
+            plan={{
+              id: carePlan.id,
+              amountCents: carePlan.amountCents,
+              interval: carePlan.interval,
+              status: carePlan.status,
+              currentPeriodEnd: carePlan.currentPeriodEnd,
+              cancelAtPeriodEnd: carePlan.cancelAtPeriodEnd,
+              paymentMethodBrand: carePlan.paymentMethodBrand,
+              paymentMethodLast4: carePlan.paymentMethodLast4,
+              pendingClientSecret: carePlan.pendingClientSecret,
+            }}
+            publishableKey={publishableKey}
+          />
+          {billingHistory.length > 0 ? (
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+                Billing history
+              </p>
+              <CarePlanBillingHistory invoices={billingHistory} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Milestones */}
       <section>

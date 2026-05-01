@@ -5,7 +5,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Wordmark } from '@/components/brand/wordmark';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
-import { ADMIN_NAV, IconAudit, IconLogout, IconSettings } from './nav-items';
+import {
+  ADMIN_NAV,
+  ADMIN_NAV_GROUPS,
+  IconAudit,
+  IconLogout,
+  IconSettings,
+} from './nav-items';
 
 export type MobileNavProps = {
   userEmail: string;
@@ -128,49 +134,57 @@ export function MobileNav({ userEmail, userName }: MobileNavProps) {
 
             {/* Nav links */}
             <nav className="flex-1 overflow-y-auto px-3 pb-4">
-              <div className="flex items-center gap-2 px-3 pb-2.5 pt-4">
-                <span aria-hidden className="h-2 w-0.5 rounded-full bg-copper" />
-                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-ink-muted">
-                  General
-                </p>
-              </div>
-              <ul className="space-y-1">
-                {ADMIN_NAV.map((item) => {
-                  const active =
-                    item.href === '/admin/dashboard'
-                      ? pathname === item.href
-                      : pathname?.startsWith(item.href);
-                  const Icon = item.icon;
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={() => setOpen(false)}
-                        className={cn(
-                          'relative flex items-center gap-3 rounded-md px-3 py-2.5 font-sans text-sm transition-colors',
-                          active
-                            ? 'bg-gradient-to-r from-copper-soft/55 to-copper-soft/15 text-ink shadow-[inset_0_0_0_1px] shadow-copper/10'
-                            : 'text-ink-muted hover:bg-surface/60 hover:text-ink',
-                        )}
-                      >
-                        {active ? (
-                          <span
-                            aria-hidden
-                            className="absolute inset-y-1 left-0 w-[3px] rounded-r bg-copper"
-                          />
-                        ) : null}
-                        <Icon
-                          className={cn(
-                            'h-[18px] w-[18px] shrink-0',
-                            active ? 'text-copper' : 'text-ink-subtle',
-                          )}
-                        />
-                        <span className="font-medium">{item.label}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+              {ADMIN_NAV_GROUPS.map((group) => {
+                const items = ADMIN_NAV.filter((n) => n.group === group);
+                if (items.length === 0) return null;
+                return (
+                  <div key={group}>
+                    <div className="flex items-center gap-2 px-3 pb-2.5 pt-4">
+                      <span aria-hidden className="h-2 w-0.5 rounded-full bg-copper" />
+                      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-ink-muted">
+                        {group}
+                      </p>
+                    </div>
+                    <ul className="space-y-1">
+                      {items.map((item) => {
+                        const active =
+                          item.href === '/admin/dashboard'
+                            ? pathname === item.href
+                            : pathname?.startsWith(item.href);
+                        const Icon = item.icon;
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              onClick={() => setOpen(false)}
+                              className={cn(
+                                'relative flex items-center gap-3 rounded-md px-3 py-2.5 font-sans text-sm transition-colors',
+                                active
+                                  ? 'bg-gradient-to-r from-copper-soft/55 to-copper-soft/15 text-ink shadow-[inset_0_0_0_1px] shadow-copper/10'
+                                  : 'text-ink-muted hover:bg-surface/60 hover:text-ink',
+                              )}
+                            >
+                              {active ? (
+                                <span
+                                  aria-hidden
+                                  className="absolute inset-y-1 left-0 w-[3px] rounded-r bg-copper"
+                                />
+                              ) : null}
+                              <Icon
+                                className={cn(
+                                  'h-[18px] w-[18px] shrink-0',
+                                  active ? 'text-copper' : 'text-ink-subtle',
+                                )}
+                              />
+                              <span className="font-medium">{item.label}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })}
 
               <div className="flex items-center gap-2 px-3 pb-2.5 pt-6">
                 <span aria-hidden className="h-2 w-0.5 rounded-full bg-copper" />

@@ -7,6 +7,7 @@ import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
 import {
   ADMIN_NAV,
+  ADMIN_NAV_GROUPS,
   IconAudit,
   IconLogout,
   IconSettings,
@@ -64,69 +65,78 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
       </div>
 
       {/* Nav */}
-      <div className="flex-1">
-        <div className="flex items-center gap-2 px-6 pb-2.5 pt-5">
-          <span aria-hidden className="h-2 w-0.5 rounded-full bg-copper" />
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-ink-muted">
-            General
-          </p>
-        </div>
-        <nav className="space-y-1 px-3 pb-6">
-          {ADMIN_NAV.map((item) => {
-            const active =
-              item.href === '/admin/dashboard'
-                ? pathname === item.href
-                : pathname?.startsWith(item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'group relative flex items-center gap-3 overflow-hidden rounded-md px-3 py-2.5 font-sans text-sm transition-all duration-200',
-                  active
-                    ? 'bg-gradient-to-r from-copper-soft/55 to-copper-soft/15 text-ink shadow-[inset_0_0_0_1px] shadow-copper/10'
-                    : 'text-ink-muted hover:translate-x-0.5 hover:bg-surface/60 hover:text-ink',
-                )}
-              >
-                {active ? (
-                  <>
-                    <span
-                      aria-hidden
-                      className="absolute inset-y-1 left-0 w-[3px] rounded-r bg-copper"
-                    />
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface/40 to-transparent"
-                    />
-                  </>
-                ) : null}
-                <Icon
-                  className={cn(
-                    'h-[18px] w-[18px] shrink-0 transition-colors',
-                    active
-                      ? 'text-copper'
-                      : 'text-ink-subtle group-hover:text-copper/70',
-                  )}
-                />
-                <span className={cn('font-medium', active && 'tracking-tight')}>
-                  {item.label}
-                </span>
-                <kbd
-                  className={cn(
-                    'ml-auto hidden rounded border border-border bg-surface/70 px-1.5 py-0.5 font-mono text-[10px] tabular-nums transition-all lg:inline',
-                    active
-                      ? 'border-copper/30 bg-surface text-copper/80'
-                      : 'text-ink-subtle group-hover:border-border-strong group-hover:text-ink-muted',
-                  )}
-                  aria-hidden
-                >
-                  ⌘{item.shortcut}
-                </kbd>
-              </Link>
-            );
-          })}
-        </nav>
+      <div className="flex-1 overflow-y-auto">
+        {ADMIN_NAV_GROUPS.map((group) => {
+          const items = ADMIN_NAV.filter((n) => n.group === group);
+          if (items.length === 0) return null;
+          return (
+            <div key={group}>
+              <div className="flex items-center gap-2 px-6 pb-2.5 pt-5">
+                <span aria-hidden className="h-2 w-0.5 rounded-full bg-copper" />
+                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-ink-muted">
+                  {group}
+                </p>
+              </div>
+              <nav className="space-y-1 px-3">
+                {items.map((item) => {
+                  const active =
+                    item.href === '/admin/dashboard'
+                      ? pathname === item.href
+                      : pathname?.startsWith(item.href);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        'group relative flex items-center gap-3 overflow-hidden rounded-md px-3 py-2.5 font-sans text-sm transition-all duration-200',
+                        active
+                          ? 'bg-gradient-to-r from-copper-soft/55 to-copper-soft/15 text-ink shadow-[inset_0_0_0_1px] shadow-copper/10'
+                          : 'text-ink-muted hover:translate-x-0.5 hover:bg-surface/60 hover:text-ink',
+                      )}
+                    >
+                      {active ? (
+                        <>
+                          <span
+                            aria-hidden
+                            className="absolute inset-y-1 left-0 w-[3px] rounded-r bg-copper"
+                          />
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface/40 to-transparent"
+                          />
+                        </>
+                      ) : null}
+                      <Icon
+                        className={cn(
+                          'h-[18px] w-[18px] shrink-0 transition-colors',
+                          active
+                            ? 'text-copper'
+                            : 'text-ink-subtle group-hover:text-copper/70',
+                        )}
+                      />
+                      <span className={cn('font-medium', active && 'tracking-tight')}>
+                        {item.label}
+                      </span>
+                      <kbd
+                        className={cn(
+                          'ml-auto hidden rounded border border-border bg-surface/70 px-1.5 py-0.5 font-mono text-[10px] tabular-nums transition-all lg:inline',
+                          active
+                            ? 'border-copper/30 bg-surface text-copper/80'
+                            : 'text-ink-subtle group-hover:border-border-strong group-hover:text-ink-muted',
+                        )}
+                        aria-hidden
+                      >
+                        ⌘{item.shortcut}
+                      </kbd>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          );
+        })}
+        <div className="pb-6" />
       </div>
 
       {/* User card with menu */}

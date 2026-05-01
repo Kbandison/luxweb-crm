@@ -15,8 +15,8 @@ export default async function ProposalEditorPage({
     <main className="mx-auto w-full max-w-5xl px-8 py-8">
       <ProposalEditor
         proposalId={proposal.id}
-        backHref={`/admin/projects/${id}/proposals`}
-        backLabel="Proposals"
+        backHref={`/admin/projects/${id}/agreement`}
+        backLabel="Agreement"
         initialTitle={proposal.title}
         initialStatus={proposal.status}
         initialContent={proposal.content}
