@@ -3,6 +3,8 @@ import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserId } from '@/lib/notifications';
+import { createAndSendInvoice } from '@/lib/invoices/create';
+import type { ProposalContent } from '@/lib/types/proposal';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +13,14 @@ const Schema = z.object({
   agreed: z.literal(true),
 });
 
+/**
+ * Client signs the agreement. Marks the contract as signed, then:
+ *   - Auto-creates a project for the contact if none exists yet, linking
+ *     the proposal + contract to it.
+ *   - Generates the deposit invoice from the proposal's first milestone
+ *     (or full total, if no milestones are defined) and emails it.
+ *   - Notifies admin.
+ */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -27,12 +37,11 @@ export async function POST(
       );
     }
 
-    // Ownership via the join to contacts.user_id — same pattern as the
-    // proposal accept route.
-    const { data: row } = await supabaseAdmin()
+    const sb = supabaseAdmin();
+    const { data: row } = await sb
       .from('contracts')
       .select(
-        'id, status, agreement_version, proposal_id, project_id, contact_id, contacts!inner(full_name, user_id), proposals!inner(title, total_cents)',
+        'id, status, agreement_version, proposal_id, project_id, contact_id, contacts!inner(full_name, user_id), proposals!inner(title, total_cents, content_json, deal_id)',
       )
       .eq('id', id)
       .single();
@@ -51,8 +60,18 @@ export async function POST(
         | { full_name: string; user_id: string | null }
         | { full_name: string; user_id: string | null }[];
       proposals:
-        | { title: string; total_cents: number | string | null }
-        | { title: string; total_cents: number | string | null }[];
+        | {
+            title: string;
+            total_cents: number | string | null;
+            content_json: unknown;
+            deal_id: string | null;
+          }
+        | {
+            title: string;
+            total_cents: number | string | null;
+            content_json: unknown;
+            deal_id: string | null;
+          }[];
     };
     const r = row as unknown as Shape;
     const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
@@ -62,7 +81,12 @@ export async function POST(
       return Response.json({ error: 'Not found' }, { status: 404 });
     }
 
-    if (r.status !== 'pending_signature') {
+    // Accept either the new pending_client_signature status or the legacy
+    // pending_signature value (single-sig flow).
+    if (
+      r.status !== 'pending_client_signature' &&
+      r.status !== 'pending_signature'
+    ) {
       return Response.json(
         { error: `Contract is ${r.status}, no longer accepting signature.` },
         { status: 409 },
@@ -76,7 +100,7 @@ export async function POST(
     const userAgent = req.headers.get('user-agent') ?? null;
     const signedAt = new Date().toISOString();
 
-    const { error } = await supabaseAdmin()
+    const { error } = await sb
       .from('contracts')
       .update({
         status: 'signed',
@@ -102,14 +126,116 @@ export async function POST(
         user_agent: userAgent,
         signed_at: signedAt,
         agreement_version: r.agreement_version,
+        by: 'client',
       },
     });
 
+    // Auto-create a project for this contact if none exists, then link
+    // the proposal + contract to it. The project may have already been
+    // created during contract sign retries — handle that idempotently.
+    let projectId = r.project_id;
+    if (!projectId) {
+      const { data: existingProj } = await sb
+        .from('projects')
+        .select('id')
+        .eq('contact_id', r.contact_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existingProj) {
+        projectId = (existingProj as { id: string }).id;
+      } else {
+        const content = (proposal?.content_json ?? null) as ProposalContent | null;
+        const totalCents =
+          proposal?.total_cents == null ? null : Number(proposal.total_cents);
+        const targetLaunch = content?.timeline?.target_launch || null;
+        const { data: newProj, error: projErr } = await sb
+          .from('projects')
+          .insert({
+            name: proposal?.title ?? 'New project',
+            status: 'planning',
+            contact_id: r.contact_id,
+            deal_id: proposal?.deal_id ?? null,
+            budget_cents: totalCents,
+            end_date: targetLaunch,
+          })
+          .select('id')
+          .single();
+        if (projErr || !newProj) {
+          return Response.json(
+            { error: projErr?.message ?? 'Failed to create project' },
+            { status: 500 },
+          );
+        }
+        projectId = (newProj as { id: string }).id;
+        await writeAudit({
+          actor_id: session.userId,
+          action: 'create',
+          entity_type: 'project',
+          entity_id: projectId,
+          diff: {
+            contact_id: r.contact_id,
+            source: 'contract_signed_auto',
+          },
+        });
+      }
+    }
+
+    // Link proposal + contract to the project (covers both the just-created
+    // case and earlier rows that were contact-scoped).
+    await sb
+      .from('proposals')
+      .update({ project_id: projectId })
+      .eq('id', r.proposal_id)
+      .is('project_id', null);
+    await sb
+      .from('contracts')
+      .update({ project_id: projectId })
+      .eq('id', id)
+      .is('project_id', null);
+
+    // Generate the deposit invoice. Use the first milestone if defined,
+    // otherwise fall back to the full proposal total.
+    let depositCents = 0;
+    let depositLabel = 'Deposit';
+    const content =
+      (proposal?.content_json ?? null) as ProposalContent | null;
+    if (content) {
+      const ms = content.investment.milestones ?? [];
+      const first = ms.find((m) => m.amount_cents > 0);
+      if (first) {
+        depositCents = first.amount_cents;
+        depositLabel = first.label || 'Deposit';
+      } else {
+        depositCents = content.investment.total_cents;
+        depositLabel = `Project investment — ${proposal?.title ?? 'agreement'}`;
+      }
+    } else if (proposal?.total_cents != null) {
+      depositCents = Number(proposal.total_cents);
+    }
+
+    let depositInvoiceId: string | null = null;
+    if (depositCents > 0) {
+      try {
+        const result = await createAndSendInvoice({
+          projectId,
+          amountCents: depositCents,
+          description: `${depositLabel} — ${proposal?.title ?? 'Agreement'}`,
+          actorId: null,
+          source: 'contract_signed_auto',
+        });
+        depositInvoiceId = result.invoiceId;
+      } catch (err) {
+        // Don't block the signature on invoice failure — admin can raise
+        // it manually from the project's Invoices tab.
+        console.warn('[contract sign] deposit invoice failed:', err);
+      }
+    }
+
+    // Notify admin that the contract is fully signed.
     const adminId = await getAdminUserId();
     if (adminId) {
-      const contractPath = r.project_id
-        ? `/admin/projects/${r.project_id}/contracts/${id}`
-        : `/admin/dashboard`;
+      const contractPath = `/admin/projects/${projectId}/contracts/${id}`;
       await notify({
         type: 'contract_signed',
         userId: adminId,
@@ -125,7 +251,12 @@ export async function POST(
       });
     }
 
-    return Response.json({ ok: true, signed_at: signedAt });
+    return Response.json({
+      ok: true,
+      signed_at: signedAt,
+      project_id: projectId,
+      deposit_invoice_id: depositInvoiceId,
+    });
   } catch (err) {
     if (err instanceof Response) return err;
     return Response.json({ error: 'Unexpected error' }, { status: 500 });

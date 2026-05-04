@@ -29,15 +29,24 @@ export const PROPOSAL_STATUS_TONE: Record<ProposalStatus, string> = {
   expired: 'bg-warning/15 text-warning',
 };
 
-export type ContractStatus = 'pending_signature' | 'signed' | 'void';
+export type ContractStatus =
+  | 'pending_admin_signature'
+  | 'pending_client_signature'
+  | 'pending_signature'
+  | 'signed'
+  | 'void';
 
 export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
+  pending_admin_signature: 'Awaiting our signature',
+  pending_client_signature: 'Awaiting client signature',
   pending_signature: 'Awaiting signature',
   signed: 'Signed',
   void: 'Void',
 };
 
 export const CONTRACT_STATUS_TONE: Record<ContractStatus, string> = {
+  pending_admin_signature: 'bg-warning/15 text-warning',
+  pending_client_signature: 'bg-copper/15 text-copper',
   pending_signature: 'bg-copper/15 text-copper',
   signed: 'bg-success/15 text-success',
   void: 'bg-ink-subtle/10 text-ink-subtle line-through',

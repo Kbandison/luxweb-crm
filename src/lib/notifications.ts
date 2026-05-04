@@ -35,6 +35,9 @@ import RevisionUpdatedEmail, {
 import CarePlanActivatedEmail, {
   carePlanActivatedSubject,
 } from '@/emails/care-plan-activated-email';
+import ContractPendingClientSignatureEmail, {
+  contractPendingClientSignatureSubject,
+} from '@/emails/contract-pending-client-signature-email';
 
 /* -------------------------------------------------------------------------
  * Event shapes
@@ -178,6 +181,16 @@ export type NotifyEvent =
       snippet?: string;
       /** client-portal URL */
       revisionPath: string;
+    }
+  | {
+      type: 'contract_pending_client_signature';
+      /** client user id (the recipient) */
+      userId: string;
+      contractId: string;
+      proposalId: string;
+      clientName: string;
+      /** client portal URL */
+      contractPath: string;
     }
   | {
       type: 'care_plan_activated';
@@ -416,6 +429,16 @@ function renderTemplate(
       return {
         subject: revisionUpdatedSubject(props),
         react: createElement(RevisionUpdatedEmail, props),
+      };
+    }
+    case 'contract_pending_client_signature': {
+      const props = {
+        recipientName,
+        contractUrl: appUrl(event.contractPath),
+      };
+      return {
+        subject: contractPendingClientSignatureSubject(),
+        react: createElement(ContractPendingClientSignatureEmail, props),
       };
     }
     case 'care_plan_activated': {

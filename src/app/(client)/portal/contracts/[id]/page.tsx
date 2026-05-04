@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getSession } from '@/lib/supabase/session';
 import { getClientContract } from '@/lib/queries/client';
 import { ContractBody } from '@/components/contract/contract-body';
+import { SignaturePair } from '@/components/contract/signature-block';
 import {
   ClientContractActions,
   PrintBar,
@@ -32,6 +33,19 @@ export default async function ClientContractPage({
       <article className="rounded-2xl border border-border bg-surface p-8 md:p-10 print-plain">
         <ContractBody body={contract.bodyMd} />
       </article>
+
+      <section className="space-y-3">
+        <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-ink-muted">
+          Signatures
+        </h2>
+        <SignaturePair
+          adminSignerName={contract.adminSignedName}
+          adminSignedAt={contract.adminSignedAt}
+          clientName="You"
+          clientSignerName={contract.signedName}
+          clientSignedAt={contract.signedAt}
+        />
+      </section>
     </main>
   );
 }

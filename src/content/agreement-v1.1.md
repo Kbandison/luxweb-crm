@@ -301,24 +301,10 @@ The parties will first attempt in good faith to resolve any dispute by direct ne
 
 ## SIGNATURES
 
-The parties, intending to be legally bound, execute this Agreement as of the Effective Date first written above.
+The parties, intending to be legally bound, execute this Agreement as of the Effective Date first written above. Each party's electronically captured signature, full legal name, IP address, and timestamp are recorded alongside this Agreement in the LuxWeb client portal and constitute the executed signatures of the parties.
 
-**CLIENT**
+**CLIENT:** {{client_name}}
 
-Signature: _________________________________ Date: _______________
-
-Name: _____________________________________
-
-Title: _____________________________________
-
-Entity: {{client_name}}
-
-**CONTRACTOR**
-
-Signature: _________________________________ Date: _______________
-
-Name: _____________________________________
-
-Title: _____________________________________
+**CONTRACTOR:** LuxWeb Studio
 
 Entity: LuxWeb Studio

@@ -111,6 +111,22 @@ export async function POST(req: Request) {
       entity_id: data.id as string,
     });
 
+    // Auto-bump the contact's deal to the 'proposal' stage if it's still
+    // in earlier stages. Skip downgrades — once a deal is past proposal
+    // (active/completed/retainer), creating an additional proposal
+    // shouldn't drag it back. If multiple deals exist for the contact,
+    // we update them all that are eligible — admin can resolve manually
+    // if there's ambiguity.
+    try {
+      await supabaseAdmin()
+        .from('deals')
+        .update({ stage: 'proposal', stage_changed_at: new Date().toISOString() })
+        .eq('contact_id', contactId)
+        .in('stage', ['lead', 'discovery']);
+    } catch {
+      // Best-effort. Failing here shouldn't block proposal creation.
+    }
+
     return Response.json({ id: data.id });
   } catch (err) {
     if (err instanceof Response) return err;

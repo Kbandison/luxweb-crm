@@ -1,4 +1,7 @@
 export const CONTRACT_STATUSES = [
+  'pending_admin_signature',
+  'pending_client_signature',
+  // Legacy single-signature value — old rows stay readable.
   'pending_signature',
   'signed',
   'void',

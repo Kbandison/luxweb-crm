@@ -139,6 +139,18 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
   // or notifications. Stripe retries + our own manual resends both covered.
   if (previousStatus === 'paid') return;
 
+  // Auto-bump the contact's deal to 'active' on first payment so the
+  // pipeline kanban reflects reality. Skip if there's no eligible deal.
+  try {
+    await supabaseAdmin()
+      .from('deals')
+      .update({ stage: 'active', stage_changed_at: new Date().toISOString() })
+      .eq('contact_id', contactId)
+      .in('stage', ['lead', 'discovery', 'proposal']);
+  } catch {
+    // Best-effort.
+  }
+
   const clientUserId = await getContactUserId(contactId);
   if (clientUserId) {
     await notify({

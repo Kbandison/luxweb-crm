@@ -36,8 +36,19 @@ export function ClientContractActions({
 }) {
   return (
     <div>
-      {status === 'pending_signature' ? (
+      {status === 'pending_signature' ||
+      status === 'pending_client_signature' ? (
         <SignBar contractId={contractId} />
+      ) : status === 'pending_admin_signature' ? (
+        <div className="rounded-2xl border border-copper/30 bg-copper-soft/25 p-6">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+            Awaiting our counter-signature
+          </p>
+          <p className="mt-1 font-sans text-sm text-ink-muted">
+            We&apos;ll sign first, then you&apos;ll get an email when the
+            agreement is ready for your signature.
+          </p>
+        </div>
       ) : status === 'signed' ? (
         <SignedBanner signedAt={signedAt} signedName={signedName} />
       ) : (

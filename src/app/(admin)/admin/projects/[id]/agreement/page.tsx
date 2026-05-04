@@ -4,7 +4,7 @@ import {
   getProjectProposals,
   linkOrphanProposalsToProject,
 } from '@/lib/queries/admin';
-import { GenerateContractButton } from '@/components/admin/proposals/generate-contract-button';
+import { SignAgreementButton } from '@/components/admin/proposals/sign-agreement-button';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import {
   CONTRACT_STATUS_LABEL,
@@ -100,15 +100,12 @@ export default async function AdminProjectAgreementPage({
                     </div>
                   </Link>
                   {orphan ? (
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-warning/30 bg-warning/5 px-5 py-3">
-                      <p className="font-sans text-xs text-warning">
-                        Accepted but no contract was generated. Click to fix —
-                        an Agreement v{
-                          // Default to v1.1 so the message stays readable.
-                          '1.1'
-                        } contract will be created from this proposal.
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-copper/30 bg-copper/5 px-5 py-3">
+                      <p className="font-sans text-xs text-copper">
+                        Accepted by client. Counter-sign to create the
+                        agreement and send it for their signature.
                       </p>
-                      <GenerateContractButton proposalId={p.id} />
+                      <SignAgreementButton proposalId={p.id} />
                     </div>
                   ) : null}
                 </li>

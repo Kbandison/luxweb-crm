@@ -1449,6 +1449,10 @@ export type ContractDetail = ContractRow & {
   bodyMd: string;
   signedIp: string | null;
   signedUserAgent: string | null;
+  adminSignedName: string | null;
+  adminSignedAt: string | null;
+  adminSignedIp: string | null;
+  adminSignedUserAgent: string | null;
   proposalTitle: string;
   clientName: string;
 };
@@ -1499,7 +1503,7 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     const { data } = await supabaseAdmin()
       .from('contracts')
       .select(
-        'id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name, signed_ip, signed_user_agent, body_md, proposals!inner(title), contacts!inner(full_name)',
+        'id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, admin_signed_ip, admin_signed_user_agent, body_md, proposals!inner(title), contacts!inner(full_name)',
       )
       .eq('id', id)
       .single();
@@ -1507,6 +1511,10 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     type Shape = ContractSelectRow & {
       signed_ip: string | null;
       signed_user_agent: string | null;
+      admin_signed_name: string | null;
+      admin_signed_at: string | null;
+      admin_signed_ip: string | null;
+      admin_signed_user_agent: string | null;
       body_md: string;
       proposals: { title: string } | { title: string }[];
       contacts: { full_name: string } | { full_name: string }[];
@@ -1519,6 +1527,10 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
       bodyMd: r.body_md,
       signedIp: r.signed_ip,
       signedUserAgent: r.signed_user_agent,
+      adminSignedName: r.admin_signed_name,
+      adminSignedAt: r.admin_signed_at,
+      adminSignedIp: r.admin_signed_ip,
+      adminSignedUserAgent: r.admin_signed_user_agent,
       proposalTitle: proposal?.title ?? 'Proposal',
       clientName: contact?.full_name ?? '—',
     };

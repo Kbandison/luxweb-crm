@@ -1,6 +1,8 @@
+import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { notify, getContactUserId } from '@/lib/notifications';
 import {
   deriveContractVariables,
   renderAgreement,
@@ -9,31 +11,45 @@ import type { ProposalContent } from '@/lib/types/proposal';
 
 export const runtime = 'nodejs';
 
+const Schema = z.object({
+  full_name: z.string().min(2).max(200),
+  agreed: z.literal(true),
+});
+
 /**
- * Manually generate a contract for an already-accepted proposal that
- * doesn't have one yet. Covers the recovery case where auto-gen on
- * accept failed (e.g., template file wasn't bundled in production) so
- * the proposal is in 'accepted' state with no matching contracts row.
+ * Admin signs the agreement first. Creates the contract row with admin
+ * signature captured + body snapshot rendered from the agreement template,
+ * then notifies the client to add their signature.
  *
- * Idempotent — returns 409 if a contract already exists for this proposal.
+ * Status flow: (no contract) → pending_client_signature → signed
+ *
+ * Idempotent in the sense that if a contract already exists for this
+ * proposal it returns 409 with the existing contract id.
  */
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await requireAdmin();
     const { id } = await params;
-    const sb = supabaseAdmin();
+    const raw = await req.json().catch(() => ({}));
+    const parsed = Schema.safeParse(raw);
+    if (!parsed.success) {
+      return Response.json(
+        { error: 'Invalid payload', issues: parsed.error.issues },
+        { status: 400 },
+      );
+    }
 
+    const sb = supabaseAdmin();
     const { data: row } = await sb
       .from('proposals')
       .select(
-        'id, status, project_id, contact_id, accepted_at, content_json',
+        'id, status, project_id, contact_id, accepted_at, content_json, contacts!inner(full_name)',
       )
       .eq('id', id)
       .single();
-
     if (!row) {
       return Response.json({ error: 'Proposal not found' }, { status: 404 });
     }
@@ -44,19 +60,23 @@ export async function POST(
       contact_id: string | null;
       accepted_at: string | null;
       content_json: unknown;
+      contacts:
+        | { full_name: string }
+        | { full_name: string }[];
     };
     const r = row as unknown as Shape;
+    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
 
     if (r.status !== 'accepted') {
       return Response.json(
-        { error: `Proposal is ${r.status}; only accepted proposals can have a contract generated.` },
+        { error: `Proposal is ${r.status}; only accepted proposals can be counter-signed.` },
         { status: 409 },
       );
     }
 
     const { data: existing } = await sb
       .from('contracts')
-      .select('id')
+      .select('id, status')
       .eq('proposal_id', id)
       .limit(1)
       .maybeSingle();
@@ -78,7 +98,14 @@ export async function POST(
       );
     }
 
-    const effectiveDate = r.accepted_at ?? new Date().toISOString();
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      req.headers.get('x-real-ip') ??
+      null;
+    const userAgent = req.headers.get('user-agent') ?? null;
+    const adminSignedAt = new Date().toISOString();
+
+    const effectiveDate = r.accepted_at ?? adminSignedAt;
     const variables = deriveContractVariables(content, { effectiveDate });
     const agreementVersion = content.agreement_version || '1.1';
     const { body_md, version } = await renderAgreement(variables, {
@@ -94,14 +121,18 @@ export async function POST(
         agreement_version: version,
         body_md,
         variables,
-        status: 'pending_signature',
+        status: 'pending_client_signature',
+        admin_signed_name: parsed.data.full_name,
+        admin_signed_at: adminSignedAt,
+        admin_signed_ip: ip,
+        admin_signed_user_agent: userAgent,
       })
       .select('id')
       .single();
 
     if (cErr || !cRow) {
       return Response.json(
-        { error: cErr?.message ?? 'Failed to insert contract' },
+        { error: cErr?.message ?? 'Failed to create contract' },
         { status: 500 },
       );
     }
@@ -110,15 +141,34 @@ export async function POST(
 
     await writeAudit({
       actor_id: session.userId,
-      action: 'create',
+      action: 'sign',
       entity_type: 'contract',
       entity_id: contractId,
       diff: {
         proposal_id: id,
+        signed_name: parsed.data.full_name,
+        ip,
+        user_agent: userAgent,
+        signed_at: adminSignedAt,
         agreement_version: version,
-        source: 'admin_manual_regenerate',
+        by: 'admin',
       },
     });
+
+    // Notify the client to add their signature.
+    if (r.contact_id) {
+      const clientUserId = await getContactUserId(r.contact_id);
+      if (clientUserId) {
+        await notify({
+          type: 'contract_pending_client_signature',
+          userId: clientUserId,
+          contractId,
+          proposalId: id,
+          clientName: contact?.full_name ?? '—',
+          contractPath: `/portal/contracts/${contractId}`,
+        });
+      }
+    }
 
     return Response.json({ ok: true, contract_id: contractId });
   } catch (err) {

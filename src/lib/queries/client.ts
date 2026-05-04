@@ -602,6 +602,8 @@ export type ClientContractDetail = ClientContractListRow & {
   signedName: string | null;
   signedIp: string | null;
   signedUserAgent: string | null;
+  adminSignedName: string | null;
+  adminSignedAt: string | null;
 };
 
 export async function getClientProjectContracts(
@@ -648,7 +650,7 @@ export async function getClientContract(
     const { data } = await supabaseAdmin()
       .from('contracts')
       .select(
-        'id, status, agreement_version, body_md, created_at, signed_at, signed_name, signed_ip, signed_user_agent, proposal_id, project_id, contacts!inner(user_id)',
+        'id, status, agreement_version, body_md, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, proposal_id, project_id, contacts!inner(user_id)',
       )
       .eq('id', contractId)
       .single();
@@ -663,6 +665,8 @@ export async function getClientContract(
       signed_name: string | null;
       signed_ip: string | null;
       signed_user_agent: string | null;
+      admin_signed_name: string | null;
+      admin_signed_at: string | null;
       proposal_id: string;
       project_id: string | null;
       contacts: { user_id: string | null } | { user_id: string | null }[];
@@ -681,6 +685,8 @@ export async function getClientContract(
       signedName: r.signed_name,
       signedIp: r.signed_ip,
       signedUserAgent: r.signed_user_agent,
+      adminSignedName: r.admin_signed_name,
+      adminSignedAt: r.admin_signed_at,
       proposalId: r.proposal_id,
     };
   } catch {

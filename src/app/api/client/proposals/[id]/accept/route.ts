@@ -3,11 +3,6 @@ import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserId } from '@/lib/notifications';
-import {
-  deriveContractVariables,
-  renderAgreement,
-} from '@/lib/contracts/render';
-import type { ProposalContent } from '@/lib/types/proposal';
 
 export const runtime = 'nodejs';
 
@@ -107,61 +102,10 @@ export async function POST(
       },
     });
 
-    // Auto-generate a pending-signature contract from the Agreement
-    // template. The body is frozen at this moment — snapshot of the
-    // proposal's economic terms + the boilerplate legal text. The client
-    // sees this as a second step in the portal and signs separately,
-    // proving two distinct assents (pricing + terms).
-    let contractId: string | null = null;
-    try {
-      const content = (r.content_json ?? null) as ProposalContent | null;
-      if (content) {
-        const variables = deriveContractVariables(content, {
-          effectiveDate: acceptedAt,
-        });
-        const agreementVersion = content.agreement_version || '1.1';
-        const { body_md, version } = await renderAgreement(variables, {
-          version: `v${agreementVersion.replace(/^v/, '')}`,
-        });
-
-        const { data: cRow, error: cErr } = await supabaseAdmin()
-          .from('contracts')
-          .insert({
-            proposal_id: id,
-            project_id: r.project_id,
-            contact_id: r.contact_id,
-            agreement_version: version,
-            body_md,
-            variables,
-            status: 'pending_signature',
-          })
-          .select('id')
-          .single();
-        if (cErr) {
-          console.warn('[accept] failed to create contract:', cErr.message);
-        } else {
-          contractId = (cRow?.id as string | undefined) ?? null;
-          await writeAudit({
-            actor_id: session.userId,
-            action: 'create',
-            entity_type: 'contract',
-            entity_id: contractId ?? undefined,
-            diff: {
-              proposal_id: id,
-              agreement_version: version,
-              source: 'proposal_accept_auto_gen',
-            },
-          });
-        }
-      }
-    } catch (err) {
-      // Contract generation failing shouldn't block proposal acceptance —
-      // we log and let the admin regenerate manually if needed. The
-      // proposal is already accepted by this point.
-      console.warn('[accept] contract generation error:', err);
-    }
-
-    // Notify the admin that a proposal was accepted.
+    // Notify the admin that the proposal was accepted. Under the new
+    // two-signature flow, the contract isn't generated here — admin signs
+    // first via /admin/projects/[id]/agreement, which creates the contract
+    // row with their signature captured, then the client signs separately.
     const adminId = await getAdminUserId();
     if (adminId) {
       const proposalPath = r.project_id
@@ -179,12 +123,7 @@ export async function POST(
       });
     }
 
-    // Stripe deposit-invoice auto-generation can wire in here as a follow-up.
-    return Response.json({
-      ok: true,
-      accepted_at: acceptedAt,
-      contract_id: contractId,
-    });
+    return Response.json({ ok: true, accepted_at: acceptedAt });
   } catch (err) {
     if (err instanceof Response) return err;
     return Response.json({ error: 'Unexpected error' }, { status: 500 });
