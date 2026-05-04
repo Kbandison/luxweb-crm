@@ -93,8 +93,18 @@ function AcceptBar({ proposalId }: { proposalId: string }) {
         setError(j.error ?? 'Failed to accept.');
         return;
       }
+      const j = (await res.json().catch(() => ({}))) as {
+        contract_id?: string | null;
+      };
       setOpen(false);
-      router.refresh();
+      // Auto-navigate to the agreement so the client knows the next step
+      // (sign the legal terms). If contract auto-gen failed, fall back to
+      // a refresh so they see the accepted state at least.
+      if (j.contract_id) {
+        router.push(`/portal/contracts/${j.contract_id}`);
+      } else {
+        router.refresh();
+      }
     } finally {
       setBusy(false);
     }
