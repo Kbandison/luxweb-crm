@@ -3,6 +3,7 @@ import {
   getProjectContracts,
   getProjectProposals,
 } from '@/lib/queries/admin';
+import { GenerateContractButton } from '@/components/admin/proposals/generate-contract-button';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import {
   CONTRACT_STATUS_LABEL,
@@ -24,6 +25,7 @@ export default async function AdminProjectAgreementPage({
     getProjectProposals(id),
     getProjectContracts(id),
   ]);
+  const proposalsWithContract = new Set(contracts.map((c) => c.proposalId));
 
   if (proposals.length === 0 && contracts.length === 0) {
     return (
@@ -52,47 +54,63 @@ export default async function AdminProjectAgreementPage({
           <Empty label="No proposal on this project yet." className="mt-5" />
         ) : (
           <ul className="mt-5 overflow-hidden rounded-xl border border-border bg-surface divide-y divide-border">
-            {proposals.map((p) => (
-              <li key={p.id}>
-                <Link
-                  href={`/admin/projects/${id}/proposals/${p.id}`}
-                  className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-surface-2/50"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-sans text-sm font-medium text-ink">
-                      {p.title}
-                    </p>
-                    <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
-                      {p.sentAt
-                        ? `Sent ${formatDate(p.sentAt)}`
-                        : `Created ${formatDate(p.createdAt)}`}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span
-                      className={cn(
-                        'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
-                        PROPOSAL_STATUS_TONE[p.status as ProposalStatus] ??
-                          'bg-ink/5 text-ink-muted',
-                      )}
-                    >
-                      {PROPOSAL_STATUS_LABEL[p.status as ProposalStatus] ?? p.status}
-                    </span>
-                    {p.totalCents != null ? (
-                      <span className="font-mono text-sm font-medium tabular-nums text-ink">
-                        {formatUSD(p.totalCents)}
+            {proposals.map((p) => {
+              const orphan =
+                p.status === 'accepted' && !proposalsWithContract.has(p.id);
+              return (
+                <li key={p.id}>
+                  <Link
+                    href={`/admin/projects/${id}/proposals/${p.id}`}
+                    className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-surface-2/50"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-sans text-sm font-medium text-ink">
+                        {p.title}
+                      </p>
+                      <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                        {p.sentAt
+                          ? `Sent ${formatDate(p.sentAt)}`
+                          : `Created ${formatDate(p.createdAt)}`}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                          PROPOSAL_STATUS_TONE[p.status as ProposalStatus] ??
+                            'bg-ink/5 text-ink-muted',
+                        )}
+                      >
+                        {PROPOSAL_STATUS_LABEL[p.status as ProposalStatus] ?? p.status}
                       </span>
-                    ) : null}
-                    <span
-                      aria-hidden
-                      className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper"
-                    >
-                      Open →
-                    </span>
-                  </div>
-                </Link>
-              </li>
-            ))}
+                      {p.totalCents != null ? (
+                        <span className="font-mono text-sm font-medium tabular-nums text-ink">
+                          {formatUSD(p.totalCents)}
+                        </span>
+                      ) : null}
+                      <span
+                        aria-hidden
+                        className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper"
+                      >
+                        Open →
+                      </span>
+                    </div>
+                  </Link>
+                  {orphan ? (
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-warning/30 bg-warning/5 px-5 py-3">
+                      <p className="font-sans text-xs text-warning">
+                        Accepted but no contract was generated. Click to fix —
+                        an Agreement v{
+                          // Default to v1.1 so the message stays readable.
+                          '1.1'
+                        } contract will be created from this proposal.
+                      </p>
+                      <GenerateContractButton proposalId={p.id} />
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
