@@ -5,6 +5,7 @@ import {
   getClientProjectContracts,
   getClientProjectProposals,
 } from '@/lib/queries/client';
+import { linkOrphanProposalsToProject } from '@/lib/queries/admin';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import {
   CONTRACT_STATUS_LABEL,
@@ -24,6 +25,9 @@ export default async function ClientProjectAgreementPage({
   const { id } = await params;
   const session = await getSession();
   if (!session) redirect('/login');
+  // Adopt any contact-scoped orphans before listing (helper is gated by
+  // contact ownership of the project; safe to run from the client side).
+  await linkOrphanProposalsToProject(id);
   const [proposals, contracts] = await Promise.all([
     getClientProjectProposals(id, session.userId),
     getClientProjectContracts(id, session.userId),

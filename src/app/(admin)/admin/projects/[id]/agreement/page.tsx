@@ -2,6 +2,7 @@ import Link from 'next/link';
 import {
   getProjectContracts,
   getProjectProposals,
+  linkOrphanProposalsToProject,
 } from '@/lib/queries/admin';
 import { GenerateContractButton } from '@/components/admin/proposals/generate-contract-button';
 import { formatDate, formatUSD } from '@/lib/formatters';
@@ -21,6 +22,8 @@ export default async function AdminProjectAgreementPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  // Adopt any contact-scoped orphans before listing.
+  await linkOrphanProposalsToProject(id);
   const [proposals, contracts] = await Promise.all([
     getProjectProposals(id),
     getProjectContracts(id),

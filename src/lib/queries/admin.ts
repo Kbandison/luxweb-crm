@@ -2085,3 +2085,47 @@ export async function getAllProjectReviews(): Promise<
     return [];
   }
 }
+
+/* -------------------------------------------------------------------------
+ * Auto-link orphan proposals/contracts to a project.
+ *
+ * Proposals can be created against a contact directly (no project_id), e.g.
+ * from the lead Engagements tab before a project even exists. Once a
+ * project does exist, those orphans should appear on its agreement tab —
+ * this helper sets project_id when the contact has exactly one project.
+ * Multi-project contacts are skipped to avoid grabbing items that belong
+ * to a different project; admin can wire those up manually if needed.
+ * ------------------------------------------------------------------------- */
+export async function linkOrphanProposalsToProject(
+  projectId: string,
+): Promise<void> {
+  try {
+    const sb = supabaseAdmin();
+    const { data: project } = await sb
+      .from('projects')
+      .select('contact_id')
+      .eq('id', projectId)
+      .single();
+    const contactId = (project as { contact_id: string } | null)?.contact_id;
+    if (!contactId) return;
+
+    const { count } = await sb
+      .from('projects')
+      .select('id', { count: 'exact', head: true })
+      .eq('contact_id', contactId);
+    if (count !== 1) return;
+
+    await sb
+      .from('proposals')
+      .update({ project_id: projectId })
+      .eq('contact_id', contactId)
+      .is('project_id', null);
+    await sb
+      .from('contracts')
+      .update({ project_id: projectId })
+      .eq('contact_id', contactId)
+      .is('project_id', null);
+  } catch {
+    // Auto-link is best-effort. Failing here shouldn't block the page.
+  }
+}
