@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { ProposalContent, ProposalStatus } from '@/lib/types/proposal';
@@ -652,6 +652,75 @@ function EditorForm({
 
 /* ----------------------------- tiny helpers ----------------------------- */
 
+// Format integer cents → "5000.00"-style dollar string.
+function centsToDollarStr(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+// Free-text dollar input → integer cents. Tolerates "5,000.50".
+function dollarStrToCents(s: string): number {
+  const cleaned = s.replace(/[^0-9.]/g, '');
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n * 100);
+}
+
+/**
+ * Currency input that lets the user type freely (no per-keystroke
+ * reformatting) and only commits to cents on blur. Re-syncs the displayed
+ * text when `cents` changes from outside its own commit (e.g., total
+ * recalculates an amount).
+ *
+ * Uses type="text" inputMode="decimal" so the browser doesn't show the
+ * type=number spinner widget, which has been triggering unwanted ±1 changes
+ * on the num pad and mouse wheel.
+ */
+function CurrencyInput({
+  cents,
+  onCommit,
+  placeholder,
+}: {
+  cents: number;
+  onCommit: (newCents: number) => void;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState<string>(() => centsToDollarStr(cents));
+  // Track the last cents value WE committed so we can ignore our own echo
+  // and only re-sync display when cents truly changed externally.
+  const lastCentsRef = useRef(cents);
+
+  useEffect(() => {
+    if (cents !== lastCentsRef.current) {
+      lastCentsRef.current = cents;
+      setText(centsToDollarStr(cents));
+    }
+  }, [cents]);
+
+  function commit() {
+    const newCents = dollarStrToCents(text);
+    lastCentsRef.current = newCents;
+    setText(centsToDollarStr(newCents));
+    onCommit(newCents);
+  }
+
+  return (
+    <Input
+      type="text"
+      inputMode="decimal"
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+    />
+  );
+}
+
 function InvestmentSection({
   content,
   setContent,
@@ -659,21 +728,7 @@ function InvestmentSection({
   content: ProposalContent;
   setContent: (updater: (c: ProposalContent) => ProposalContent) => void;
 }) {
-  // Pull cents → dollar string (no trailing zeros required, decimals OK).
-  function centsToDollarStr(cents: number): string {
-    return (cents / 100).toFixed(2);
-  }
-
-  // Free-text dollar input → integer cents. Tolerates "5,000.50".
-  function dollarStrToCents(s: string): number {
-    const cleaned = s.replace(/[^0-9.-]/g, '');
-    const n = Number(cleaned);
-    if (!Number.isFinite(n) || n < 0) return 0;
-    return Math.round(n * 100);
-  }
-
-  function setTotalDollars(s: string) {
-    const newTotalCents = dollarStrToCents(s);
+  function setTotalCents(newTotalCents: number) {
     setContent((c) => ({
       ...c,
       investment: {
@@ -709,8 +764,7 @@ function InvestmentSection({
     }));
   }
 
-  function setMilestoneAmount(index: number, dollarStr: string) {
-    const amount_cents = dollarStrToCents(dollarStr);
+  function setMilestoneAmountCents(index: number, amount_cents: number) {
     setContent((c) => {
       const total = c.investment.total_cents;
       const percent = total > 0 ? Math.round((amount_cents / total) * 100) : 0;
@@ -800,26 +854,20 @@ function InvestmentSection({
     <>
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Total (USD)">
-          <Input
-            type="number"
-            min={0}
-            step="0.01"
-            inputMode="decimal"
-            value={centsToDollarStr(total)}
-            onChange={(e) => setTotalDollars(e.target.value)}
-          />
+          <CurrencyInput cents={total} onCommit={setTotalCents} />
         </Field>
         <Field label="Net days">
           <Input
-            type="number"
-            min={0}
+            type="text"
+            inputMode="numeric"
             value={String(content.investment.net_days)}
             onChange={(e) =>
               setContent((c) => ({
                 ...c,
                 investment: {
                   ...c.investment,
-                  net_days: Number(e.target.value) || 0,
+                  net_days:
+                    Math.max(0, Math.floor(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)),
                 },
               }))
             }
@@ -873,23 +921,19 @@ function InvestmentSection({
                 onChange={(e) => setMilestoneField(i, 'label', e.target.value)}
               />
               <Input
-                type="number"
-                min={0}
-                max={100}
+                type="text"
+                inputMode="numeric"
                 value={String(m.percent)}
                 placeholder="%"
-                onChange={(e) =>
-                  setMilestonePercent(i, Number(e.target.value) || 0)
-                }
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                  setMilestonePercent(i, Number(cleaned) || 0);
+                }}
               />
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                inputMode="decimal"
-                value={centsToDollarStr(m.amount_cents)}
+              <CurrencyInput
+                cents={m.amount_cents}
                 placeholder="USD"
-                onChange={(e) => setMilestoneAmount(i, e.target.value)}
+                onCommit={(c) => setMilestoneAmountCents(i, c)}
               />
               <Input
                 value={m.due}
