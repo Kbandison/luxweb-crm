@@ -128,6 +128,25 @@ export async function POST(req: Request) {
         entity_id: contactId,
         diff: { source, origin: 'public_api' },
       });
+
+      // Drop a placeholder deal in the 'lead' stage so the contact appears
+      // on the pipeline kanban immediately. Admin updates value/title/stage
+      // as the conversation progresses.
+      const dealTitle = `${company ?? fullName} — new inquiry`;
+      const { data: deal } = await sb
+        .from('deals')
+        .insert({ contact_id: contactId, title: dealTitle })
+        .select('id')
+        .single();
+      if (deal) {
+        await writeAudit({
+          actor_id: null as unknown as string,
+          action: 'create',
+          entity_type: 'deal',
+          entity_id: (deal as { id: string }).id,
+          diff: { contact_id: contactId, source: 'public_api' },
+        });
+      }
     }
 
     // Store the message as a note (admin-only by default).

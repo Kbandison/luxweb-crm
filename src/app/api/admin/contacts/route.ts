@@ -27,7 +27,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data, error } = await supabaseAdmin()
+    const sb = supabaseAdmin();
+    const { data, error } = await sb
       .from('contacts')
       .insert({
         full_name: parsed.data.full_name,
@@ -48,14 +49,37 @@ export async function POST(req: Request) {
       );
     }
 
+    const contactId = data.id as string;
+
     await writeAudit({
       actor_id: session.userId,
       action: 'create',
       entity_type: 'contact',
-      entity_id: data.id as string,
+      entity_id: contactId,
     });
 
-    return Response.json({ id: data.id });
+    // Drop a placeholder deal in 'lead' stage so the contact lands on the
+    // pipeline kanban immediately. Admin updates title/value/stage as the
+    // conversation matures.
+    const fullName = parsed.data.full_name;
+    const company = parsed.data.company ?? null;
+    const dealTitle = `${company ?? fullName} — new inquiry`;
+    const { data: deal } = await sb
+      .from('deals')
+      .insert({ contact_id: contactId, title: dealTitle })
+      .select('id')
+      .single();
+    if (deal) {
+      await writeAudit({
+        actor_id: session.userId,
+        action: 'create',
+        entity_type: 'deal',
+        entity_id: (deal as { id: string }).id,
+        diff: { contact_id: contactId, source: 'manual' },
+      });
+    }
+
+    return Response.json({ id: contactId });
   } catch (err) {
     if (err instanceof Response) return err;
     return Response.json({ error: 'Unexpected error' }, { status: 500 });
