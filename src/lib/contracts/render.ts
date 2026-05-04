@@ -48,11 +48,15 @@ export async function renderAgreement(
   opts: { version?: string } = {},
 ): Promise<{ body_md: string; version: string }> {
   const version = opts.version ?? 'v1.1';
+  // The on-disk filename uses the "v" prefix (e.g., agreement-v1.1.md), so
+  // normalize whatever shape the caller passed (`'v1.1'` or `'1.1'`) into
+  // the prefixed form.
+  const fileSlug = version.startsWith('v') ? version : `v${version}`;
   const file = path.join(
     process.cwd(),
     'src',
     'content',
-    `agreement-${version.replace(/^v/, '')}.md`,
+    `agreement-${fileSlug}.md`,
   );
   const raw = await readFile(file, 'utf8');
 
