@@ -4,9 +4,11 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 
 export function NewLeadDrawer() {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,16 +68,22 @@ export function NewLeadDrawer() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error ?? 'Failed to create lead.');
+        const msg = body.error ?? 'Failed to create lead.';
+        setError(msg);
+        toast.error("Couldn't create lead", msg);
         setBusy(false);
         return;
       }
 
+      const created = fullName;
       reset();
       setOpen(false);
+      toast.success('Lead created', `${created} is on the pipeline.`);
       router.refresh();
     } catch {
-      setError('Network error. Try again.');
+      const msg = 'Network error. Try again.';
+      setError(msg);
+      toast.error("Couldn't create lead", msg);
     } finally {
       setBusy(false);
     }

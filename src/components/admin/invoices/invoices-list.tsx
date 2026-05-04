@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { InvoiceStatusPill } from './invoice-status-pill';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,7 @@ export function InvoicesList({
   initial: InvoiceRow[];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [voiding, setVoiding] = useState<InvoiceRow | null>(null);
   const [voidBusy, setVoidBusy] = useState(false);
@@ -36,9 +38,15 @@ export function InvoicesList({
     if (!voiding) return;
     setVoidBusy(true);
     try {
-      await fetch(`/api/admin/invoices/${voiding.id}/void`, {
+      const res = await fetch(`/api/admin/invoices/${voiding.id}/void`, {
         method: 'POST',
       });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't void invoice", j.error ?? 'Void failed.');
+      } else {
+        toast.success('Invoice voided');
+      }
     } finally {
       setVoidBusy(false);
       setVoiding(null);
@@ -240,6 +248,7 @@ function NewInvoiceDrawer({
   projectId: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -285,11 +294,14 @@ function NewInvoiceDrawer({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to create invoice.');
+        const msg = j.error ?? 'Failed to create invoice.';
+        setError(msg);
+        toast.error("Couldn't send invoice", msg);
         return;
       }
       reset();
       onClose();
+      toast.success('Invoice sent');
       router.refresh();
     } finally {
       setBusy(false);

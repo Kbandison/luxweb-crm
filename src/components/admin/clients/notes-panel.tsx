@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { NoteRow } from '@/lib/queries/admin';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/formatters';
 
@@ -15,6 +16,7 @@ export function NotesPanel({
   notes: NoteRow[];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [body, setBody] = useState('');
   const [isPrivate, setIsPrivate] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -41,10 +43,13 @@ export function NotesPanel({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to add note.');
+        const msg = j.error ?? 'Failed to add note.';
+        setError(msg);
+        toast.error("Couldn't add note", msg);
         return;
       }
       setBody('');
+      toast.success('Note added');
       router.refresh();
     } finally {
       setBusy(false);
@@ -53,12 +58,18 @@ export function NotesPanel({
 
   async function togglePrivate(note: NoteRow) {
     setPendingId(note.id);
-    await fetch(`/api/admin/notes/${note.id}`, {
+    const res = await fetch(`/api/admin/notes/${note.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_private: !note.isPrivate }),
     });
     setPendingId(null);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      toast.error("Couldn't update note", j.error ?? 'Update failed.');
+    } else {
+      toast.success('Note visibility updated');
+    }
     router.refresh();
   }
 
@@ -67,7 +78,15 @@ export function NotesPanel({
     setConfirmBusy(true);
     setPendingId(confirming.id);
     try {
-      await fetch(`/api/admin/notes/${confirming.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/notes/${confirming.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't delete note", j.error ?? 'Delete failed.');
+      } else {
+        toast.success('Note deleted');
+      }
     } finally {
       setConfirmBusy(false);
       setPendingId(null);

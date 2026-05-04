@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 
 export type MilestoneOption = {
   id: string;
@@ -18,6 +19,7 @@ export function NewRevisionForm({
   milestones: MilestoneOption[];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [milestoneId, setMilestoneId] = useState<string>('');
@@ -44,13 +46,16 @@ export function NewRevisionForm({
       );
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Failed to submit');
+        const msg = j.error ?? 'Failed to submit';
+        setError(msg);
+        toast.error("Couldn't file revision", msg);
         return;
       }
       setTitle('');
       setBody('');
       setMilestoneId('');
       setOpen(false);
+      toast.success('Revision filed');
       router.refresh();
     } finally {
       setBusy(false);

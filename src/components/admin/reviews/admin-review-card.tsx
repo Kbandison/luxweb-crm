@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 import { StarInput, StarDisplay } from '@/components/reviews/star-input';
 import { formatDateLong } from '@/lib/formatters';
 
@@ -86,6 +87,7 @@ function AdminPrivateBlock({
   review: AdminReviewCardProps['review'];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [rating, setRating] = useState(review?.adminRating ?? 0);
   const [notes, setNotes] = useState(review?.adminNotes ?? '');
@@ -114,10 +116,13 @@ function AdminPrivateBlock({
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Failed to save');
+        const msg = j.error ?? 'Failed to save';
+        setError(msg);
+        toast.error("Couldn't save review", msg);
         return;
       }
       setEditing(false);
+      toast.success('Review saved');
       router.refresh();
     } finally {
       setBusy(false);

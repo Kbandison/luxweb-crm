@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 import { formatDateTime } from '@/lib/formatters';
 import {
   REVISION_STATUSES,
@@ -38,6 +39,7 @@ export function RevisionThread({
   viewerRole,
 }: RevisionThreadProps) {
   const router = useRouter();
+  const toast = useToast();
   const [reply, setReply] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,10 +62,13 @@ export function RevisionThread({
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Failed to post');
+        const msg = j.error ?? 'Failed to post';
+        setError(msg);
+        toast.error("Couldn't post reply", msg);
         return;
       }
       setReply('');
+      toast.success('Reply posted');
       router.refresh();
     } finally {
       setBusy(false);
@@ -81,9 +86,12 @@ export function RevisionThread({
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Failed to update');
+        const msg = j.error ?? 'Failed to update';
+        setError(msg);
+        toast.error("Couldn't update status", msg);
         return;
       }
+      toast.success('Status updated');
       router.refresh();
     } finally {
       setStatusBusy(false);

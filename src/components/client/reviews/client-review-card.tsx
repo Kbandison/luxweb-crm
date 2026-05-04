@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 import { StarInput, StarDisplay } from '@/components/reviews/star-input';
 import { formatDateLong } from '@/lib/formatters';
 
@@ -21,6 +22,7 @@ export function ClientReviewCard({
   review,
 }: ClientReviewCardProps) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState('');
@@ -102,9 +104,12 @@ export function ClientReviewCard({
       );
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Failed to submit');
+        const msg = j.error ?? 'Failed to submit';
+        setError(msg);
+        toast.error("Couldn't submit review", msg);
         return;
       }
+      toast.success('Review submitted');
       router.refresh();
     } finally {
       setBusy(false);

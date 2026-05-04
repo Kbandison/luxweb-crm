@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import {
   MILESTONE_STATUSES,
@@ -23,6 +24,7 @@ export function MilestonesList({
   initial: Milestone[];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,11 +64,14 @@ export function MilestonesList({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to add milestone.');
+        const msg = j.error ?? 'Failed to add milestone.';
+        setError(msg);
+        toast.error("Couldn't add milestone", msg);
         return;
       }
       reset();
       setAdding(false);
+      toast.success('Milestone added');
       router.refresh();
     } finally {
       setBusy(false);
@@ -75,12 +80,18 @@ export function MilestonesList({
 
   async function patch(id: string, body: Record<string, unknown>) {
     setPendingId(id);
-    await fetch(`/api/admin/milestones/${id}`, {
+    const res = await fetch(`/api/admin/milestones/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
     setPendingId(null);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      toast.error("Couldn't update milestone", j.error ?? 'Update failed.');
+    } else {
+      toast.success('Milestone updated');
+    }
     router.refresh();
   }
 
@@ -89,7 +100,15 @@ export function MilestonesList({
     setConfirmBusy(true);
     setPendingId(confirming.id);
     try {
-      await fetch(`/api/admin/milestones/${confirming.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/milestones/${confirming.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't delete milestone", j.error ?? 'Delete failed.');
+      } else {
+        toast.success('Milestone deleted');
+      }
     } finally {
       setConfirmBusy(false);
       setPendingId(null);

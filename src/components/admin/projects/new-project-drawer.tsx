@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 import type { ContactRow } from '@/lib/queries/admin';
 import {
   PROJECT_STATUSES,
@@ -16,6 +17,7 @@ void (null as unknown as MilestoneStatus);
 
 export function NewProjectDrawer({ contacts }: { contacts: ContactRow[] }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,15 +73,19 @@ export function NewProjectDrawer({ contacts }: { contacts: ContactRow[] }) {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error ?? 'Failed to create project.');
+        const msg = body.error ?? 'Failed to create project.';
+        setError(msg);
+        toast.error("Couldn't create project", msg);
         setBusy(false);
         return;
       }
       reset();
       setOpen(false);
+      toast.success('Project created');
       router.refresh();
     } catch {
       setError('Network error. Try again.');
+      toast.error("Couldn't create project", 'Network error. Try again.');
     } finally {
       setBusy(false);
     }

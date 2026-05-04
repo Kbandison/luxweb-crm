@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 import { formatUSD } from '@/lib/formatters';
 
 /**
@@ -18,6 +19,7 @@ export function HourlyRateForm({
   initialRateCents: number | null;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [rateDollars, setRateDollars] = useState(
     initialRateCents != null ? String(Math.round(initialRateCents / 100)) : '',
@@ -42,10 +44,13 @@ export function HourlyRateForm({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to save.');
+        const msg = j.error ?? 'Failed to save.';
+        setError(msg);
+        toast.error("Couldn't save rate", msg);
         return;
       }
       setEditing(false);
+      toast.success(cents == null ? 'Hourly rate cleared' : 'Hourly rate saved');
       router.refresh();
     } finally {
       setBusy(false);

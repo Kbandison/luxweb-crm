@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/formatters';
 
@@ -36,6 +37,7 @@ export function MessagesThread({
   viewerRole,
   initialMessages,
 }: Props) {
+  const toast = useToast();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
@@ -120,13 +122,16 @@ export function MessagesThread({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to send.');
+        const msg = j.error ?? 'Failed to send.';
+        setError(msg);
+        toast.error("Couldn't send message", msg);
         setMessages((m) => m.filter((x) => x.id !== tempId));
         return;
       }
       await refresh();
     } catch {
       setError('Network error. Try again.');
+      toast.error("Couldn't send message", 'Network error. Try again.');
       setMessages((m) => m.filter((x) => x.id !== tempId));
     } finally {
       setBusy(false);

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 
 /**
  * Admin counter-signs the agreement. One-click on the orphan banner →
@@ -18,6 +19,7 @@ export function SignAgreementButton({
   defaultSignerName?: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,10 +57,16 @@ export function SignAgreementButton({
       );
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Failed to sign.');
+        const msg = j.error ?? 'Failed to sign.';
+        setError(msg);
+        toast.error("Couldn't sign agreement", msg);
         return;
       }
       setOpen(false);
+      toast.success(
+        'Agreement counter-signed',
+        'Client has been emailed to add their signature.',
+      );
       startTransition(() => router.refresh());
     } finally {
       setBusy(false);

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/supabase/session';
 import { getClientProfile } from '@/lib/queries/client';
 import { ClientTopbar } from '@/components/client/topbar';
+import { ToastProvider } from '@/components/ui/toast';
 
 export default async function ClientLayout({
   children,
@@ -15,12 +16,14 @@ export default async function ClientLayout({
   const profile = await getClientProfile(session.userId);
 
   return (
-    <div className="min-h-dvh bg-bg">
-      <ClientTopbar
-        userEmail={profile?.email ?? session.email}
-        userName={profile?.fullName ?? null}
-      />
-      {children}
-    </div>
+    <ToastProvider>
+      <div className="min-h-dvh bg-bg">
+        <ClientTopbar
+          userEmail={profile?.email ?? session.email}
+          userName={profile?.fullName ?? null}
+        />
+        {children}
+      </div>
+    </ToastProvider>
   );
 }

@@ -6,6 +6,7 @@ import type { ProposalRow } from '@/lib/queries/admin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 import { ProposalStatusPill } from '@/components/admin/proposals/proposal-status-pill';
 import { formatDate, formatUSD } from '@/lib/formatters';
 
@@ -17,6 +18,7 @@ export function LeadProposalsSection({
   proposals: ProposalRow[];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
@@ -35,12 +37,16 @@ export function LeadProposalsSection({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to create proposal.');
+        const msg = j.error ?? 'Failed to create proposal.';
+        setError(msg);
+        toast.error("Couldn't create proposal", msg);
         return;
       }
       const { id } = (await res.json()) as { id: string };
+      const created = title.trim();
       setTitle('');
       setAdding(false);
+      toast.success('Proposal created', `Opening ${created} editor`);
       router.push(`/admin/proposals/${id}`);
     } finally {
       setBusy(false);

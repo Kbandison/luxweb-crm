@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { formatDate, formatHours, formatRelative } from '@/lib/formatters';
 
 export function TimeLogsList({
@@ -16,6 +17,7 @@ export function TimeLogsList({
   initial: TimeLog[];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [hours, setHours] = useState('');
   const [logDate, setLogDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
@@ -61,11 +63,14 @@ export function TimeLogsList({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to add time log.');
+        const msg = j.error ?? 'Failed to add time log.';
+        setError(msg);
+        toast.error("Couldn't log time", msg);
         return;
       }
       setHours('');
       setNote('');
+      toast.success('Time logged');
       router.refresh();
     } finally {
       setBusy(false);
@@ -77,7 +82,15 @@ export function TimeLogsList({
     setConfirmBusy(true);
     setPendingId(confirming.id);
     try {
-      await fetch(`/api/admin/time-logs/${confirming.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/time-logs/${confirming.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't delete time log", j.error ?? 'Delete failed.');
+      } else {
+        toast.success('Time log deleted');
+      }
     } finally {
       setConfirmBusy(false);
       setPendingId(null);

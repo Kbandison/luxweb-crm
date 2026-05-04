@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 import {
   CREDENTIAL_KINDS,
   CREDENTIAL_KIND_LABEL,
@@ -46,6 +47,7 @@ export function ClientCredentialsList({
   items: ClientCredentialItem[];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [adding, setAdding] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -99,9 +101,12 @@ export function ClientCredentialsList({
               const j = (await res.json().catch(() => ({}))) as {
                 error?: string;
               };
-              throw new Error(j.error ?? 'Failed to save');
+              const msg = j.error ?? 'Failed to save';
+              toast.error("Couldn't save credential", msg);
+              throw new Error(msg);
             }
             setAdding(false);
+            toast.success('Credential saved');
             startTransition(() => router.refresh());
           }}
         />

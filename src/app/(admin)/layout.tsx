@@ -3,6 +3,7 @@ import { getSession } from '@/lib/supabase/session';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { Sidebar } from '@/components/admin/sidebar';
 import { MobileNav } from '@/components/admin/mobile-nav';
+import { ToastProvider } from '@/components/ui/toast';
 
 // Defense in depth — proxy.ts already gates, but the layout re-checks
 // so a proxy misconfiguration can't expose admin surfaces.
@@ -29,12 +30,14 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-dvh">
-      <Sidebar userEmail={session.email} userName={fullName} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <MobileNav userEmail={session.email} userName={fullName} />
-        {children}
+    <ToastProvider>
+      <div className="flex min-h-dvh">
+        <Sidebar userEmail={session.email} userName={fullName} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <MobileNav userEmail={session.email} userName={fullName} />
+          {children}
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }

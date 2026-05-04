@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 
 type TabKey = 'profile' | 'notifications' | 'integrations';
@@ -85,6 +86,7 @@ export function AdminSettingsTabs({
   integrations: IntegrationStatus;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [tab, setTab] = useState<TabKey>(initialTab);
   const [fullName, setFullName] = useState(initialFullName);
   const [prefs, setPrefs] = useState<Prefs>({ ...DEFAULTS, ...initialPrefs });
@@ -95,6 +97,7 @@ export function AdminSettingsTabs({
   async function save(body: Record<string, unknown>) {
     setBusy(true);
     setError(null);
+    const isPrefs = 'email_prefs' in body;
     try {
       const res = await fetch('/api/admin/profile', {
         method: 'PATCH',
@@ -103,10 +106,16 @@ export function AdminSettingsTabs({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to save.');
+        const msg = j.error ?? 'Failed to save.';
+        setError(msg);
+        toast.error(
+          isPrefs ? "Couldn't save preferences" : "Couldn't save profile",
+          msg,
+        );
         return;
       }
       setSavedAt(new Date());
+      toast.success(isPrefs ? 'Settings saved' : 'Profile saved');
       router.refresh();
     } finally {
       setBusy(false);

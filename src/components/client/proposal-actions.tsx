@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SuccessModal } from '@/components/ui/success-modal';
+import { useToast } from '@/components/ui/toast';
 import { formatDateLong } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -55,11 +57,13 @@ export function ClientProposalActions({
 
 function AcceptBar({ proposalId }: { proposalId: string }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -90,15 +94,13 @@ function AcceptBar({ proposalId }: { proposalId: string }) {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to accept.');
+        const msg = j.error ?? 'Failed to accept.';
+        setError(msg);
+        toast.error("Couldn't accept proposal", msg);
         return;
       }
       setOpen(false);
-      // The contract is generated after the LuxWeb team counter-signs,
-      // not on accept. Just refresh so the client sees the accepted state
-      // — they'll get a separate notification when the agreement is ready
-      // for their signature.
-      router.refresh();
+      setConfirmOpen(true);
     } finally {
       setBusy(false);
     }
@@ -210,6 +212,27 @@ function AcceptBar({ proposalId }: { proposalId: string }) {
           </div>
         </div>
       ) : null}
+
+      <SuccessModal
+        open={confirmOpen}
+        title="Proposal accepted"
+        description={
+          <>
+            You&apos;re locked in on the scope and investment. The team will
+            counter-sign the agreement and send it back for your signature
+            shortly — keep an eye on your email.
+          </>
+        }
+        primaryLabel="Got it"
+        onPrimary={() => {
+          setConfirmOpen(false);
+          router.refresh();
+        }}
+        onClose={() => {
+          setConfirmOpen(false);
+          router.refresh();
+        }}
+      />
     </>
   );
 }

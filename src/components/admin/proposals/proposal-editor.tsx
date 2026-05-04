@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { ProposalStatusPill } from './proposal-status-pill';
 import { ProposalPreview } from './proposal-preview';
 import { formatDate } from '@/lib/formatters';
@@ -41,6 +42,7 @@ export function ProposalEditor({
   initialAcceptedByUserAgent?: string | null;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const isAccepted = initialStatus === 'accepted';
   // Once accepted, the editor is read-only — force preview mode.
   const [mode, setMode] = useState<Mode>(isAccepted ? 'preview' : 'edit');
@@ -57,7 +59,7 @@ export function ProposalEditor({
 
   const totalCents = content.investment.total_cents;
 
-  async function save() {
+  async function save(opts: { silent?: boolean } = {}): Promise<boolean> {
     setSaving(true);
     setError(null);
     try {
@@ -72,10 +74,14 @@ export function ProposalEditor({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to save.');
-        return;
+        const msg = j.error ?? 'Failed to save.';
+        setError(msg);
+        toast.error("Couldn't save proposal", msg);
+        return false;
       }
       setSavedAt(new Date());
+      if (!opts.silent) toast.success('Proposal saved');
+      return true;
     } finally {
       setSaving(false);
     }
@@ -85,15 +91,19 @@ export function ProposalEditor({
     setSendBusy(true);
     try {
       // Save before sending so the shipped draft matches what's in the form.
-      await save();
+      const ok = await save({ silent: true });
+      if (!ok) return;
       const res = await fetch(`/api/admin/proposals/${proposalId}/send`, {
         method: 'POST',
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to send.');
+        const msg = j.error ?? 'Failed to send.';
+        setError(msg);
+        toast.error("Couldn't send proposal", msg);
         return;
       }
+      toast.success('Proposal sent', 'Client has been notified.');
     } finally {
       setSendBusy(false);
       setSendOpen(false);
@@ -104,7 +114,14 @@ export function ProposalEditor({
   async function destroy() {
     setDeleteBusy(true);
     try {
-      await fetch(`/api/admin/proposals/${proposalId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/proposals/${proposalId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        toast.error("Couldn't delete proposal");
+        return;
+      }
+      toast.success('Proposal deleted');
     } finally {
       setDeleteBusy(false);
       setDeleteOpen(false);
@@ -217,7 +234,7 @@ export function ProposalEditor({
               type="button"
               variant="secondary"
               size="sm"
-              onClick={save}
+              onClick={() => void save()}
               disabled={saving}
             >
               {saving ? 'Saving…' : 'Save draft'}

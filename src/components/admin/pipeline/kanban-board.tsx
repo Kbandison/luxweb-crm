@@ -12,11 +12,13 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import type { DealCard as DealCardType, PipelineStage } from '@/lib/queries/admin';
+import { useToast } from '@/components/ui/toast';
 import { StageColumn } from './stage-column';
 import { DealCard } from './deal-card';
 import { STAGES } from './stage-meta';
 
 export function KanbanBoard({ initialDeals }: { initialDeals: DealCardType[] }) {
+  const toast = useToast();
   const [deals, setDeals] = useState<DealCardType[]>(initialDeals);
   const [activeId, setActiveId] = useState<string | null>(null);
   const inFlightRef = useRef(0);
@@ -79,6 +81,7 @@ export function KanbanBoard({ initialDeals }: { initialDeals: DealCardType[] }) 
           ),
         );
       }
+      toast.success('Deal stage updated');
     } catch {
       // Rollback
       setDeals((curr) =>
@@ -88,6 +91,7 @@ export function KanbanBoard({ initialDeals }: { initialDeals: DealCardType[] }) 
             : d,
         ),
       );
+      toast.error("Couldn't update deal stage");
     } finally {
       inFlightRef.current = Math.max(0, inFlightRef.current - 1);
     }

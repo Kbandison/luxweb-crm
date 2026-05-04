@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 
 export type RunningTimerSnapshot = {
   id: string;
@@ -23,6 +24,7 @@ export function TimerStrip({
   running: RunningTimerSnapshot | null;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState(running?.note ?? '');
@@ -50,9 +52,12 @@ export function TimerStrip({
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Failed to start timer');
+        const msg = j.error ?? 'Failed to start timer';
+        setError(msg);
+        toast.error("Couldn't start timer", msg);
         return;
       }
+      toast.success('Timer started');
       router.refresh();
     } finally {
       setBusy(false);
@@ -70,10 +75,13 @@ export function TimerStrip({
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Failed to stop timer');
+        const msg = j.error ?? 'Failed to stop timer';
+        setError(msg);
+        toast.error("Couldn't stop timer", msg);
         return;
       }
       setNote('');
+      toast.success('Timer stopped');
       router.refresh();
     } finally {
       setBusy(false);
@@ -87,11 +95,14 @@ export function TimerStrip({
       const res = await fetch('/api/admin/timer/discard', { method: 'POST' });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Failed to discard timer');
+        const msg = j.error ?? 'Failed to discard timer';
+        setError(msg);
+        toast.error("Couldn't discard timer", msg);
         return;
       }
       setNote('');
       setConfirmingDiscard(false);
+      toast.success('Time discarded');
       router.refresh();
     } finally {
       setBusy(false);

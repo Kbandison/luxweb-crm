@@ -4,11 +4,13 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 import type { ContactRow } from '@/lib/queries/admin';
 import { STAGES, STAGE_LABEL } from './stage-meta';
 
 export function NewDealDrawer({ contacts }: { contacts: ContactRow[] }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,15 +61,19 @@ export function NewDealDrawer({ contacts }: { contacts: ContactRow[] }) {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error ?? 'Failed to create deal.');
+        const msg = body.error ?? 'Failed to create deal.';
+        setError(msg);
+        toast.error("Couldn't create deal", msg);
         setBusy(false);
         return;
       }
       reset();
       setOpen(false);
+      toast.success('Deal created');
       router.refresh();
     } catch {
       setError('Network error. Try again.');
+      toast.error("Couldn't create deal", 'Network error. Try again.');
     } finally {
       setBusy(false);
     }

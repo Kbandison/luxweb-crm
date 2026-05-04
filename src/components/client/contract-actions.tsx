@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SuccessModal } from '@/components/ui/success-modal';
+import { useToast } from '@/components/ui/toast';
 import { formatDateTimeLongTz } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import type { ContractStatus } from '@/lib/types/contract';
@@ -67,11 +69,15 @@ export function ClientContractActions({
 
 function SignBar({ contractId }: { contractId: string }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [signedProjectId, setSignedProjectId] = useState<string | null>(null);
+  const [signedInvoiceId, setSignedInvoiceId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -102,11 +108,19 @@ function SignBar({ contractId }: { contractId: string }) {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to sign.');
+        const msg = j.error ?? 'Failed to sign.';
+        setError(msg);
+        toast.error("Couldn't sign agreement", msg);
         return;
       }
+      const j = (await res.json().catch(() => ({}))) as {
+        project_id?: string;
+        deposit_invoice_id?: string | null;
+      };
+      setSignedProjectId(j.project_id ?? null);
+      setSignedInvoiceId(j.deposit_invoice_id ?? null);
       setOpen(false);
-      router.refresh();
+      setConfirmOpen(true);
     } finally {
       setBusy(false);
     }
@@ -218,6 +232,45 @@ function SignBar({ contractId }: { contractId: string }) {
           </div>
         </div>
       ) : null}
+
+      <SuccessModal
+        open={confirmOpen}
+        title="Agreement signed"
+        description={
+          signedInvoiceId ? (
+            <>
+              Both signatures captured. We&apos;ve emailed your deposit
+              invoice — pay it when you&apos;re ready and we&apos;ll kick off
+              the project.
+            </>
+          ) : (
+            <>
+              Both signatures captured. We&apos;ll be in touch with the deposit
+              invoice and project kickoff details shortly.
+            </>
+          )
+        }
+        primaryLabel={signedInvoiceId ? 'Pay deposit' : 'Got it'}
+        onPrimary={() => {
+          setConfirmOpen(false);
+          if (signedInvoiceId && signedProjectId) {
+            router.push(
+              `/portal/project/${signedProjectId}/invoices/${signedInvoiceId}/pay`,
+            );
+          } else {
+            router.refresh();
+          }
+        }}
+        secondaryLabel={signedInvoiceId ? 'Later' : undefined}
+        onSecondary={() => {
+          setConfirmOpen(false);
+          router.refresh();
+        }}
+        onClose={() => {
+          setConfirmOpen(false);
+          router.refresh();
+        }}
+      />
     </>
   );
 }

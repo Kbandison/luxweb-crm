@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 
 /**
  * Delete a contact (lead or client). Cascades to all linked deals,
@@ -23,6 +24,7 @@ export function DeleteContactButton({
   redirectTo: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,9 +38,15 @@ export function DeleteContactButton({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to delete.');
+        const msg = j.error ?? 'Failed to delete.';
+        setError(msg);
+        toast.error(
+          kind === 'lead' ? "Couldn't delete lead" : "Couldn't delete client",
+          msg,
+        );
         return;
       }
+      toast.success(kind === 'lead' ? 'Lead deleted' : 'Client deleted');
       router.replace(redirectTo);
       router.refresh();
     } finally {

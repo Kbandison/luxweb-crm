@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 
 type Prefs = Record<string, boolean>;
 
@@ -57,6 +58,7 @@ export function ClientProfileForm({
   initialPrefs: Prefs;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [fullName, setFullName] = useState(initialFullName);
   const [prefs, setPrefs] = useState<Prefs>({ ...DEFAULTS, ...initialPrefs });
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -78,10 +80,13 @@ export function ClientProfileForm({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to save.');
+        const msg = j.error ?? 'Failed to save.';
+        setError(msg);
+        toast.error("Couldn't save profile", msg);
         return;
       }
       setSavedAt(new Date());
+      toast.success('Profile saved');
       router.refresh();
     } finally {
       setBusy(false);

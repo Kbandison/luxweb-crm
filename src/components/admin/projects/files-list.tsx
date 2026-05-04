@@ -5,6 +5,7 @@ import type { ProjectFile } from '@/lib/queries/admin';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { FilePreview } from './file-preview';
 import { formatDateTime } from '@/lib/formatters';
 
@@ -26,6 +27,7 @@ export function FilesList({
   initial: ProjectFile[];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState<UploadingItem[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -91,12 +93,15 @@ export function FilesList({
       }
 
       setUploading((u) => u.filter((x) => x.id !== tmpId));
+      toast.success('File uploaded', file.name);
       router.refresh();
     } catch (e) {
       setUploading((u) =>
         u.map((x) => (x.id === tmpId ? { ...x, progress: 'failed' } : x)),
       );
-      setError(e instanceof Error ? e.message : 'Upload failed.');
+      const msg = e instanceof Error ? e.message : 'Upload failed.';
+      setError(msg);
+      toast.error("Couldn't upload file", msg);
     }
   }
 
@@ -108,12 +113,18 @@ export function FilesList({
 
   async function toggleVisible(f: ProjectFile) {
     setPendingId(f.id);
-    await fetch(`/api/admin/files/${f.id}`, {
+    const res = await fetch(`/api/admin/files/${f.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_client_visible: !f.isClientVisible }),
     });
     setPendingId(null);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      toast.error("Couldn't update visibility", j.error ?? 'Update failed.');
+    } else {
+      toast.success('File visibility updated');
+    }
     router.refresh();
   }
 
@@ -122,7 +133,15 @@ export function FilesList({
     setConfirmBusy(true);
     setPendingId(confirmingFile.id);
     try {
-      await fetch(`/api/admin/files/${confirmingFile.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/files/${confirmingFile.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't delete file", j.error ?? 'Delete failed.');
+      } else {
+        toast.success('File deleted');
+      }
     } finally {
       setConfirmBusy(false);
       setPendingId(null);

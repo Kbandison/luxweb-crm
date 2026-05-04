@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import {
   CREDENTIAL_KINDS,
   CREDENTIAL_KIND_LABEL,
@@ -51,6 +52,7 @@ export function CredentialsManager({
   initial: CredentialItem[];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [items] = useState<CredentialItem[]>(initial);
   const [editing, setEditing] = useState<CredentialItem | null>(null);
   const [adding, setAdding] = useState(false);
@@ -129,9 +131,12 @@ export function CredentialsManager({
               const j = (await res.json().catch(() => ({}))) as {
                 error?: string;
               };
-              throw new Error(j.error ?? 'Failed to save');
+              const msg = j.error ?? 'Failed to save';
+              toast.error("Couldn't save credential", msg);
+              throw new Error(msg);
             }
             setAdding(false);
+            toast.success('Credential saved');
             refresh();
           }}
         />
@@ -166,9 +171,12 @@ export function CredentialsManager({
               const j = (await res.json().catch(() => ({}))) as {
                 error?: string;
               };
-              throw new Error(j.error ?? 'Failed to save');
+              const msg = j.error ?? 'Failed to save';
+              toast.error("Couldn't update credential", msg);
+              throw new Error(msg);
             }
             setEditing(null);
+            toast.success('Credential updated');
             refresh();
           }}
         />
@@ -199,8 +207,18 @@ export function CredentialsManager({
               `/api/admin/credentials/${confirmingDelete.id}`,
               { method: 'DELETE' },
             );
-            if (!res.ok) return;
+            if (!res.ok) {
+              const j = (await res.json().catch(() => ({}))) as {
+                error?: string;
+              };
+              toast.error(
+                "Couldn't delete credential",
+                j.error ?? 'Delete failed.',
+              );
+              return;
+            }
             setConfirmingDelete(null);
+            toast.success('Credential deleted');
             refresh();
           } finally {
             setBusyId(null);

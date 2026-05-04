@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 import {
   CARE_PLAN_STATUS_LABEL,
@@ -34,6 +35,7 @@ export function AdminCarePlanSection({
   plan,
 }: AdminCarePlanSectionProps) {
   const router = useRouter();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<'cancel' | 'resume' | null>(
@@ -57,10 +59,13 @@ export function AdminCarePlanSection({
       );
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Failed to enroll');
+        const msg = j.error ?? 'Failed to enroll';
+        setError(msg);
+        toast.error("Couldn't enroll care plan", msg);
         return;
       }
       setEnrolling(false);
+      toast.success('Care plan enrolled');
       router.refresh();
     } finally {
       setBusy(false);
@@ -79,10 +84,20 @@ export function AdminCarePlanSection({
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Action failed');
+        const msg = j.error ?? 'Action failed';
+        setError(msg);
+        toast.error(
+          actionName === 'cancel'
+            ? "Couldn't cancel care plan"
+            : "Couldn't resume care plan",
+          msg,
+        );
         return;
       }
       setConfirming(null);
+      toast.success(
+        actionName === 'cancel' ? 'Care plan canceled' : 'Care plan resumed',
+      );
       router.refresh();
     } finally {
       setBusy(false);

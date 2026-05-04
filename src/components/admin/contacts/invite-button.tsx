@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 
 /**
  * Invite this contact to the client portal. Rendered on both lead and
@@ -19,6 +20,7 @@ export function InviteToPortalButton({
   contactName: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,11 +35,14 @@ export function InviteToPortalButton({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to send invite.');
+        const msg = j.error ?? 'Failed to send invite.';
+        setError(msg);
+        toast.error("Couldn't send invite", msg);
         return;
       }
       setSent(true);
       setOpen(false);
+      toast.success('Lead invited');
       router.refresh();
     } finally {
       setBusy(false);

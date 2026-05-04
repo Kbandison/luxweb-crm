@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { ProposalStatusPill } from './proposal-status-pill';
 import { formatDate, formatUSD } from '@/lib/formatters';
 
@@ -18,6 +19,7 @@ export function ProposalsList({
   initial: ProposalRow[];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
@@ -38,12 +40,15 @@ export function ProposalsList({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Failed to create proposal.');
+        const msg = j.error ?? 'Failed to create proposal.';
+        setError(msg);
+        toast.error("Couldn't create proposal", msg);
         return;
       }
       const { id } = (await res.json()) as { id: string };
       setTitle('');
       setAdding(false);
+      toast.success('Proposal created');
       router.push(`/admin/projects/${projectId}/proposals/${id}`);
     } finally {
       setBusy(false);
@@ -54,7 +59,15 @@ export function ProposalsList({
     if (!confirming) return;
     setConfirmBusy(true);
     try {
-      await fetch(`/api/admin/proposals/${confirming.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/proposals/${confirming.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't delete proposal", j.error ?? 'Delete failed.');
+      } else {
+        toast.success('Proposal deleted');
+      }
     } finally {
       setConfirmBusy(false);
       setConfirming(null);

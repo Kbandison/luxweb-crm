@@ -17,6 +17,7 @@ import {
 } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 import {
   CARE_PLAN_STATUS_LABEL,
@@ -55,6 +56,7 @@ export type CarePlanCardProps = {
 
 export function CarePlanCard({ plan, publishableKey }: CarePlanCardProps) {
   const router = useRouter();
+  const toast = useToast();
   const [activating, setActivating] = useState(false);
   const [updatingPm, setUpdatingPm] = useState(false);
   const [confirming, setConfirming] = useState<'cancel' | 'resume' | null>(
@@ -79,10 +81,20 @@ export function CarePlanCard({ plan, publishableKey }: CarePlanCardProps) {
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(j.error ?? 'Action failed');
+        const msg = j.error ?? 'Action failed';
+        setError(msg);
+        toast.error(
+          action === 'cancel'
+            ? "Couldn't cancel care plan"
+            : "Couldn't resume care plan",
+          msg,
+        );
         return;
       }
       setConfirming(null);
+      toast.success(
+        action === 'cancel' ? 'Care plan canceled' : 'Care plan resumed',
+      );
       router.refresh();
     } finally {
       setBusy(false);
@@ -270,6 +282,7 @@ function ActivationForm({
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
+  const toast = useToast();
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -279,7 +292,9 @@ function ActivationForm({
     if (!stripe || !elements) return;
     const cardNumber = elements.getElement(CardNumberElement);
     if (!cardNumber) {
-      setError('Card field not ready. Refresh and try again.');
+      const msg = 'Card field not ready. Refresh and try again.';
+      setError(msg);
+      toast.error("Couldn't activate care plan", msg);
       return;
     }
 
@@ -295,7 +310,9 @@ function ActivationForm({
       });
 
     if (stripeError) {
-      setError(stripeError.message ?? 'Payment failed');
+      const msg = stripeError.message ?? 'Payment failed';
+      setError(msg);
+      toast.error("Couldn't activate care plan", msg);
       setSubmitting(false);
       return;
     }
@@ -305,6 +322,7 @@ function ActivationForm({
       await fetch(`/api/client/care-plan/${planRowId}/refresh`, {
         method: 'POST',
       });
+      toast.success('Care plan activated');
       router.refresh();
       return;
     }
@@ -406,6 +424,7 @@ function UpdatePaymentMethodForm({
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
+  const toast = useToast();
   const [setupClientSecret, setSetupClientSecret] = useState<string | null>(
     null,
   );
@@ -460,7 +479,9 @@ function UpdatePaymentMethodForm({
       });
 
     if (stripeError) {
-      setError(stripeError.message ?? 'Card setup failed');
+      const msg = stripeError.message ?? 'Card setup failed';
+      setError(msg);
+      toast.error("Couldn't update payment method", msg);
       setSubmitting(false);
       return;
     }
@@ -470,7 +491,9 @@ function UpdatePaymentMethodForm({
         ? setupIntent.payment_method
         : (setupIntent?.payment_method?.id ?? null);
     if (!pmId) {
-      setError('Stripe did not return a payment method.');
+      const msg = 'Stripe did not return a payment method.';
+      setError(msg);
+      toast.error("Couldn't update payment method", msg);
       setSubmitting(false);
       return;
     }
@@ -485,11 +508,14 @@ function UpdatePaymentMethodForm({
     );
     const j = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) {
-      setError(j.error ?? 'Failed to update');
+      const msg = j.error ?? 'Failed to update';
+      setError(msg);
+      toast.error("Couldn't update payment method", msg);
       setSubmitting(false);
       return;
     }
 
+    toast.success('Payment method updated');
     router.refresh();
     onClose();
   }
