@@ -125,16 +125,6 @@ export function ProposalEditor({
   ) {
     setContent((c) => ({ ...c, scope: { ...c.scope, [key]: value } }));
   }
-  function patchInvestment<K extends keyof ProposalContent['investment']>(
-    key: K,
-    value: ProposalContent['investment'][K],
-  ) {
-    setContent((c) => ({
-      ...c,
-      investment: { ...c.investment, [key]: value },
-    }));
-  }
-
   return (
     <div className="space-y-8">
       {/* Sticky action bar — hidden in print */}
@@ -281,7 +271,6 @@ export function ProposalEditor({
           setContent={setContent}
           patch={patch}
           patchScope={patchScope}
-          patchInvestment={patchInvestment}
         />
       )}
 
@@ -337,7 +326,6 @@ function EditorForm({
   setContent,
   patch,
   patchScope,
-  patchInvestment,
 }: {
   title: string;
   setTitle: (v: string) => void;
@@ -350,10 +338,6 @@ function EditorForm({
   patchScope: <K extends keyof ProposalContent['scope']>(
     key: K,
     value: ProposalContent['scope'][K],
-  ) => void;
-  patchInvestment: <K extends keyof ProposalContent['investment']>(
-    key: K,
-    value: ProposalContent['investment'][K],
   ) => void;
 }) {
   return (
@@ -604,92 +588,7 @@ function EditorForm({
 
       {/* 07 — Investment */}
       <FormSection number="07" title="Investment">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Total (USD cents)">
-            <Input
-              type="number"
-              min={0}
-              value={String(content.investment.total_cents)}
-              onChange={(e) =>
-                patchInvestment('total_cents', Number(e.target.value) || 0)
-              }
-            />
-          </Field>
-          <Field label="Net days">
-            <Input
-              type="number"
-              min={0}
-              value={String(content.investment.net_days)}
-              onChange={(e) =>
-                patchInvestment('net_days', Number(e.target.value) || 0)
-              }
-            />
-          </Field>
-          <Field label="Late fee">
-            <Input
-              value={content.investment.late_fee}
-              onChange={(e) => patchInvestment('late_fee', e.target.value)}
-            />
-          </Field>
-        </div>
-
-        <div className="mt-6">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-ink-muted">
-            Payment milestones
-          </p>
-          <p className="mt-1 font-sans text-xs text-ink-subtle">
-            Amounts are in cents. Percents are informational.
-          </p>
-          <div className="mt-3">
-            <RepeatingList
-              items={content.investment.milestones}
-              onChange={(next) => patchInvestment('milestones', next)}
-              newItem={() => ({
-                label: '',
-                percent: 0,
-                amount_cents: 0,
-                due: '',
-              })}
-              addLabel="Add milestone"
-              renderItem={(item, update) => (
-                <div className="grid gap-3 sm:grid-cols-[1fr_100px_140px_1fr]">
-                  <Input
-                    value={item.label}
-                    placeholder="Label"
-                    onChange={(e) => update({ ...item, label: e.target.value })}
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={String(item.percent)}
-                    placeholder="%"
-                    onChange={(e) =>
-                      update({ ...item, percent: Number(e.target.value) || 0 })
-                    }
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    value={String(item.amount_cents)}
-                    placeholder="Amount (cents)"
-                    onChange={(e) =>
-                      update({
-                        ...item,
-                        amount_cents: Number(e.target.value) || 0,
-                      })
-                    }
-                  />
-                  <Input
-                    value={item.due}
-                    placeholder="Due (e.g., On signing)"
-                    onChange={(e) => update({ ...item, due: e.target.value })}
-                  />
-                </div>
-              )}
-            />
-          </div>
-        </div>
+        <InvestmentSection content={content} setContent={setContent} />
       </FormSection>
 
       {/* 08 — Assumptions */}
@@ -752,6 +651,288 @@ function EditorForm({
 }
 
 /* ----------------------------- tiny helpers ----------------------------- */
+
+function InvestmentSection({
+  content,
+  setContent,
+}: {
+  content: ProposalContent;
+  setContent: (updater: (c: ProposalContent) => ProposalContent) => void;
+}) {
+  // Pull cents → dollar string (no trailing zeros required, decimals OK).
+  function centsToDollarStr(cents: number): string {
+    return (cents / 100).toFixed(2);
+  }
+
+  // Free-text dollar input → integer cents. Tolerates "5,000.50".
+  function dollarStrToCents(s: string): number {
+    const cleaned = s.replace(/[^0-9.-]/g, '');
+    const n = Number(cleaned);
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.round(n * 100);
+  }
+
+  function setTotalDollars(s: string) {
+    const newTotalCents = dollarStrToCents(s);
+    setContent((c) => ({
+      ...c,
+      investment: {
+        ...c.investment,
+        total_cents: newTotalCents,
+        // Preserve each milestone's percent; recompute amount from new total.
+        milestones: c.investment.milestones.map((m) => ({
+          ...m,
+          amount_cents: Math.round((newTotalCents * m.percent) / 100),
+        })),
+      },
+    }));
+  }
+
+  function setMilestonePercent(index: number, percentRaw: number) {
+    const percent = Math.max(0, Math.min(100, percentRaw));
+    setContent((c) => ({
+      ...c,
+      investment: {
+        ...c.investment,
+        milestones: c.investment.milestones.map((m, i) =>
+          i === index
+            ? {
+                ...m,
+                percent,
+                amount_cents: Math.round(
+                  (c.investment.total_cents * percent) / 100,
+                ),
+              }
+            : m,
+        ),
+      },
+    }));
+  }
+
+  function setMilestoneAmount(index: number, dollarStr: string) {
+    const amount_cents = dollarStrToCents(dollarStr);
+    setContent((c) => {
+      const total = c.investment.total_cents;
+      const percent = total > 0 ? Math.round((amount_cents / total) * 100) : 0;
+      return {
+        ...c,
+        investment: {
+          ...c.investment,
+          milestones: c.investment.milestones.map((m, i) =>
+            i === index ? { ...m, amount_cents, percent } : m,
+          ),
+        },
+      };
+    });
+  }
+
+  function setMilestoneField(
+    index: number,
+    field: 'label' | 'due',
+    value: string,
+  ) {
+    setContent((c) => ({
+      ...c,
+      investment: {
+        ...c.investment,
+        milestones: c.investment.milestones.map((m, i) =>
+          i === index ? { ...m, [field]: value } : m,
+        ),
+      },
+    }));
+  }
+
+  function addMilestone() {
+    setContent((c) => ({
+      ...c,
+      investment: {
+        ...c.investment,
+        milestones: [
+          ...c.investment.milestones,
+          { label: '', percent: 0, amount_cents: 0, due: '' },
+        ],
+      },
+    }));
+  }
+
+  function removeMilestone(index: number) {
+    setContent((c) => ({
+      ...c,
+      investment: {
+        ...c.investment,
+        milestones: c.investment.milestones.filter((_, i) => i !== index),
+      },
+    }));
+  }
+
+  // Even-split: redistribute 100% across N milestones equally. Last row
+  // absorbs any rounding remainder so percents sum to exactly 100.
+  function splitEvenly() {
+    setContent((c) => {
+      const ms = c.investment.milestones;
+      const n = ms.length;
+      if (n === 0) return c;
+      const baseP = Math.floor(100 / n);
+      const remP = 100 - baseP * n;
+      const total = c.investment.total_cents;
+      const baseA = Math.floor(total / n);
+      const remA = total - baseA * n;
+      const next = ms.map((m, i) => {
+        const isLast = i === n - 1;
+        const percent = isLast ? baseP + remP : baseP;
+        const amount_cents = isLast ? baseA + remA : baseA;
+        return { ...m, percent, amount_cents };
+      });
+      return {
+        ...c,
+        investment: { ...c.investment, milestones: next },
+      };
+    });
+  }
+
+  const ms = content.investment.milestones;
+  const sumCents = ms.reduce((s, m) => s + m.amount_cents, 0);
+  const sumPct = ms.reduce((s, m) => s + m.percent, 0);
+  const total = content.investment.total_cents;
+  const drift = total - sumCents;
+
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Total (USD)">
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            inputMode="decimal"
+            value={centsToDollarStr(total)}
+            onChange={(e) => setTotalDollars(e.target.value)}
+          />
+        </Field>
+        <Field label="Net days">
+          <Input
+            type="number"
+            min={0}
+            value={String(content.investment.net_days)}
+            onChange={(e) =>
+              setContent((c) => ({
+                ...c,
+                investment: {
+                  ...c.investment,
+                  net_days: Number(e.target.value) || 0,
+                },
+              }))
+            }
+          />
+        </Field>
+        <Field label="Late fee">
+          <Input
+            value={content.investment.late_fee}
+            onChange={(e) =>
+              setContent((c) => ({
+                ...c,
+                investment: { ...c.investment, late_fee: e.target.value },
+              }))
+            }
+          />
+        </Field>
+      </div>
+
+      <div className="mt-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-ink-muted">
+              Payment milestones
+            </p>
+            <p className="mt-1 font-sans text-xs text-ink-subtle">
+              Edit % and amount auto-fills, or vice-versa. Both columns are
+              kept in sync with the total.
+            </p>
+          </div>
+          {ms.length > 1 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={splitEvenly}
+            >
+              Split evenly
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {ms.map((m, i) => (
+            <div
+              key={i}
+              className="grid items-center gap-3 sm:grid-cols-[1fr_90px_140px_1fr_auto]"
+            >
+              <Input
+                value={m.label}
+                placeholder="Label"
+                onChange={(e) => setMilestoneField(i, 'label', e.target.value)}
+              />
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={String(m.percent)}
+                placeholder="%"
+                onChange={(e) =>
+                  setMilestonePercent(i, Number(e.target.value) || 0)
+                }
+              />
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+                value={centsToDollarStr(m.amount_cents)}
+                placeholder="USD"
+                onChange={(e) => setMilestoneAmount(i, e.target.value)}
+              />
+              <Input
+                value={m.due}
+                placeholder="Due (e.g., On signing)"
+                onChange={(e) => setMilestoneField(i, 'due', e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeMilestone(i)}
+                aria-label="Remove milestone"
+              >
+                ×
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <Button type="button" variant="secondary" size="sm" onClick={addMilestone}>
+            Add milestone
+          </Button>
+          {ms.length > 0 ? (
+            <p
+              className={cn(
+                'font-mono text-[10px] uppercase tracking-[0.16em]',
+                drift === 0 && sumPct === 100
+                  ? 'text-success'
+                  : 'text-warning',
+              )}
+            >
+              {sumPct}% · ${centsToDollarStr(sumCents)}
+              {drift !== 0
+                ? ` (${drift > 0 ? '+' : ''}${centsToDollarStr(Math.abs(drift))} vs total)`
+                : ''}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </>
+  );
+}
 
 function FormSection({
   number,
