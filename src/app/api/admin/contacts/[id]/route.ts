@@ -69,19 +69,89 @@ export async function PATCH(
   }
 }
 
+/**
+ * Delete a contact. Three FKs are ON DELETE RESTRICT (legal-records
+ * protection): contracts, care_plan_subscriptions, revision_requests.
+ * Everything else cascades.
+ *
+ * Default behavior: pre-check the blockers. If any exist, return 409 with
+ * the counts so the UI can warn the admin before nuking legal data.
+ *
+ * With ?force=true: manually delete the blocking rows (in dependency order)
+ * before deleting the contact, then proceed. Audit log captures both the
+ * cascade detail and the contact deletion event for legal trace.
+ */
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await requireAdmin();
     const { id } = await params;
+    const force = new URL(req.url).searchParams.get('force') === 'true';
+    const sb = supabaseAdmin();
 
-    const { error } = await supabaseAdmin()
-      .from('contacts')
-      .delete()
-      .eq('id', id);
+    // Count rows that would block on delete restrict.
+    const [contracts, carePlans, revisions] = await Promise.all([
+      sb
+        .from('contracts')
+        .select('id', { count: 'exact', head: true })
+        .eq('contact_id', id),
+      sb
+        .from('care_plan_subscriptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('contact_id', id),
+      sb
+        .from('revision_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('contact_id', id),
+    ]);
+    const blockers = {
+      contracts: contracts.count ?? 0,
+      carePlans: carePlans.count ?? 0,
+      revisions: revisions.count ?? 0,
+    };
+    const hasBlockers =
+      blockers.contracts > 0 ||
+      blockers.carePlans > 0 ||
+      blockers.revisions > 0;
 
+    if (hasBlockers && !force) {
+      return Response.json(
+        {
+          error:
+            'This contact has signed contracts, active care plans, or revision requests.',
+          blockers,
+        },
+        { status: 409 },
+      );
+    }
+
+    if (hasBlockers && force) {
+      // Manually wipe the restrict-protected rows in dependency order.
+      // Revisions and care plan subs have no further FKs into them; contracts
+      // can stay last. Audit before delete so we have a record of what
+      // was destroyed.
+      await writeAudit({
+        actor_id: session.userId,
+        action: 'force_cascade_delete',
+        entity_type: 'contact',
+        entity_id: id,
+        diff: { destroyed: blockers },
+      });
+
+      if (blockers.revisions > 0) {
+        await sb.from('revision_requests').delete().eq('contact_id', id);
+      }
+      if (blockers.carePlans > 0) {
+        await sb.from('care_plan_subscriptions').delete().eq('contact_id', id);
+      }
+      if (blockers.contracts > 0) {
+        await sb.from('contracts').delete().eq('contact_id', id);
+      }
+    }
+
+    const { error } = await sb.from('contacts').delete().eq('id', id);
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
     }
