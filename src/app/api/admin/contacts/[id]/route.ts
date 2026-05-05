@@ -91,6 +91,18 @@ export async function DELETE(
     const force = new URL(req.url).searchParams.get('force') === 'true';
     const sb = supabaseAdmin();
 
+    // Capture the linked portal user id (if any) BEFORE we delete — once
+    // the contact row is gone we lose the link. That auth user gets
+    // deleted alongside the contact at the end so the email is freed up
+    // for re-invite later.
+    const { data: pre } = await sb
+      .from('contacts')
+      .select('user_id, email')
+      .eq('id', id)
+      .maybeSingle();
+    const linkedUserId =
+      (pre as { user_id: string | null } | null)?.user_id ?? null;
+
     // Count rows that would block on delete restrict.
     const [contracts, carePlans, revisions] = await Promise.all([
       sb
@@ -162,6 +174,34 @@ export async function DELETE(
       entity_type: 'contact',
       entity_id: id,
     });
+
+    // If the contact had a linked portal login, drop the Supabase Auth
+    // user too. crm.users cascades from auth.users, so the mirror row goes
+    // with it. Best-effort: if the auth side fails (already deleted, race),
+    // we don't want to fail the whole delete — the contact is already gone
+    // and the audit log captures the action.
+    if (linkedUserId) {
+      try {
+        const { error: authErr } =
+          await sb.auth.admin.deleteUser(linkedUserId);
+        if (authErr) {
+          console.warn(
+            '[contacts.delete] auth user cleanup failed:',
+            authErr.message,
+          );
+        } else {
+          await writeAudit({
+            actor_id: session.userId,
+            action: 'delete',
+            entity_type: 'auth_user',
+            entity_id: linkedUserId,
+            diff: { contact_id: id, source: 'contact_delete' },
+          });
+        }
+      } catch (err) {
+        console.warn('[contacts.delete] auth user cleanup threw:', err);
+      }
+    }
 
     return Response.json({ ok: true });
   } catch (err) {
