@@ -2,6 +2,7 @@ import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 
 export const runtime = 'nodejs';
 
@@ -141,6 +142,8 @@ export async function POST(
         revisionPath: `/portal/project/${projectId}/revisions/${revisionId}`,
       });
     }
+
+    revalidateProject(projectId);
 
     return Response.json({ ok: true, revision_id: revisionId });
   } catch (err) {

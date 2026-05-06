@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 
 export const runtime = 'nodejs';
 
@@ -96,6 +97,10 @@ export async function PATCH(
       }
     }
 
+    if (before?.project_id) {
+      revalidateProject(before.project_id as string);
+    }
+
     return Response.json({ ok: true });
   } catch (err) {
     if (err instanceof Response) return err;
@@ -110,6 +115,15 @@ export async function DELETE(
   try {
     const session = await requireAdmin();
     const { id } = await params;
+    // Capture project_id before delete so we can invalidate after.
+    const { data: before } = await supabaseAdmin()
+      .from('milestones')
+      .select('project_id')
+      .eq('id', id)
+      .maybeSingle();
+    const projectId =
+      (before as { project_id: string } | null)?.project_id ?? null;
+
     const { error } = await supabaseAdmin()
       .from('milestones')
       .delete()
@@ -121,6 +135,7 @@ export async function DELETE(
       entity_type: 'milestone',
       entity_id: id,
     });
+    if (projectId) revalidateProject(projectId);
     return Response.json({ ok: true });
   } catch (err) {
     if (err instanceof Response) return err;

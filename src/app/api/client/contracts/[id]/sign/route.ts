@@ -210,6 +210,7 @@ export async function POST(
               source: 'proposal',
               sort_order: i,
               is_client_visible: true,
+              amount_cents: m.amount_cents,
             };
           });
           try {

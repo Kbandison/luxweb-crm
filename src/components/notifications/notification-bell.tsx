@@ -329,6 +329,71 @@ function describe(n: Notification): Described {
         title: 'Portal invite sent',
         body: str('email') || undefined,
       };
+    case 'new_lead':
+      return {
+        title: `New lead · ${str('fullName')}`,
+        body: str('company') || str('email') || undefined,
+        href: str('leadPath')
+          ? normalizePath(str('leadPath'))
+          : undefined,
+      };
+    case 'contract_signed':
+      return {
+        title: `${str('clientName')} signed the contract`,
+        body: str('title') || undefined,
+        href: str('contractPath')
+          ? normalizePath(str('contractPath'))
+          : undefined,
+      };
+    case 'contract_pending_client_signature':
+      return {
+        title: 'Agreement ready to sign',
+        body: 'Counter-signed by LuxWeb · awaiting your signature.',
+        href: str('contractPath')
+          ? normalizePath(str('contractPath'))
+          : undefined,
+      };
+    case 'revision_requested': {
+      const kind = str('kind');
+      const isComment = kind === 'comment';
+      return {
+        title: isComment
+          ? `${str('clientName')} replied · ${str('title')}`
+          : `Review needed · ${str('title')}`,
+        body: str('bodySnippet') || str('projectName') || undefined,
+        href: str('revisionPath')
+          ? normalizePath(str('revisionPath'))
+          : undefined,
+      };
+    }
+    case 'revision_updated': {
+      const kind = str('kind');
+      return {
+        title:
+          kind === 'status'
+            ? `Status updated · ${str('title')}`
+            : `New reply · ${str('title')}`,
+        body:
+          kind === 'status'
+            ? str('statusLabel') || str('projectName') || undefined
+            : str('snippet') || str('projectName') || undefined,
+        href: str('revisionPath')
+          ? normalizePath(str('revisionPath'))
+          : undefined,
+      };
+    }
+    case 'care_plan_activated':
+      return {
+        title: 'Care plan activated',
+        body:
+          str('projectName') ||
+          (num('amountCents') > 0
+            ? `${formatUSD(num('amountCents'))}/${str('interval') || 'month'}`
+            : undefined),
+        href: str('portalPath')
+          ? normalizePath(str('portalPath'))
+          : undefined,
+      };
     default:
       return { title: n.type.replace(/_/g, ' ') };
   }

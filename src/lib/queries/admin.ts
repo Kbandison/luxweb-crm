@@ -617,6 +617,8 @@ export type Milestone = {
   sortOrder: number;
   isClientVisible: boolean;
   completedAt: string | null;
+  amountCents: number | null;
+  invoiceId: string | null;
 };
 
 export type TimeLog = {
@@ -764,7 +766,7 @@ export async function getProjectMilestones(projectId: string): Promise<Milestone
     const { data } = await supabaseAdmin()
       .from('milestones')
       .select(
-        'id, project_id, title, description, due_date, status, source, sort_order, is_client_visible, completed_at',
+        'id, project_id, title, description, due_date, status, source, sort_order, is_client_visible, completed_at, amount_cents, invoice_id',
       )
       .eq('project_id', projectId)
       .order('sort_order', { ascending: true });
@@ -779,6 +781,8 @@ export async function getProjectMilestones(projectId: string): Promise<Milestone
       sort_order: number;
       is_client_visible: boolean;
       completed_at: string | null;
+      amount_cents: number | string | null;
+      invoice_id: string | null;
     };
     const rows = (data ?? []) as Row[];
     return rows.map((r) => ({
@@ -791,6 +795,8 @@ export async function getProjectMilestones(projectId: string): Promise<Milestone
       source: r.source ?? 'manual',
       sortOrder: r.sort_order,
       isClientVisible: r.is_client_visible,
+      amountCents: r.amount_cents == null ? null : Number(r.amount_cents),
+      invoiceId: r.invoice_id,
       completedAt: r.completed_at,
     }));
   } catch {

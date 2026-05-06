@@ -2,6 +2,8 @@ import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserId } from '@/lib/notifications';
+import { createAndSendInvoice } from '@/lib/invoices/create';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 
 export const runtime = 'nodejs';
 
@@ -9,12 +11,15 @@ export const runtime = 'nodejs';
  * Client approves a milestone review request.
  *
  *   - Flips revision_request status to 'approved'
- *   - Marks the linked milestone as 'done' (with completed_at)
- *   - Unlocks the next inactive milestone (sort_order + 1) → 'pending'
+ *   - Auto-fires the invoice for that milestone (using milestone.amount_cents)
+ *     and links it via milestones.invoice_id, so client can pay immediately
+ *   - DOES NOT mark the milestone done — that happens when the payment
+ *     lands and the existing advance-chain runs
  *   - Notifies admin
  *
- * Only valid against pending_review revisions tied to a milestone the
- * client owns (verified via contacts.user_id join).
+ * Reuses an existing invoice if milestone.invoice_id is already set and
+ * the invoice isn't paid/void (e.g., admin re-asks for review after a
+ * Request Changes round).
  */
 export async function POST(
   _req: Request,
@@ -84,38 +89,56 @@ export async function POST(
       return Response.json({ error: revErr.message }, { status: 500 });
     }
 
-    // Mark the linked milestone done.
+    // Look up the milestone's payment info.
     const { data: ms } = await sb
       .from('milestones')
-      .select('id, sort_order, source')
+      .select('id, title, amount_cents, invoice_id')
       .eq('id', r.milestone_id)
       .maybeSingle();
-    type MR = { sort_order: number; source: string };
+    type MR = {
+      id: string;
+      title: string;
+      amount_cents: number | string | null;
+      invoice_id: string | null;
+    };
     const m = ms as unknown as MR | null;
 
-    await sb
-      .from('milestones')
-      .update({ status: 'done', completed_at: approvedAt })
-      .eq('id', r.milestone_id);
+    // Decide whether to fire a new invoice. Skip if a non-terminal one
+    // already exists (e.g., a re-approved milestone after request-changes).
+    let newInvoiceId: string | null = null;
+    if (m && m.amount_cents != null && Number(m.amount_cents) > 0) {
+      let needsNew = true;
+      if (m.invoice_id) {
+        const { data: existing } = await sb
+          .from('invoices')
+          .select('id, status')
+          .eq('id', m.invoice_id)
+          .maybeSingle();
+        const existingStatus = (existing as { status: string } | null)?.status;
+        if (existingStatus && existingStatus !== 'void') {
+          needsNew = false;
+        }
+      }
 
-    // Unlock the next inactive milestone in sort_order, if any. Only does
-    // anything for proposal-source chains; manual milestones don't have
-    // a "next" relationship.
-    if (m) {
-      const { data: nextRows } = await sb
-        .from('milestones')
-        .select('id, status, sort_order')
-        .eq('project_id', r.project_id)
-        .gt('sort_order', m.sort_order)
-        .order('sort_order', { ascending: true })
-        .limit(1);
-      type Next = { id: string; status: string };
-      const next = ((nextRows ?? []) as Next[])[0];
-      if (next && next.status === 'inactive') {
-        await sb
-          .from('milestones')
-          .update({ status: 'pending' })
-          .eq('id', next.id);
+      if (needsNew) {
+        try {
+          const result = await createAndSendInvoice({
+            projectId: r.project_id,
+            amountCents: Number(m.amount_cents),
+            description: `${m.title} — ${project?.name ?? 'Project'}`,
+            actorId: null,
+            source: 'milestone_approve_auto',
+          });
+          newInvoiceId = result.invoiceId;
+          await sb
+            .from('milestones')
+            .update({ invoice_id: result.invoiceId })
+            .eq('id', m.id);
+        } catch (err) {
+          // Don't block the approval if billing fails. Admin can raise
+          // the invoice manually from the project's Invoices tab.
+          console.warn('[approve] auto-invoice failed:', err);
+        }
       }
     }
 
@@ -124,7 +147,11 @@ export async function POST(
       action: 'approve',
       entity_type: 'revision_request',
       entity_id: id,
-      diff: { milestone_id: r.milestone_id, by: 'client' },
+      diff: {
+        milestone_id: r.milestone_id,
+        invoice_id: newInvoiceId,
+        by: 'client',
+      },
     });
 
     // Notify admin.
@@ -138,12 +165,17 @@ export async function POST(
         projectId: r.project_id,
         projectName: project?.name ?? '—',
         kind: 'status',
-        statusLabel: 'Approved',
+        statusLabel: newInvoiceId ? 'Approved · invoice sent' : 'Approved',
         revisionPath: `/admin/projects/${r.project_id}/revisions/${id}`,
       });
     }
 
-    return Response.json({ ok: true });
+    revalidateProject(r.project_id);
+
+    return Response.json({
+      ok: true,
+      invoice_id: newInvoiceId,
+    });
   } catch (err) {
     if (err instanceof Response) return err;
     const msg = err instanceof Error ? err.message : 'Unexpected error';

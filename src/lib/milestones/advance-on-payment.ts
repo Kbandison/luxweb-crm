@@ -1,5 +1,6 @@
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 
 /**
  * Advance the proposal-source milestone chain by one position when a
@@ -55,6 +56,11 @@ export async function advanceProposalMilestoneChain(
         .update({ status: 'pending' })
         .eq('id', next.id);
     }
+
+    // Invalidate cached project pages so admin + client see the new state
+    // immediately (router.refresh on the client only pulls fresh data when
+    // the server cache has been busted).
+    revalidateProject(projectId);
   } catch (err) {
     console.warn('[advance-milestone-chain] failed:', err);
   }
