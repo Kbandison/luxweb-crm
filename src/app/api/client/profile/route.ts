@@ -19,12 +19,27 @@ export async function PATCH(req: Request) {
       return Response.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin()
+    const sb = supabaseAdmin();
+    const { error } = await sb
       .from('users')
       .update(parsed.data)
       .eq('id', session.userId);
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
+
+    // Mirror full_name onto every contact row pointing at this user, so
+    // signature validation and any other contact-name-driven UI stays in
+    // sync with the user's self-edit.
+    if (typeof parsed.data.full_name === 'string') {
+      try {
+        await sb
+          .from('contacts')
+          .update({ full_name: parsed.data.full_name })
+          .eq('user_id', session.userId);
+      } catch {
+        // Best-effort; user-level update already succeeded.
+      }
+    }
 
     await writeAudit({
       actor_id: session.userId,

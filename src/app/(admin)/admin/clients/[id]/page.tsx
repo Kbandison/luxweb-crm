@@ -21,6 +21,7 @@ import {
 import { NotesPanel } from '@/components/admin/clients/notes-panel';
 import { ActivityList } from '@/components/admin/clients/activity-list';
 import { DeleteContactButton } from '@/components/admin/contacts/delete-button';
+import { EditContactDrawer } from '@/components/admin/contacts/edit-contact-drawer';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 
 export default async function ClientDetailPage({
@@ -68,12 +69,26 @@ export default async function ClientDetailPage({
             <span className="text-copper">/</span>
             <span className="text-ink">{client.fullName}</span>
           </nav>
-          <DeleteContactButton
-            contactId={client.id}
-            contactName={client.fullName}
-            kind="client"
-            redirectTo="/admin/clients"
-          />
+          <div className="flex items-center gap-2">
+            <EditContactDrawer
+              contactId={client.id}
+              initial={{
+                fullName: client.fullName,
+                email: client.email,
+                phone: client.phone,
+                company: client.company,
+                source: client.source,
+                tags: client.tags,
+                leadScore: client.leadScore,
+              }}
+            />
+            <DeleteContactButton
+              contactId={client.id}
+              contactName={client.fullName}
+              kind="client"
+              redirectTo="/admin/clients"
+            />
+          </div>
         </div>
 
         {/* Hero — copper moment for this page */}

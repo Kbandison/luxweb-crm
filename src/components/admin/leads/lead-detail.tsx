@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ContactRow, ProposalRow } from '@/lib/queries/admin';
 import { InviteToPortalButton } from '@/components/admin/contacts/invite-button';
 import { DeleteContactButton } from '@/components/admin/contacts/delete-button';
+import { EditContactDrawer } from '@/components/admin/contacts/edit-contact-drawer';
 import { LeadProposalsSection } from './lead-proposals-section';
 import { LeadScore } from './lead-score';
 import { TagPill } from './tag-pill';
@@ -61,6 +62,18 @@ export function LeadDetail({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            <EditContactDrawer
+              contactId={lead.id}
+              initial={{
+                fullName: lead.fullName,
+                email: lead.email,
+                phone: lead.phone,
+                company: lead.company,
+                source: lead.source,
+                tags: lead.tags,
+                leadScore: lead.leadScore,
+              }}
+            />
             <DeleteContactButton
               contactId={lead.id}
               contactName={lead.fullName}

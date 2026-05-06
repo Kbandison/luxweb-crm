@@ -18,6 +18,8 @@ import {
   useElements,
   useStripe,
 } from '@stripe/react-stripe-js';
+import { SuccessModal } from '@/components/ui/success-modal';
+import { useToast } from '@/components/ui/toast';
 
 export function InvoicePayment({
   clientSecret,
@@ -84,10 +86,12 @@ function PaymentForm({
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
+  const toast = useToast();
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [walletReady, setWalletReady] = useState(false);
+  const [succeeded, setSucceeded] = useState(false);
 
   // Stripe returns a relative return URL as-is to the wallet sheet; wallets
   // need an absolute URL so they can redirect back after 3DS or bank hand-off.
@@ -122,8 +126,7 @@ function PaymentForm({
       return;
     }
 
-    router.push(returnUrl);
-    router.refresh();
+    setSucceeded(true);
   }
 
   async function onCardSubmit(e: React.FormEvent) {
@@ -157,10 +160,7 @@ function PaymentForm({
     }
 
     if (paymentIntent?.status === 'succeeded') {
-      // returnUrl already carries ?paid=<invoice_id>, which the invoices
-      // page uses to eager-reconcile against Stripe before rendering.
-      router.push(returnUrl);
-      router.refresh();
+      setSucceeded(true);
       return;
     }
 
@@ -278,6 +278,29 @@ function PaymentForm({
       <p className="text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
         Secured by Stripe
       </p>
+
+      <SuccessModal
+        open={succeeded}
+        title="Payment received"
+        description={
+          <>
+            Thanks — your payment is in. We&apos;re kicking the project off
+            from our side. You&apos;ll get a receipt by email shortly.
+          </>
+        }
+        primaryLabel="Back to invoices"
+        onPrimary={() => {
+          setSucceeded(false);
+          toast.success('Payment successful');
+          router.push(returnUrl);
+          router.refresh();
+        }}
+        onClose={() => {
+          setSucceeded(false);
+          router.push(returnUrl);
+          router.refresh();
+        }}
+      />
     </form>
   );
 }

@@ -34,13 +34,14 @@ export async function PATCH(
       return Response.json({ error: 'No fields to update' }, { status: 400 });
     }
 
-    const { data: before } = await supabaseAdmin()
+    const sb = supabaseAdmin();
+    const { data: before } = await sb
       .from('contacts')
       .select()
       .eq('id', id)
       .single();
 
-    const { data, error } = await supabaseAdmin()
+    const { data, error } = await sb
       .from('contacts')
       .update(parsed.data)
       .eq('id', id)
@@ -52,6 +53,23 @@ export async function PATCH(
         { error: error?.message ?? 'Update failed' },
         { status: 500 },
       );
+    }
+
+    // If full_name changed and there's a linked portal user, mirror it to
+    // crm.users so signature validation (which compares against this same
+    // name on file) keeps matching after admin edits.
+    if (
+      typeof parsed.data.full_name === 'string' &&
+      (data as { user_id: string | null }).user_id
+    ) {
+      try {
+        await sb
+          .from('users')
+          .update({ full_name: parsed.data.full_name })
+          .eq('id', (data as { user_id: string }).user_id);
+      } catch {
+        // Best-effort; contact update already landed.
+      }
     }
 
     await writeAudit({
