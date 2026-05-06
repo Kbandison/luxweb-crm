@@ -2,12 +2,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { SuccessModal } from '@/components/ui/success-modal';
 import { useToast } from '@/components/ui/toast';
 import { formatDateTime } from '@/lib/formatters';
 import {
   REVISION_STATUSES,
   REVISION_STATUS_LABEL,
   REVISION_STATUS_TONE,
+  isApprovalStatus,
   type RevisionStatus,
 } from '@/lib/types/revision';
 import { cn } from '@/lib/utils';
@@ -44,6 +46,63 @@ export function RevisionThread({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusBusy, setStatusBusy] = useState(false);
+  const [requestingChanges, setRequestingChanges] = useState(false);
+  const [approveOpen, setApproveOpen] = useState(false);
+  const [approveBusy, setApproveBusy] = useState(false);
+
+  const isMilestoneReview = isApprovalStatus(revision.status);
+  const clientPendingReview =
+    viewerRole === 'client' && revision.status === 'pending_review';
+
+  async function approve() {
+    setApproveBusy(true);
+    try {
+      const res = await fetch(`/api/client/revisions/${revision.id}/approve`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't approve", j.error ?? 'Approve failed.');
+        return;
+      }
+      setApproveOpen(true);
+    } finally {
+      setApproveBusy(false);
+    }
+  }
+
+  async function requestChanges(e: React.FormEvent) {
+    e.preventDefault();
+    if (!reply.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/client/revisions/${revision.id}/request-changes`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body: reply.trim() }),
+        },
+      );
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        const msg = j.error ?? 'Failed to send.';
+        setError(msg);
+        toast.error("Couldn't send feedback", msg);
+        return;
+      }
+      setReply('');
+      setRequestingChanges(false);
+      toast.success(
+        'Changes requested',
+        'The team has been notified and will iterate.',
+      );
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submitComment(e: React.FormEvent) {
     e.preventDefault();
@@ -132,24 +191,95 @@ export function RevisionThread({
           {revision.body}
         </p>
 
-        {viewerRole === 'admin' ? (
+        {clientPendingReview ? (
+          <div className="space-y-3 rounded-xl border border-copper/30 bg-copper-soft/25 p-4">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+              Your turn — review &amp; respond
+            </p>
+            <p className="font-sans text-sm text-ink-muted">
+              Approve to mark this milestone done and unlock the next one.
+              Or request changes with feedback if something needs work.
+            </p>
+            {requestingChanges ? (
+              <form onSubmit={requestChanges} className="space-y-3">
+                <textarea
+                  value={reply}
+                  onChange={(e) => setReply(e.target.value)}
+                  rows={4}
+                  maxLength={10000}
+                  required
+                  placeholder="What needs to change? Be specific so the team can iterate quickly."
+                  className="w-full rounded-md border border-border bg-bg px-3 py-2 font-sans text-sm text-ink"
+                />
+                {error ? (
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+                    {error}
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setRequestingChanges(false);
+                      setReply('');
+                      setError(null);
+                    }}
+                    disabled={busy}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={busy || !reply.trim()}
+                  >
+                    {busy ? 'Sending…' : 'Send feedback'}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={approve}
+                  disabled={approveBusy}
+                >
+                  {approveBusy ? 'Approving…' : 'Approve milestone'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setRequestingChanges(true)}
+                >
+                  Request changes
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {viewerRole === 'admin' && !isMilestoneReview ? (
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
             <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
               Set status:
             </span>
-            {REVISION_STATUSES.filter((s) => s !== revision.status).map(
-              (s) => (
-                <Button
-                  key={s}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => changeStatus(s)}
-                  disabled={statusBusy}
-                >
-                  {REVISION_STATUS_LABEL[s]}
-                </Button>
-              ),
-            )}
+            {REVISION_STATUSES.filter(
+              (s) => s !== revision.status && !isApprovalStatus(s),
+            ).map((s) => (
+              <Button
+                key={s}
+                variant="ghost"
+                size="sm"
+                onClick={() => changeStatus(s)}
+                disabled={statusBusy}
+              >
+                {REVISION_STATUS_LABEL[s]}
+              </Button>
+            ))}
           </div>
         ) : null}
       </header>
@@ -192,15 +322,24 @@ export function RevisionThread({
         )}
       </section>
 
-      {/* Reply box — disabled when terminal */}
-      {revision.status === 'resolved' || revision.status === 'wont_do' ? (
+      {/* Reply box — gated:
+            - approved → closed
+            - resolved / wont_do → closed (legacy)
+            - pending_review (client side) → handled by the approve panel above
+            - everything else → free-form replies (admin during changes_requested,
+              ongoing legacy thread, etc.) */}
+      {revision.status === 'approved' ||
+      revision.status === 'resolved' ||
+      revision.status === 'wont_do' ? (
         <p className="rounded-md bg-ink/5 px-3 py-2 text-center font-sans text-xs text-ink-muted">
-          This request is closed.
-          {viewerRole === 'admin'
+          {revision.status === 'approved'
+            ? 'Approved. Milestone is done.'
+            : 'This request is closed.'}
+          {viewerRole === 'admin' && revision.status !== 'approved'
             ? ' Re-open it above to continue the thread.'
             : ''}
         </p>
-      ) : (
+      ) : clientPendingReview ? null : (
         <form
           onSubmit={submitComment}
           className="space-y-3 rounded-2xl border border-border bg-surface p-4"
@@ -225,6 +364,26 @@ export function RevisionThread({
           </div>
         </form>
       )}
+
+      <SuccessModal
+        open={approveOpen}
+        title="Milestone approved"
+        description={
+          <>
+            Thanks — that milestone is locked in as done. The next one
+            unlocks for the team automatically.
+          </>
+        }
+        primaryLabel="Got it"
+        onPrimary={() => {
+          setApproveOpen(false);
+          router.refresh();
+        }}
+        onClose={() => {
+          setApproveOpen(false);
+          router.refresh();
+        }}
+      />
     </article>
   );
 }

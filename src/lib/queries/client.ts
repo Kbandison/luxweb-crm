@@ -267,7 +267,7 @@ export type ClientMilestone = {
   title: string;
   description: string | null;
   dueDate: string | null;
-  status: 'pending' | 'in_progress' | 'done' | 'blocked';
+  status: 'inactive' | 'pending' | 'in_progress' | 'done' | 'blocked';
   sortOrder: number;
   completedAt: string | null;
 };

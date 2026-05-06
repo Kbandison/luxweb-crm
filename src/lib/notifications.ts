@@ -115,7 +115,7 @@ export type NotifyEvent =
       milestoneTitle: string;
       projectId: string;
       projectName: string;
-      status: 'pending' | 'in_progress' | 'done' | 'blocked';
+      status: 'inactive' | 'pending' | 'in_progress' | 'done' | 'blocked';
       /** path to the project workspace */
       projectPath: string;
     }

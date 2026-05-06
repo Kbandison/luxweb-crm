@@ -95,6 +95,28 @@ export function MilestonesList({
     router.refresh();
   }
 
+  async function submitForReview(id: string) {
+    setPendingId(id);
+    const res = await fetch(
+      `/api/admin/projects/${projectId}/milestones/${id}/submit-for-review`,
+      { method: 'POST' },
+    );
+    setPendingId(null);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      toast.error(
+        "Couldn't submit for review",
+        j.error ?? 'Failed to submit.',
+      );
+    } else {
+      toast.success(
+        'Submitted for client review',
+        'Client has been emailed and will see the approval card on their portal.',
+      );
+    }
+    router.refresh();
+  }
+
   async function confirmDelete() {
     if (!confirming) return;
     setConfirmBusy(true);
@@ -268,6 +290,14 @@ export function MilestonesList({
                     >
                       {MILESTONE_STATUS_LABEL[m.status]}
                     </span>
+                    {m.source === 'proposal' ? (
+                      <span
+                        className="inline-flex shrink-0 items-center rounded bg-copper-soft/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-copper"
+                        title="Auto-flips on payment"
+                      >
+                        Proposal
+                      </span>
+                    ) : null}
                   </div>
                   {m.description ? (
                     <p className="mt-1 whitespace-pre-wrap font-sans text-xs leading-relaxed text-ink-muted">
@@ -293,6 +323,17 @@ export function MilestonesList({
 
                 {/* Actions */}
                 <div className="flex shrink-0 items-center gap-1">
+                  {m.status === 'pending' ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => submitForReview(m.id)}
+                      disabled={pendingId === m.id}
+                      title="Submit to the client for approval"
+                    >
+                      Submit for review
+                    </Button>
+                  ) : null}
                   <select
                     aria-label="Status"
                     value={m.status}

@@ -5,7 +5,7 @@ export type MilestoneUpdatedEmailProps = {
   recipientName: string;
   projectName: string;
   milestoneTitle: string;
-  status: 'pending' | 'in_progress' | 'done' | 'blocked';
+  status: 'inactive' | 'pending' | 'in_progress' | 'done' | 'blocked';
   projectUrl: string;
 };
 

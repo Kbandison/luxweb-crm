@@ -189,10 +189,11 @@ export async function POST(
           },
         });
 
-        // Seed the project's milestones from the proposal's payment
-        // milestones so the project workspace shows the same plan the
-        // client just agreed to. Title comes from the milestone label,
-        // description includes the dollar amount + "due" text.
+        // Seed milestones from the proposal's payment plan. First one
+        // starts 'pending' (active work). Rest start 'inactive' (locked);
+        // they auto-unlock one-by-one as payments land via the chain
+        // advance. source='proposal' enrolls them in the auto-flip;
+        // admin-added milestones default to 'manual' and stay manual-only.
         const propMs = content?.investment?.milestones ?? [];
         if (propMs.length > 0) {
           const rows = propMs.map((m, i) => {
@@ -205,7 +206,8 @@ export async function POST(
               project_id: projectId,
               title: m.label || `Milestone ${i + 1}`,
               description: descBits.join(' · '),
-              status: 'pending' as const,
+              status: i === 0 ? 'pending' : 'inactive',
+              source: 'proposal',
               sort_order: i,
               is_client_visible: true,
             };

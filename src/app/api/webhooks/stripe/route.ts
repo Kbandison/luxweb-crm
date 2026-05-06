@@ -7,6 +7,7 @@ import {
   fetchSubscriptionForSync,
   syncSubscriptionRow,
 } from '@/lib/care-plan/sync';
+import { advanceProposalMilestoneChain } from '@/lib/milestones/advance-on-payment';
 
 export const runtime = 'nodejs';
 
@@ -149,6 +150,13 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
       .in('stage', ['lead', 'discovery', 'proposal']);
   } catch {
     // Best-effort.
+  }
+
+  // Advance the proposal-milestone chain for this project. First payment
+  // closes the deposit milestone + unlocks phase 1; second payment closes
+  // phase 1 + unlocks launch; etc.
+  if (projectId) {
+    await advanceProposalMilestoneChain(projectId);
   }
 
   const clientUserId = await getContactUserId(contactId);

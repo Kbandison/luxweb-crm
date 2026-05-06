@@ -24,9 +24,15 @@ export const PROJECT_STATUS_DOT: Record<ProjectStatus, string> = {
   cancelled: 'bg-ink-subtle',
 };
 
-export type MilestoneStatus = 'pending' | 'in_progress' | 'done' | 'blocked';
+export type MilestoneStatus =
+  | 'inactive'
+  | 'pending'
+  | 'in_progress'
+  | 'done'
+  | 'blocked';
 
 export const MILESTONE_STATUSES: MilestoneStatus[] = [
+  'inactive',
   'pending',
   'in_progress',
   'done',
@@ -34,15 +40,19 @@ export const MILESTONE_STATUSES: MilestoneStatus[] = [
 ];
 
 export const MILESTONE_STATUS_LABEL: Record<MilestoneStatus, string> = {
-  pending: 'Pending',
-  in_progress: 'In progress',
+  inactive: 'Locked',
+  pending: 'Active',
+  in_progress: 'In review',
   done: 'Done',
   blocked: 'Blocked',
 };
 
 export const MILESTONE_STATUS_TONE: Record<MilestoneStatus, string> = {
+  inactive: 'bg-ink-subtle/10 text-ink-subtle',
   pending: 'bg-ink/5 text-ink-muted',
   in_progress: 'bg-copper/15 text-copper',
   done: 'bg-success/15 text-success',
   blocked: 'bg-danger/10 text-danger',
 };
+
+export type MilestoneSource = 'proposal' | 'manual';

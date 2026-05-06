@@ -612,7 +612,8 @@ export type Milestone = {
   title: string;
   description: string | null;
   dueDate: string | null;
-  status: 'pending' | 'in_progress' | 'done' | 'blocked';
+  status: 'inactive' | 'pending' | 'in_progress' | 'done' | 'blocked';
+  source: 'proposal' | 'manual';
   sortOrder: number;
   isClientVisible: boolean;
   completedAt: string | null;
@@ -763,7 +764,7 @@ export async function getProjectMilestones(projectId: string): Promise<Milestone
     const { data } = await supabaseAdmin()
       .from('milestones')
       .select(
-        'id, project_id, title, description, due_date, status, sort_order, is_client_visible, completed_at',
+        'id, project_id, title, description, due_date, status, source, sort_order, is_client_visible, completed_at',
       )
       .eq('project_id', projectId)
       .order('sort_order', { ascending: true });
@@ -773,7 +774,8 @@ export async function getProjectMilestones(projectId: string): Promise<Milestone
       title: string;
       description: string | null;
       due_date: string | null;
-      status: 'pending' | 'in_progress' | 'done' | 'blocked';
+      status: 'inactive' | 'pending' | 'in_progress' | 'done' | 'blocked';
+      source: 'proposal' | 'manual';
       sort_order: number;
       is_client_visible: boolean;
       completed_at: string | null;
@@ -786,6 +788,7 @@ export async function getProjectMilestones(projectId: string): Promise<Milestone
       description: r.description,
       dueDate: r.due_date,
       status: r.status,
+      source: r.source ?? 'manual',
       sortOrder: r.sort_order,
       isClientVisible: r.is_client_visible,
       completedAt: r.completed_at,

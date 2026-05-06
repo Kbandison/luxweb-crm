@@ -2,6 +2,7 @@ import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { writeAudit } from '@/lib/audit';
+import { advanceProposalMilestoneChain } from '@/lib/milestones/advance-on-payment';
 
 /**
  * Eager reconciliation for an invoice just after the client returned from
@@ -84,10 +85,10 @@ export async function reconcileInvoicePaid(
   });
 
   // Mirror what the Stripe webhook does — flip the linked project from
-  // 'planning' to 'in_progress' on first payment. The webhook is the
-  // authoritative path in production; this branch only matters for
-  // localhost dev where Stripe events don't reach the dev server unless
-  // forwarded via stripe-cli.
+  // 'planning' to 'in_progress' on first payment, and advance the
+  // proposal-milestone chain by one position. Webhook is authoritative
+  // in prod; this branch only matters for localhost dev where Stripe
+  // events don't reach the dev server unless forwarded via stripe-cli.
   if (r.project_id) {
     try {
       await supabaseAdmin()
@@ -98,6 +99,7 @@ export async function reconcileInvoicePaid(
     } catch {
       // Best-effort.
     }
+    await advanceProposalMilestoneChain(r.project_id);
   }
 
   return true;
