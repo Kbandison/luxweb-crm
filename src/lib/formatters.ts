@@ -6,11 +6,21 @@
  * deal in sub-dollar amounts).
  */
 
-const USD = new Intl.NumberFormat('en-US', {
+// Two formatters so we can render whole-dollar amounts cleanly ($5,000)
+// while still showing cents when the value isn't a whole dollar ($1.50,
+// $0.75). Defaulting to no decimals would lie about milestone splits
+// that don't divide evenly.
+const USD_WHOLE = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
+});
+const USD_CENTS = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
 const DATE_SHORT = new Intl.DateTimeFormat('en-US', {
@@ -64,7 +74,10 @@ const RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
 export function formatUSD(cents: number | null | undefined): string {
   if (cents == null) return '—';
-  return USD.format(cents / 100);
+  const dollars = cents / 100;
+  return cents % 100 === 0
+    ? USD_WHOLE.format(dollars)
+    : USD_CENTS.format(dollars);
 }
 
 export function formatDate(input: string | Date | null | undefined): string {
