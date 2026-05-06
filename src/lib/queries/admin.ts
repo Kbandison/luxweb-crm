@@ -1502,6 +1502,29 @@ export async function getProjectContracts(
   }
 }
 
+/**
+ * Look up the contract row that was generated from this proposal, if any.
+ * Used by the proposal editor to decide whether to show "Sign agreement"
+ * (no contract yet) or "View agreement" (already counter-signed).
+ */
+export async function getContractByProposalId(
+  proposalId: string,
+): Promise<Pick<ContractRow, 'id' | 'projectId' | 'status'> | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('contracts')
+      .select('id, project_id, status')
+      .eq('proposal_id', proposalId)
+      .limit(1)
+      .maybeSingle();
+    if (!data) return null;
+    const r = data as { id: string; project_id: string | null; status: ContractStatus };
+    return { id: r.id, projectId: r.project_id, status: r.status };
+  } catch {
+    return null;
+  }
+}
+
 export async function getContract(id: string): Promise<ContractDetail | null> {
   try {
     const { data } = await supabaseAdmin()

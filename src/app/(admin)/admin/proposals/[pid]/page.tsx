@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { Topbar } from '@/components/admin/topbar';
-import { getProposal } from '@/lib/queries/admin';
+import { getContractByProposalId, getProposal } from '@/lib/queries/admin';
 import { ProposalEditor } from '@/components/admin/proposals/proposal-editor';
 
 /**
@@ -15,7 +15,10 @@ export default async function AdminProposalPage({
   params: Promise<{ pid: string }>;
 }) {
   const { pid } = await params;
-  const proposal = await getProposal(pid);
+  const [proposal, existingContract] = await Promise.all([
+    getProposal(pid),
+    getContractByProposalId(pid),
+  ]);
   if (!proposal) notFound();
 
   if (proposal.projectId) {
@@ -43,6 +46,7 @@ export default async function AdminProposalPage({
           initialAcceptedByName={proposal.acceptedByName}
           initialAcceptedByIp={proposal.acceptedByIp}
           initialAcceptedByUserAgent={proposal.acceptedByUserAgent}
+          existingContract={existingContract}
         />
       </main>
     </>

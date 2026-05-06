@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getProposal } from '@/lib/queries/admin';
+import { getContractByProposalId, getProposal } from '@/lib/queries/admin';
 import { ProposalEditor } from '@/components/admin/proposals/proposal-editor';
 
 export default async function ProposalEditorPage({
@@ -8,7 +8,10 @@ export default async function ProposalEditorPage({
   params: Promise<{ id: string; pid: string }>;
 }) {
   const { id, pid } = await params;
-  const proposal = await getProposal(pid);
+  const [proposal, existingContract] = await Promise.all([
+    getProposal(pid),
+    getContractByProposalId(pid),
+  ]);
   if (!proposal || proposal.projectId !== id) notFound();
 
   return (
@@ -26,6 +29,7 @@ export default async function ProposalEditorPage({
         initialAcceptedByName={proposal.acceptedByName}
         initialAcceptedByIp={proposal.acceptedByIp}
         initialAcceptedByUserAgent={proposal.acceptedByUserAgent}
+        existingContract={existingContract}
       />
     </main>
   );

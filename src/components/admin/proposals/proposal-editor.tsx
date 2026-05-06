@@ -10,6 +10,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast';
 import { ProposalStatusPill } from './proposal-status-pill';
 import { ProposalPreview } from './proposal-preview';
+import { SignAgreementButton } from './sign-agreement-button';
 import { formatDate } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,7 @@ export function ProposalEditor({
   initialAcceptedByName,
   initialAcceptedByIp,
   initialAcceptedByUserAgent,
+  existingContract = null,
 }: {
   proposalId: string;
   /** Where the editor's back/after-delete navigation goes. */
@@ -43,6 +45,14 @@ export function ProposalEditor({
   initialAcceptedByName?: string | null;
   initialAcceptedByIp?: string | null;
   initialAcceptedByUserAgent?: string | null;
+  /** The contract generated from this proposal, if one exists. When null
+   *  and the proposal is accepted, the editor surfaces a "Sign agreement"
+   *  CTA so admin can counter-sign without bouncing through the project. */
+  existingContract?: {
+    id: string;
+    projectId: string | null;
+    status: string;
+  } | null;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -308,14 +318,31 @@ export function ProposalEditor({
       </div>
 
       {isAccepted ? (
-        <div className="rounded-xl border border-success/30 bg-success/5 px-5 py-3 print:hidden">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-success">
-            Locked — accepted by the client
-          </p>
-          <p className="mt-0.5 font-sans text-xs text-ink-muted">
-            This proposal is signed and cannot be edited or deleted. You can
-            still preview, print, or open the signature block below.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-success/30 bg-success/5 px-5 py-3 print:hidden">
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-success">
+              Locked — accepted by the client
+            </p>
+            <p className="mt-0.5 font-sans text-xs text-ink-muted">
+              {existingContract
+                ? 'Agreement already counter-signed. Open it to view both signatures and the contract status.'
+                : 'Counter-sign the agreement next, then the client signs to lock the legal terms and trigger the deposit invoice.'}
+            </p>
+          </div>
+          {existingContract ? (
+            <Link
+              href={
+                existingContract.projectId
+                  ? `/admin/projects/${existingContract.projectId}/contracts/${existingContract.id}`
+                  : `/admin/contracts/${existingContract.id}`
+              }
+              className="shrink-0 rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted transition-colors hover:border-copper/40 hover:text-copper"
+            >
+              View agreement →
+            </Link>
+          ) : (
+            <SignAgreementButton proposalId={proposalId} />
+          )}
         </div>
       ) : isSent ? (
         <div className="rounded-xl border border-copper/30 bg-copper-soft/25 px-5 py-3 print:hidden">
