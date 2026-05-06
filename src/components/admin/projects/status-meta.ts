@@ -40,8 +40,8 @@ export const MILESTONE_STATUSES: MilestoneStatus[] = [
 ];
 
 export const MILESTONE_STATUS_LABEL: Record<MilestoneStatus, string> = {
-  inactive: 'Locked',
-  pending: 'Active',
+  inactive: 'Inactive',
+  pending: 'Pending',
   in_progress: 'In review',
   done: 'Done',
   blocked: 'Blocked',
@@ -49,8 +49,8 @@ export const MILESTONE_STATUS_LABEL: Record<MilestoneStatus, string> = {
 
 export const MILESTONE_STATUS_TONE: Record<MilestoneStatus, string> = {
   inactive: 'bg-ink-subtle/10 text-ink-subtle',
-  pending: 'bg-ink/5 text-ink-muted',
-  in_progress: 'bg-copper/15 text-copper',
+  pending: 'bg-copper/10 text-copper',
+  in_progress: 'bg-warning/15 text-warning',
   done: 'bg-success/15 text-success',
   blocked: 'bg-danger/10 text-danger',
 };

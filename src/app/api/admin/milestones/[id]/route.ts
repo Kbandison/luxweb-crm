@@ -6,7 +6,13 @@ import { notify, getContactUserId } from '@/lib/notifications';
 
 export const runtime = 'nodejs';
 
-const STATUSES = ['pending', 'in_progress', 'done', 'blocked'] as const;
+const STATUSES = [
+  'inactive',
+  'pending',
+  'in_progress',
+  'done',
+  'blocked',
+] as const;
 
 const UpdateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
