@@ -7,6 +7,7 @@ import {
   deriveContractVariables,
   renderAgreement,
 } from '@/lib/contracts/render';
+import { namesMatch } from '@/lib/signatures/match';
 import type { ProposalContent } from '@/lib/types/proposal';
 
 export const runtime = 'nodejs';
@@ -95,6 +96,25 @@ export async function POST(
       return Response.json(
         { error: 'Proposal has no content to render from.' },
         { status: 400 },
+      );
+    }
+
+    // Pull admin's full_name from crm.users — typed signature must match.
+    const { data: adminUser } = await sb
+      .from('users')
+      .select('full_name')
+      .eq('id', session.userId)
+      .maybeSingle();
+    const adminName =
+      (adminUser as { full_name: string | null } | null)?.full_name ?? null;
+    if (!namesMatch(parsed.data.full_name, adminName)) {
+      return Response.json(
+        {
+          error: adminName
+            ? `Signature must match the name on file: ${adminName}.`
+            : 'No full name on file for this account. Update your profile before signing.',
+        },
+        { status: 422 },
       );
     }
 

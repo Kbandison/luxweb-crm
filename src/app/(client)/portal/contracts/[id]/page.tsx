@@ -27,6 +27,7 @@ export default async function ClientContractPage({
           status={contract.status}
           signedAt={contract.signedAt}
           signedName={contract.signedName}
+          expectedSignerName={contract.contactFullName}
         />
       </div>
       <PrintBar />

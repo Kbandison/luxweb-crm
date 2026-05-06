@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserId } from '@/lib/notifications';
 import { createAndSendInvoice } from '@/lib/invoices/create';
+import { namesMatch } from '@/lib/signatures/match';
 import type { ProposalContent } from '@/lib/types/proposal';
 
 export const runtime = 'nodejs';
@@ -90,6 +91,15 @@ export async function POST(
       return Response.json(
         { error: `Contract is ${r.status}, no longer accepting signature.` },
         { status: 409 },
+      );
+    }
+
+    if (!namesMatch(parsed.data.full_name, contact.full_name)) {
+      return Response.json(
+        {
+          error: `Signature must match the name on file: ${contact.full_name}.`,
+        },
+        { status: 422 },
       );
     }
 

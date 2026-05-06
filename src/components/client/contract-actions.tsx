@@ -30,17 +30,23 @@ export function ClientContractActions({
   status,
   signedAt,
   signedName,
+  expectedSignerName,
 }: {
   contractId: string;
   status: ContractStatus;
   signedAt: string | null;
   signedName: string | null;
+  /** The contact's on-file full_name. Typed signature must match. */
+  expectedSignerName: string;
 }) {
   return (
     <div>
       {status === 'pending_signature' ||
       status === 'pending_client_signature' ? (
-        <SignBar contractId={contractId} />
+        <SignBar
+          contractId={contractId}
+          expectedSignerName={expectedSignerName}
+        />
       ) : status === 'pending_admin_signature' ? (
         <div className="rounded-2xl border border-copper/30 bg-copper-soft/25 p-6">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
@@ -67,7 +73,13 @@ export function ClientContractActions({
   );
 }
 
-function SignBar({ contractId }: { contractId: string }) {
+function SignBar({
+  contractId,
+  expectedSignerName,
+}: {
+  contractId: string;
+  expectedSignerName: string;
+}) {
   const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -187,8 +199,13 @@ function SignBar({ contractId }: { contractId: string }) {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Jane Doe"
+                  placeholder={expectedSignerName}
                 />
+                <p className="font-sans text-xs text-ink-subtle">
+                  Type <span className="font-mono text-ink">{expectedSignerName}</span>{' '}
+                  exactly to sign. (Update your profile first if your legal name
+                  differs.)
+                </p>
               </div>
 
               <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2/40 p-3">

@@ -196,12 +196,12 @@ async function fetchDashboardProposals(
 export async function getClientProposalById(
   proposalId: string,
   userId: string,
-): Promise<ClientProposalDetail | null> {
+): Promise<(ClientProposalDetail & { contactFullName: string }) | null> {
   try {
     const { data } = await supabaseAdmin()
       .from('proposals')
       .select(
-        'id, project_id, contact_id, title, status, total_cents, sent_at, accepted_at, created_at, content_json, accepted_by_name, accepted_by_ip, accepted_by_user_agent, contacts!inner(user_id)',
+        'id, project_id, contact_id, title, status, total_cents, sent_at, accepted_at, created_at, content_json, accepted_by_name, accepted_by_ip, accepted_by_user_agent, contacts!inner(user_id, full_name)',
       )
       .eq('id', proposalId)
       .single();
@@ -221,8 +221,8 @@ export async function getClientProposalById(
       accepted_by_ip: string | null;
       accepted_by_user_agent: string | null;
       contacts:
-        | { user_id: string | null }
-        | { user_id: string | null }[];
+        | { user_id: string | null; full_name: string }
+        | { user_id: string | null; full_name: string }[];
     };
     const r = data as unknown as Row;
     const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
@@ -241,6 +241,7 @@ export async function getClientProposalById(
       acceptedByName: r.accepted_by_name,
       acceptedByIp: r.accepted_by_ip,
       acceptedByUserAgent: r.accepted_by_user_agent,
+      contactFullName: contact.full_name,
     };
   } catch {
     return null;
@@ -607,6 +608,8 @@ export type ClientContractDetail = ClientContractListRow & {
   signedUserAgent: string | null;
   adminSignedName: string | null;
   adminSignedAt: string | null;
+  /** Contact's on-file full_name. Typed signature must match. */
+  contactFullName: string;
 };
 
 export async function getClientProjectContracts(
@@ -653,7 +656,7 @@ export async function getClientContract(
     const { data } = await supabaseAdmin()
       .from('contracts')
       .select(
-        'id, status, agreement_version, body_md, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, proposal_id, project_id, contacts!inner(user_id)',
+        'id, status, agreement_version, body_md, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, proposal_id, project_id, contacts!inner(user_id, full_name)',
       )
       .eq('id', contractId)
       .single();
@@ -672,7 +675,9 @@ export async function getClientContract(
       admin_signed_at: string | null;
       proposal_id: string;
       project_id: string | null;
-      contacts: { user_id: string | null } | { user_id: string | null }[];
+      contacts:
+        | { user_id: string | null; full_name: string }
+        | { user_id: string | null; full_name: string }[];
     };
     const r = data as unknown as Row;
     const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
@@ -691,6 +696,7 @@ export async function getClientContract(
       adminSignedName: r.admin_signed_name,
       adminSignedAt: r.admin_signed_at,
       proposalId: r.proposal_id,
+      contactFullName: contact.full_name,
     };
   } catch {
     return null;

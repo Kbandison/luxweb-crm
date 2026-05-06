@@ -31,15 +31,21 @@ export function ClientProposalActions({
   proposalId,
   status,
   acceptedAt,
+  expectedSignerName,
 }: {
   proposalId: string;
   status: Status;
   acceptedAt: string | null;
+  /** The contact's on-file full_name. Typed signature must match. */
+  expectedSignerName: string;
 }) {
   return (
     <div>
       {status === 'sent' ? (
-        <AcceptBar proposalId={proposalId} />
+        <AcceptBar
+          proposalId={proposalId}
+          expectedSignerName={expectedSignerName}
+        />
       ) : status === 'accepted' ? (
         <AcceptedBanner acceptedAt={acceptedAt} />
       ) : status === 'rejected' ? (
@@ -55,7 +61,13 @@ export function ClientProposalActions({
   );
 }
 
-function AcceptBar({ proposalId }: { proposalId: string }) {
+function AcceptBar({
+  proposalId,
+  expectedSignerName,
+}: {
+  proposalId: string;
+  expectedSignerName: string;
+}) {
   const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -167,8 +179,13 @@ function AcceptBar({ proposalId }: { proposalId: string }) {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Jane Doe"
+                  placeholder={expectedSignerName}
                 />
+                <p className="font-sans text-xs text-ink-subtle">
+                  Type <span className="font-mono text-ink">{expectedSignerName}</span>{' '}
+                  exactly to sign. (Update your profile first if your legal name
+                  differs.)
+                </p>
               </div>
 
               <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2/40 p-3">

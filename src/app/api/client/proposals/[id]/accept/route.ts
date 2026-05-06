@@ -3,6 +3,7 @@ import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserId } from '@/lib/notifications';
+import { namesMatch } from '@/lib/signatures/match';
 
 export const runtime = 'nodejs';
 
@@ -64,6 +65,15 @@ export async function POST(
       return Response.json(
         { error: `Proposal is ${r.status}, no longer accepting.` },
         { status: 409 },
+      );
+    }
+
+    if (!namesMatch(parsed.data.full_name, contact.full_name)) {
+      return Response.json(
+        {
+          error: `Signature must match the name on file: ${contact.full_name}.`,
+        },
+        { status: 422 },
       );
     }
 

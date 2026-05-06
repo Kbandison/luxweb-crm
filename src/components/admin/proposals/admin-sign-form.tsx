@@ -96,8 +96,21 @@ export function AdminSignForm({
           maxLength={200}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Kevin Bandison"
+          placeholder={defaultSignerName ?? 'Your full name'}
         />
+        {defaultSignerName ? (
+          <p className="font-sans text-xs text-ink-subtle">
+            Type{' '}
+            <span className="font-mono text-ink">{defaultSignerName}</span>{' '}
+            exactly to sign. (Update your profile first if your legal name
+            differs.)
+          </p>
+        ) : (
+          <p className="font-sans text-xs text-danger">
+            No name on file for your account. Set your full name in Profile
+            before signing.
+          </p>
+        )}
       </div>
 
       <label className="flex items-start gap-3 rounded-lg bg-surface px-3 py-2.5 ring-1 ring-border">
