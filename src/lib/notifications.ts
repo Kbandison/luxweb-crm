@@ -248,27 +248,55 @@ export async function notify(event: NotifyEvent): Promise<void> {
     console.warn('[notify] failed to read user email prefs:', err);
   }
 
-  if (!user) return;
+  if (!user) {
+    console.warn(
+      `[notify] no user row for userId=${event.userId} (type=${event.type}); email skipped`,
+    );
+    return;
+  }
+  if (!user.email) {
+    console.warn(
+      `[notify] user ${event.userId} has no email; ${event.type} email skipped`,
+    );
+    return;
+  }
 
   // 3. Invite emails always go (opting out of your own invite doesn't
   //    make sense). All other types respect email_prefs.
   const prefKey = event.type;
   if (event.type !== 'invite' && user.email_prefs[prefKey] === false) {
+    console.warn(
+      `[notify] ${event.type} email opt-out for ${user.email}; skipped`,
+    );
     return;
   }
 
   // 4. Render + send
   try {
     const rendered = renderTemplate(event, user);
-    if (!rendered) return;
-    await sendEmail({
+    if (!rendered) {
+      // Some types (e.g. message) intentionally have no email template.
+      return;
+    }
+    const result = await sendEmail({
       to: user.email,
       subject: rendered.subject,
       react: rendered.react,
       tag: event.type,
     });
+    console.log(
+      `[notify] sent ${event.type} email to ${user.email}`,
+      // Resend SDK returns { id } on success or { error }.
+      (result as { data?: { id?: string }; error?: unknown }).data?.id
+        ? `id=${(result as { data?: { id?: string } }).data?.id}`
+        : (result as { error?: { message?: string } }).error?.message ??
+            'no id returned',
+    );
   } catch (err) {
-    console.warn('[notify] failed to send email:', err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[notify] failed to send ${event.type} email to ${user.email}: ${msg}`,
+    );
   }
 }
 

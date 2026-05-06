@@ -128,7 +128,10 @@ async function fetchPendingContracts(
         'id, agreement_version, project_id, created_at, proposals!inner(title)',
       )
       .in('contact_id', contactIds)
-      .eq('status', 'pending_signature')
+      // Include both the legacy single-signature value and the new
+      // two-signature client-pending value so the dashboard banner
+      // surfaces under either flow.
+      .in('status', ['pending_signature', 'pending_client_signature'])
       .order('created_at', { ascending: false });
     type Row = {
       id: string;
