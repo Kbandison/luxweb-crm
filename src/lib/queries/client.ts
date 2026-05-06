@@ -312,11 +312,12 @@ export async function getClientProject(
     // Ownership check.
     if (contact?.user_id !== userId) return null;
 
-    // Hide pre-kickoff projects from the client workspace. The deposit
-    // invoice flips the project to in_progress on payment via the Stripe
-    // webhook; until then this page 404s. The /invoices/[id]/pay route
-    // is gated by ownership only so the client can still pay the deposit.
-    if (r.status === 'planning') return null;
+    // Note: we don't gate on status='planning' here — this query backs the
+    // /portal/project/[id]/* layout, so 404'ing planning projects would
+    // break the /invoices/[id]/pay deposit route too. The dashboard tile
+    // filter (fetchProjectTiles) is what hides pre-kickoff projects from
+    // listings; direct URLs intentionally still resolve so the deposit pay
+    // flow + email links stay reachable.
 
     // Milestones — only client-visible ones.
     const { data: msData } = await supabaseAdmin()

@@ -188,6 +188,35 @@ export async function POST(
             source: 'contract_signed_auto',
           },
         });
+
+        // Seed the project's milestones from the proposal's payment
+        // milestones so the project workspace shows the same plan the
+        // client just agreed to. Title comes from the milestone label,
+        // description includes the dollar amount + "due" text.
+        const propMs = content?.investment?.milestones ?? [];
+        if (propMs.length > 0) {
+          const rows = propMs.map((m, i) => {
+            const dollars = (m.amount_cents / 100).toFixed(
+              m.amount_cents % 100 === 0 ? 0 : 2,
+            );
+            const descBits = [`$${dollars}`];
+            if (m.due) descBits.push(m.due);
+            return {
+              project_id: projectId,
+              title: m.label || `Milestone ${i + 1}`,
+              description: descBits.join(' · '),
+              status: 'pending' as const,
+              sort_order: i,
+              is_client_visible: true,
+            };
+          });
+          try {
+            await sb.from('milestones').insert(rows);
+          } catch {
+            // Best-effort. Project creation already succeeded; admin can
+            // add milestones manually if this fails.
+          }
+        }
       }
     }
 

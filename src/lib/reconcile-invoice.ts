@@ -23,7 +23,7 @@ export async function reconcileInvoicePaid(
   const { data: inv } = await supabaseAdmin()
     .from('invoices')
     .select(
-      'id, status, stripe_invoice_id, amount_cents, contact_id, contacts!inner(user_id)',
+      'id, status, stripe_invoice_id, amount_cents, contact_id, project_id, contacts!inner(user_id)',
     )
     .eq('id', invoiceId)
     .maybeSingle();
@@ -34,6 +34,7 @@ export async function reconcileInvoicePaid(
     status: string;
     stripe_invoice_id: string | null;
     amount_cents: number | string | null;
+    project_id: string | null;
     contacts:
       | { user_id: string | null }
       | { user_id: string | null }[];
@@ -81,6 +82,23 @@ export async function reconcileInvoicePaid(
       source: 'client_return_reconcile',
     },
   });
+
+  // Mirror what the Stripe webhook does — flip the linked project from
+  // 'planning' to 'in_progress' on first payment. The webhook is the
+  // authoritative path in production; this branch only matters for
+  // localhost dev where Stripe events don't reach the dev server unless
+  // forwarded via stripe-cli.
+  if (r.project_id) {
+    try {
+      await supabaseAdmin()
+        .from('projects')
+        .update({ status: 'in_progress' })
+        .eq('id', r.project_id)
+        .eq('status', 'planning');
+    } catch {
+      // Best-effort.
+    }
+  }
 
   return true;
 }
