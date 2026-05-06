@@ -43,11 +43,13 @@ export function ProposalEditor({
 }) {
   const router = useRouter();
   const toast = useToast();
-  const isAccepted = initialStatus === 'accepted';
+  // Read status straight from the prop so a router.refresh() after Send
+  // immediately flips the button visibility without a hard reload.
+  const status = initialStatus;
+  const isAccepted = status === 'accepted';
   // Once accepted, the editor is read-only — force preview mode.
   const [mode, setMode] = useState<Mode>(isAccepted ? 'preview' : 'edit');
   const [title, setTitle] = useState(initialTitle);
-  const [status] = useState<ProposalStatus>(initialStatus);
   const [content, setContent] = useState<ProposalContent>(initialContent);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
