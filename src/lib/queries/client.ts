@@ -312,6 +312,12 @@ export async function getClientProject(
     // Ownership check.
     if (contact?.user_id !== userId) return null;
 
+    // Hide pre-kickoff projects from the client workspace. The deposit
+    // invoice flips the project to in_progress on payment via the Stripe
+    // webhook; until then this page 404s. The /invoices/[id]/pay route
+    // is gated by ownership only so the client can still pay the deposit.
+    if (r.status === 'planning') return null;
+
     // Milestones — only client-visible ones.
     const { data: msData } = await supabaseAdmin()
       .from('milestones')
@@ -906,6 +912,13 @@ async function fetchProjectTiles(
       .from('projects')
       .select('id, name, status, start_date, end_date, created_at')
       .in('contact_id', contactIds)
+      // Hide projects that haven't kicked off yet — the deposit invoice
+      // flips status to in_progress on first paid invoice via the Stripe
+      // webhook. Until then the workspace stays out of the client's view
+      // (dashboard tile + direct URL both gated). The deposit invoice
+      // pay link still works via /invoices/[id]/pay since that route is
+      // gated by ownership only, not project status.
+      .neq('status', 'planning')
       .order('created_at', { ascending: false });
     type Row = {
       id: string;
