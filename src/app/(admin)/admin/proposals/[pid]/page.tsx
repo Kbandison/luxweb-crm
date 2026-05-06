@@ -38,6 +38,7 @@ export default async function AdminProposalPage({
           initialStatus={proposal.status}
           initialContent={proposal.content}
           initialSentAt={proposal.sentAt}
+          initialRevision={proposal.revision}
           initialAcceptedAt={proposal.acceptedAt}
           initialAcceptedByName={proposal.acceptedByName}
           initialAcceptedByIp={proposal.acceptedByIp}

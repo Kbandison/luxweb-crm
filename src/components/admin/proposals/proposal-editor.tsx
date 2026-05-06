@@ -23,6 +23,7 @@ export function ProposalEditor({
   initialStatus,
   initialContent,
   initialSentAt,
+  initialRevision = 1,
   initialAcceptedAt,
   initialAcceptedByName,
   initialAcceptedByIp,
@@ -36,6 +37,8 @@ export function ProposalEditor({
   initialStatus: ProposalStatus;
   initialContent: ProposalContent;
   initialSentAt: string | null;
+  /** v1, v2, … — bumps every Revise & Resend. Default 1 for old rows. */
+  initialRevision?: number;
   initialAcceptedAt?: string | null;
   initialAcceptedByName?: string | null;
   initialAcceptedByIp?: string | null;
@@ -46,9 +49,13 @@ export function ProposalEditor({
   // Read status straight from the prop so a router.refresh() after Send
   // immediately flips the button visibility without a hard reload.
   const status = initialStatus;
+  const revision = initialRevision;
   const isAccepted = status === 'accepted';
-  // Once accepted, the editor is read-only — force preview mode.
-  const [mode, setMode] = useState<Mode>(isAccepted ? 'preview' : 'edit');
+  const isSent = status === 'sent';
+  // Locked: accepted (permanent) or sent (until Revise & Resend unlocks it).
+  const isLocked = isAccepted || isSent;
+  // Force preview mode when locked.
+  const [mode, setMode] = useState<Mode>(isLocked ? 'preview' : 'edit');
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState<ProposalContent>(initialContent);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -58,6 +65,8 @@ export function ProposalEditor({
   const [sendBusy, setSendBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [reviseOpen, setReviseOpen] = useState(false);
+  const [reviseBusy, setReviseBusy] = useState(false);
 
   const totalCents = content.investment.total_cents;
 
@@ -131,6 +140,33 @@ export function ProposalEditor({
     }
   }
 
+  async function revise() {
+    setReviseBusy(true);
+    try {
+      const res = await fetch(`/api/admin/proposals/${proposalId}/revise`, {
+        method: 'POST',
+      });
+      const j = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        revision?: number;
+      };
+      if (!res.ok) {
+        const msg = j.error ?? 'Failed to revise.';
+        toast.error("Couldn't revise proposal", msg);
+        return;
+      }
+      toast.success(
+        'Proposal unlocked',
+        `Now editable as v${j.revision ?? '?'}. Re-send when ready.`,
+      );
+      setMode('edit');
+      router.refresh();
+    } finally {
+      setReviseBusy(false);
+      setReviseOpen(false);
+    }
+  }
+
   // Helpers for nested content updates
   function patch<K extends keyof ProposalContent>(
     key: K,
@@ -188,9 +224,15 @@ export function ProposalEditor({
           <div className="inline-flex overflow-hidden rounded-md border border-border">
             <button
               type="button"
-              onClick={() => !isAccepted && setMode('edit')}
-              disabled={isAccepted}
-              title={isAccepted ? 'Locked — proposal is signed' : undefined}
+              onClick={() => !isLocked && setMode('edit')}
+              disabled={isLocked}
+              title={
+                isAccepted
+                  ? 'Locked — proposal is signed'
+                  : isSent
+                    ? 'Locked — Revise & Resend to edit'
+                    : undefined
+              }
               className={cn(
                 'px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors disabled:cursor-not-allowed disabled:opacity-40',
                 mode === 'edit'
@@ -231,7 +273,7 @@ export function ProposalEditor({
           >
             Delete
           </Button>
-          {!isAccepted ? (
+          {!isLocked ? (
             <Button
               type="button"
               variant="secondary"
@@ -249,7 +291,17 @@ export function ProposalEditor({
               onClick={() => setSendOpen(true)}
               disabled={sendBusy}
             >
-              Send
+              {revision > 1 ? 'Re-send' : 'Send'}
+            </Button>
+          ) : null}
+          {isSent ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setReviseOpen(true)}
+              disabled={reviseBusy}
+            >
+              Revise & resend
             </Button>
           ) : null}
         </div>
@@ -263,6 +315,18 @@ export function ProposalEditor({
           <p className="mt-0.5 font-sans text-xs text-ink-muted">
             This proposal is signed and cannot be edited or deleted. You can
             still preview, print, or open the signature block below.
+          </p>
+        </div>
+      ) : isSent ? (
+        <div className="rounded-xl border border-copper/30 bg-copper-soft/25 px-5 py-3 print:hidden">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+            Sent · v{revision} — locked while client reviews
+          </p>
+          <p className="mt-0.5 font-sans text-xs text-ink-muted">
+            The client is looking at this exact version. To make changes,
+            click <span className="text-ink">Revise &amp; resend</span> — the
+            current content snapshots into the audit log and the proposal
+            unlocks for editing as v{revision + 1}.
           </p>
         </div>
       ) : null}
@@ -330,6 +394,26 @@ export function ProposalEditor({
         busy={deleteBusy}
         onCancel={() => (deleteBusy ? undefined : setDeleteOpen(false))}
         onConfirm={destroy}
+      />
+
+      <ConfirmDialog
+        open={reviseOpen}
+        tone="default"
+        title="Revise & resend?"
+        description={
+          <>
+            Unlocks the proposal for editing and bumps it to{' '}
+            <span className="font-mono text-ink">v{revision + 1}</span>. The
+            current content (v{revision}) is snapshotted to the audit log
+            so you can prove what the client originally saw. After your
+            edits, click <span className="text-ink">Re-send</span> to email
+            them the updated version.
+          </>
+        }
+        confirmLabel="Unlock for editing"
+        busy={reviseBusy}
+        onCancel={() => (reviseBusy ? undefined : setReviseOpen(false))}
+        onConfirm={revise}
       />
     </div>
   );

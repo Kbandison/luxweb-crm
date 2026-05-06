@@ -879,6 +879,8 @@ export type ProposalRow = {
   acceptedAt: string | null;
   expiresAt: string | null;
   createdAt: string;
+  /** Revision number — bumps on Revise & Resend. Defaults to 1. */
+  revision: number;
 };
 
 export type ProposalSignature = {
@@ -904,6 +906,7 @@ type ProposalSelectRow = {
   accepted_at: string | null;
   expires_at: string | null;
   created_at: string;
+  revision?: number | null;
 };
 
 function toProposalRow(r: ProposalSelectRow): ProposalRow {
@@ -919,6 +922,7 @@ function toProposalRow(r: ProposalSelectRow): ProposalRow {
     acceptedAt: r.accepted_at,
     expiresAt: r.expires_at,
     createdAt: r.created_at,
+    revision: r.revision ?? 1,
   };
 }
 
@@ -929,7 +933,7 @@ export async function getProjectProposals(
     const { data } = await supabaseAdmin()
       .from('proposals')
       .select(
-        'id, project_id, contact_id, deal_id, title, status, total_cents, sent_at, accepted_at, expires_at, created_at',
+        'id, project_id, contact_id, deal_id, title, status, total_cents, sent_at, accepted_at, expires_at, created_at, revision',
       )
       .eq('project_id', projectId)
       .order('created_at', { ascending: false });
@@ -947,7 +951,7 @@ export async function getContactProposals(
     const { data } = await supabaseAdmin()
       .from('proposals')
       .select(
-        'id, project_id, contact_id, deal_id, title, status, total_cents, sent_at, accepted_at, expires_at, created_at',
+        'id, project_id, contact_id, deal_id, title, status, total_cents, sent_at, accepted_at, expires_at, created_at, revision',
       )
       .eq('contact_id', contactId)
       .order('created_at', { ascending: false });
@@ -962,7 +966,7 @@ export async function getProposal(id: string): Promise<ProposalDetail | null> {
     const { data } = await supabaseAdmin()
       .from('proposals')
       .select(
-        'id, project_id, contact_id, deal_id, title, status, total_cents, sent_at, accepted_at, expires_at, created_at, content_json, accepted_by_name, accepted_by_ip, accepted_by_user_agent',
+        'id, project_id, contact_id, deal_id, title, status, total_cents, sent_at, accepted_at, expires_at, created_at, revision, content_json, accepted_by_name, accepted_by_ip, accepted_by_user_agent',
       )
       .eq('id', id)
       .single();

@@ -21,6 +21,7 @@ export default async function ProposalEditorPage({
         initialStatus={proposal.status}
         initialContent={proposal.content}
         initialSentAt={proposal.sentAt}
+        initialRevision={proposal.revision}
         initialAcceptedAt={proposal.acceptedAt}
         initialAcceptedByName={proposal.acceptedByName}
         initialAcceptedByIp={proposal.acceptedByIp}
