@@ -105,7 +105,9 @@ export async function POST(
 
     // Decide whether to fire a new invoice. Skip if a non-terminal one
     // already exists (e.g., a re-approved milestone after request-changes).
-    let newInvoiceId: string | null = null;
+    // Always resolve the *effective* invoice id (existing or new) so the
+    // client can redirect straight to the pay page.
+    let invoiceId: string | null = null;
     if (m && m.amount_cents != null && Number(m.amount_cents) > 0) {
       let needsNew = true;
       if (m.invoice_id) {
@@ -117,6 +119,7 @@ export async function POST(
         const existingStatus = (existing as { status: string } | null)?.status;
         if (existingStatus && existingStatus !== 'void') {
           needsNew = false;
+          invoiceId = m.invoice_id;
         }
       }
 
@@ -129,7 +132,7 @@ export async function POST(
             actorId: null,
             source: 'milestone_approve_auto',
           });
-          newInvoiceId = result.invoiceId;
+          invoiceId = result.invoiceId;
           await sb
             .from('milestones')
             .update({ invoice_id: result.invoiceId })
@@ -149,7 +152,7 @@ export async function POST(
       entity_id: id,
       diff: {
         milestone_id: r.milestone_id,
-        invoice_id: newInvoiceId,
+        invoice_id: invoiceId,
         by: 'client',
       },
     });
@@ -165,7 +168,7 @@ export async function POST(
         projectId: r.project_id,
         projectName: project?.name ?? '—',
         kind: 'status',
-        statusLabel: newInvoiceId ? 'Approved · invoice sent' : 'Approved',
+        statusLabel: invoiceId ? 'Approved · invoice sent' : 'Approved',
         revisionPath: `/admin/projects/${r.project_id}/revisions/${id}`,
       });
     }
@@ -174,7 +177,8 @@ export async function POST(
 
     return Response.json({
       ok: true,
-      invoice_id: newInvoiceId,
+      invoice_id: invoiceId,
+      project_id: r.project_id,
     });
   } catch (err) {
     if (err instanceof Response) return err;

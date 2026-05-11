@@ -63,9 +63,26 @@ export function RevisionThread({
       const res = await fetch(`/api/client/revisions/${revision.id}/approve`, {
         method: 'POST',
       });
+      const j = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        invoice_id?: string | null;
+        project_id?: string | null;
+      };
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
         toast.error("Couldn't approve", j.error ?? 'Approve failed.');
+        return;
+      }
+      // If billing fired (or was already linked), send the client straight
+      // to the pay page — that's the next step. Otherwise (no amount, free
+      // milestone) show the success modal and stay on the thread.
+      if (j.invoice_id && j.project_id) {
+        toast.success(
+          'Milestone approved',
+          'Taking you to the payment page.',
+        );
+        router.push(
+          `/portal/project/${j.project_id}/invoices/${j.invoice_id}/pay`,
+        );
         return;
       }
       setApproveOpen(true);

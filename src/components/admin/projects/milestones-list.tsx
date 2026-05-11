@@ -15,7 +15,7 @@ import {
   MILESTONE_STATUS_TONE,
   type MilestoneStatus,
 } from './status-meta';
-import { formatDate } from '@/lib/formatters';
+import { formatDate, formatUSD } from '@/lib/formatters';
 
 export function MilestonesList({
   projectId,
@@ -32,6 +32,8 @@ export function MilestonesList({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Milestone | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
+  const [amountEditId, setAmountEditId] = useState<string | null>(null);
+  const [amountDraft, setAmountDraft] = useState('');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -93,6 +95,42 @@ export function MilestonesList({
     } else {
       toast.success('Milestone updated');
     }
+    router.refresh();
+  }
+
+  /**
+   * Save the price for a milestone. Empty input → clears the amount
+   * (milestone becomes free / non-billable). Otherwise parse as dollars
+   * and convert to integer cents.
+   */
+  async function saveAmount(id: string) {
+    const raw = amountDraft.trim();
+    let payload: { amount_cents: number | null };
+    if (raw === '') {
+      payload = { amount_cents: null };
+    } else {
+      const parsed = Number.parseFloat(raw);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        toast.error('Invalid amount', 'Enter a number like 1500 or 1500.00.');
+        return;
+      }
+      payload = { amount_cents: Math.round(parsed * 100) };
+    }
+    setPendingId(id);
+    const res = await fetch(`/api/admin/milestones/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    setPendingId(null);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      toast.error("Couldn't save amount", j.error ?? 'Update failed.');
+      return;
+    }
+    setAmountEditId(null);
+    setAmountDraft('');
+    toast.success(payload.amount_cents == null ? 'Price cleared' : 'Price saved');
     router.refresh();
   }
 
@@ -305,7 +343,7 @@ export function MilestonesList({
                       {m.description}
                     </p>
                   ) : null}
-                  <div className="mt-2 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
                     {m.dueDate ? (
                       <span>Due {formatDate(m.dueDate)}</span>
                     ) : (
@@ -319,6 +357,66 @@ export function MilestonesList({
                     >
                       {m.isClientVisible ? '◐ Client visible' : '🔒 Internal'}
                     </span>
+                    <span aria-hidden>·</span>
+                    {amountEditId === m.id ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-ink-subtle">$</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          autoFocus
+                          value={amountDraft}
+                          onChange={(e) => setAmountDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              saveAmount(m.id);
+                            } else if (e.key === 'Escape') {
+                              setAmountEditId(null);
+                              setAmountDraft('');
+                            }
+                          }}
+                          placeholder="1500"
+                          className="h-6 w-20 rounded border border-border bg-bg px-1.5 font-mono text-[11px] normal-case tracking-normal text-ink focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => saveAmount(m.id)}
+                          disabled={pendingId === m.id}
+                          className="text-copper hover:text-ink"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAmountEditId(null);
+                            setAmountDraft('');
+                          }}
+                          className="text-ink-subtle hover:text-ink"
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAmountEditId(m.id);
+                          setAmountDraft(
+                            m.amountCents == null
+                              ? ''
+                              : (m.amountCents / 100).toString(),
+                          );
+                        }}
+                        className="text-ink-muted hover:text-copper"
+                        title="Set the billing amount fired on client approval"
+                      >
+                        {m.amountCents == null || m.amountCents === 0
+                          ? '+ Set price'
+                          : `${formatUSD(m.amountCents)}`}
+                      </button>
+                    )}
                   </div>
                 </div>
 

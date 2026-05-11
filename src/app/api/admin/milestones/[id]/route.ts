@@ -22,6 +22,9 @@ const UpdateSchema = z.object({
   status: z.enum(STATUSES).optional(),
   is_client_visible: z.boolean().optional(),
   sort_order: z.number().int().optional(),
+  // null clears the price (free / non-billable milestone); positive int
+  // sets the auto-billing amount fired on client approval.
+  amount_cents: z.number().int().min(0).nullable().optional(),
 });
 
 export async function PATCH(

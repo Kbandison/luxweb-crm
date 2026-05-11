@@ -57,6 +57,24 @@ export async function advanceProposalMilestoneChain(
         .eq('id', next.id);
     }
 
+    // If THIS payment closes out the very last open milestone on the
+    // project (proposal AND manual rows considered together), flip the
+    // project status to 'completed'. This is the "launch milestone is
+    // paid → project done" trigger.
+    const { data: openRows } = await sb
+      .from('milestones')
+      .select('id')
+      .eq('project_id', projectId)
+      .not('status', 'in', '("done","blocked")')
+      .limit(1);
+    if (!openRows || openRows.length === 0) {
+      await sb
+        .from('projects')
+        .update({ status: 'completed', end_date: completedAt.slice(0, 10) })
+        .eq('id', projectId)
+        .neq('status', 'completed');
+    }
+
     // Invalidate cached project pages so admin + client see the new state
     // immediately (router.refresh on the client only pulls fresh data when
     // the server cache has been busted).
