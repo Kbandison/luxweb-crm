@@ -152,6 +152,22 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
     // Best-effort.
   }
 
+  // Flip the project from 'planning' to 'in_progress' on first invoice
+  // payment. Mirrors reconcile-invoice so the webhook path and the
+  // reconcile-on-return path agree. The .neq guard makes it idempotent —
+  // subsequent payments don't undo a later 'completed' / 'on_hold' state.
+  if (projectId) {
+    try {
+      await supabaseAdmin()
+        .from('projects')
+        .update({ status: 'in_progress' })
+        .eq('id', projectId)
+        .eq('status', 'planning');
+    } catch {
+      // Best-effort.
+    }
+  }
+
   // Advance the proposal-milestone chain for this project. First payment
   // closes the deposit milestone + unlocks phase 1; second payment closes
   // phase 1 + unlocks launch; etc.
