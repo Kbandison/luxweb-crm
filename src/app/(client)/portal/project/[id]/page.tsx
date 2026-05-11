@@ -1,9 +1,11 @@
 import { notFound, redirect } from 'next/navigation';
+import Link from 'next/link';
 import { getSession } from '@/lib/supabase/session';
 import {
   getClientProject,
   getClientProjectCarePlan,
   getClientProjectReview,
+  type ClientMilestone,
 } from '@/lib/queries/client';
 import { CarePlanCard } from '@/components/client/care-plan/care-plan-card';
 import { CarePlanBillingHistory } from '@/components/care-plan/billing-history';
@@ -15,6 +17,43 @@ import {
   MILESTONE_STATUS_TONE as MILESTONE_TONE,
 } from '@/components/admin/projects/status-meta';
 import { cn } from '@/lib/utils';
+
+/**
+ * Decide where a milestone row should link to.
+ *   - unpaid invoice → straight to the pay page
+ *   - awaiting client review → approval page
+ *   - paid invoice → invoice detail (receipt)
+ *   - otherwise nothing actionable yet
+ */
+function milestoneHref(
+  projectId: string,
+  m: ClientMilestone,
+): { href: string; hint: string } | null {
+  if (
+    m.invoiceId &&
+    m.invoiceStatus &&
+    m.invoiceStatus !== 'paid' &&
+    m.invoiceStatus !== 'void'
+  ) {
+    return {
+      href: `/portal/project/${projectId}/invoices/${m.invoiceId}/pay`,
+      hint: 'Pay now',
+    };
+  }
+  if (m.status === 'in_progress' && m.revisionId) {
+    return {
+      href: `/portal/project/${projectId}/revisions/${m.revisionId}`,
+      hint: 'Review',
+    };
+  }
+  if (m.invoiceId && m.invoiceStatus === 'paid') {
+    return {
+      href: `/portal/project/${projectId}/invoices/${m.invoiceId}/pay`,
+      hint: 'Receipt',
+    };
+  }
+  return null;
+}
 
 export default async function ClientProjectOverviewPage({
   params,
@@ -123,47 +162,72 @@ export default async function ClientProjectOverviewPage({
           </div>
         ) : (
           <ol className="mt-5 space-y-2">
-            {project.milestones.map((m, i) => (
-              <li
-                key={m.id}
-                className={cn(
-                  'flex items-start gap-4 rounded-xl border border-border bg-surface p-4',
-                  m.status === 'done' && 'opacity-80',
-                )}
-              >
-                <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-surface font-mono text-[11px] tabular-nums text-ink-subtle">
-                  {(i + 1).toString().padStart(2, '0')}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <h4
-                      className={cn(
-                        'font-sans text-sm font-medium text-ink',
-                        m.status === 'done' && 'line-through decoration-ink-subtle',
-                      )}
-                    >
-                      {m.title}
-                    </h4>
-                    <span
-                      className={cn(
-                        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
-                        MILESTONE_TONE[m.status],
-                      )}
-                    >
-                      {MILESTONE_LABEL[m.status]}
-                    </span>
+            {project.milestones.map((m, i) => {
+              const link = milestoneHref(id, m);
+              const body = (
+                <>
+                  <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-surface font-mono text-[11px] tabular-nums text-ink-subtle">
+                    {(i + 1).toString().padStart(2, '0')}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h4
+                        className={cn(
+                          'font-sans text-sm font-medium text-ink',
+                          m.status === 'done' && 'line-through decoration-ink-subtle',
+                        )}
+                      >
+                        {m.title}
+                      </h4>
+                      <span
+                        className={cn(
+                          'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                          MILESTONE_TONE[m.status],
+                        )}
+                      >
+                        {MILESTONE_LABEL[m.status]}
+                      </span>
+                    </div>
+                    {m.description ? (
+                      <p className="mt-1 whitespace-pre-wrap font-sans text-xs leading-relaxed text-ink-muted">
+                        {m.description}
+                      </p>
+                    ) : null}
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+                        {m.dueDate ? `Due ${formatDate(m.dueDate)}` : 'No due date'}
+                      </p>
+                      {link ? (
+                        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-copper">
+                          {link.hint} →
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  {m.description ? (
-                    <p className="mt-1 whitespace-pre-wrap font-sans text-xs leading-relaxed text-ink-muted">
-                      {m.description}
-                    </p>
-                  ) : null}
-                  <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
-                    {m.dueDate ? `Due ${formatDate(m.dueDate)}` : 'No due date'}
-                  </p>
-                </div>
-              </li>
-            ))}
+                </>
+              );
+              const baseCls = cn(
+                'flex items-start gap-4 rounded-xl border border-border bg-surface p-4',
+                m.status === 'done' && 'opacity-80',
+              );
+              return (
+                <li key={m.id}>
+                  {link ? (
+                    <Link
+                      href={link.href}
+                      className={cn(
+                        baseCls,
+                        'transition-colors hover:border-copper/40 hover:bg-surface/80 focus:outline-none focus-visible:border-copper',
+                      )}
+                    >
+                      {body}
+                    </Link>
+                  ) : (
+                    <div className={baseCls}>{body}</div>
+                  )}
+                </li>
+              );
+            })}
           </ol>
         )}
       </section>

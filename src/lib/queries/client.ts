@@ -270,6 +270,9 @@ export type ClientMilestone = {
   status: 'inactive' | 'pending' | 'in_progress' | 'done' | 'blocked';
   sortOrder: number;
   completedAt: string | null;
+  invoiceId: string | null;
+  invoiceStatus: 'draft' | 'sent' | 'paid' | 'overdue' | 'void' | null;
+  revisionId: string | null;
 };
 
 /**
@@ -323,7 +326,7 @@ export async function getClientProject(
     const { data: msData } = await supabaseAdmin()
       .from('milestones')
       .select(
-        'id, title, description, due_date, status, sort_order, is_client_visible, completed_at',
+        'id, title, description, due_date, status, sort_order, is_client_visible, completed_at, invoice_id',
       )
       .eq('project_id', projectId)
       .eq('is_client_visible', true)
@@ -337,8 +340,52 @@ export async function getClientProject(
       sort_order: number;
       is_client_visible: boolean;
       completed_at: string | null;
+      invoice_id: string | null;
     };
     const mRows = (msData ?? []) as MRow[];
+
+    // Resolve invoice statuses for milestones that have one.
+    const invoiceIds = mRows
+      .map((m) => m.invoice_id)
+      .filter((v): v is string => !!v);
+    const invoiceStatusById = new Map<
+      string,
+      ClientMilestone['invoiceStatus']
+    >();
+    if (invoiceIds.length > 0) {
+      const { data: invRows } = await supabaseAdmin()
+        .from('invoices')
+        .select('id, status')
+        .in('id', invoiceIds);
+      type InvRow = {
+        id: string;
+        status: NonNullable<ClientMilestone['invoiceStatus']>;
+      };
+      for (const inv of (invRows ?? []) as InvRow[]) {
+        invoiceStatusById.set(inv.id, inv.status);
+      }
+    }
+
+    // Resolve the latest pending_review revision per milestone so the
+    // client can click in-review milestones straight to the approval page.
+    const reviewMilestoneIds = mRows
+      .filter((m) => m.status === 'in_progress')
+      .map((m) => m.id);
+    const revisionByMilestone = new Map<string, string>();
+    if (reviewMilestoneIds.length > 0) {
+      const { data: revRows } = await supabaseAdmin()
+        .from('revision_requests')
+        .select('id, milestone_id, created_at')
+        .in('milestone_id', reviewMilestoneIds)
+        .eq('status', 'pending_review')
+        .order('created_at', { ascending: false });
+      type RevRow = { id: string; milestone_id: string };
+      for (const row of (revRows ?? []) as RevRow[]) {
+        if (!revisionByMilestone.has(row.milestone_id)) {
+          revisionByMilestone.set(row.milestone_id, row.id);
+        }
+      }
+    }
 
     return {
       id: r.id,
@@ -355,6 +402,11 @@ export async function getClientProject(
         status: m.status,
         sortOrder: m.sort_order,
         completedAt: m.completed_at,
+        invoiceId: m.invoice_id,
+        invoiceStatus: m.invoice_id
+          ? invoiceStatusById.get(m.invoice_id) ?? null
+          : null,
+        revisionId: revisionByMilestone.get(m.id) ?? null,
       })),
     };
   } catch {
