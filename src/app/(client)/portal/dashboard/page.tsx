@@ -67,7 +67,10 @@ export default async function ClientDashboardPage() {
         return (
           <>
             <section className="mt-10 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-              <UnpaidInvoices invoices={dash.unpaidInvoices} />
+              <UnpaidInvoices
+                invoices={dash.unpaidInvoices}
+                primaryProjectId={focus?.id ?? null}
+              />
               {showProposalsAside ? (
                 <ProposalsTile proposals={dash.pendingProposals} />
               ) : (
@@ -371,16 +374,18 @@ function FocusProject({
 
 function UnpaidInvoices({
   invoices,
+  primaryProjectId,
 }: {
   invoices: import('@/lib/queries/client').ClientInvoiceTile[];
+  primaryProjectId: string | null;
 }) {
   const total = invoices.reduce((s, i) => s + i.amountCents, 0);
   return (
     <section className="rounded-2xl border border-border bg-surface p-6">
       <div className="flex items-baseline justify-between">
         <div>
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-            Open invoices
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-copper">
+            Currently due
           </p>
           <p className="mt-2 font-mono text-3xl font-medium tabular-nums tracking-tight text-ink">
             {formatUSD(total)}
@@ -393,7 +398,7 @@ function UnpaidInvoices({
 
       {invoices.length === 0 ? (
         <p className="mt-5 font-sans text-sm text-ink-muted">
-          No invoices waiting. You&apos;re all caught up.
+          Nothing waiting. You&apos;re all caught up.
         </p>
       ) : (
         <ul className="mt-5 space-y-2">
@@ -448,6 +453,17 @@ function UnpaidInvoices({
           ))}
         </ul>
       )}
+
+      {primaryProjectId ? (
+        <div className="mt-5 border-t border-border pt-4">
+          <Link
+            href={`/portal/project/${primaryProjectId}/invoices`}
+            className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-copper"
+          >
+            View all invoices →
+          </Link>
+        </div>
+      ) : null}
     </section>
   );
 }

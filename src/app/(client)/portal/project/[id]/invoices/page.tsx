@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { getSession } from '@/lib/supabase/session';
-import { getClientProjectInvoices } from '@/lib/queries/client';
+import {
+  getClientProjectInvoices,
+  type ClientInvoice,
+} from '@/lib/queries/client';
 import { reconcileInvoicePaid } from '@/lib/reconcile-invoice';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import {
@@ -33,17 +36,31 @@ export default async function ClientProjectInvoicesPage({
   const invoices = await getClientProjectInvoices(id, session.userId);
   if (invoices === null) notFound();
 
-  const open = invoices.filter((i) => i.status === 'sent' || i.status === 'overdue');
+  const open = invoices.filter(
+    (i) => i.status === 'sent' || i.status === 'overdue',
+  );
   const paid = invoices.filter((i) => i.status === 'paid');
+  const voided = invoices.filter((i) => i.status === 'void');
   const openCents = open.reduce((s, i) => s + i.amountCents, 0);
   const paidCents = paid.reduce((s, i) => s + i.amountCents, 0);
 
   return (
     <main className="space-y-8 px-6 py-10 md:px-10">
+      {/* Page heading */}
+      <header className="flex items-baseline gap-3">
+        <span className="font-mono text-lg font-semibold tabular-nums text-copper">
+          01
+        </span>
+        <span aria-hidden className="h-3.5 w-px bg-copper/40" />
+        <h2 className="font-display text-lg font-medium tracking-tight text-ink">
+          Invoices
+        </h2>
+      </header>
+
       {/* Summary */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Stat
-          label="Open balance"
+          label="Currently due"
           value={formatUSD(openCents)}
           hint={`${open.length} ${open.length === 1 ? 'invoice' : 'invoices'}`}
           accent={open.length > 0}
@@ -55,13 +72,73 @@ export default async function ClientProjectInvoicesPage({
         />
       </div>
 
-      {/* List */}
+      {/* Sections */}
       {invoices.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-surface/60 p-10 text-center">
-          <p className="font-sans text-sm text-ink-muted">
-            No invoices.
-          </p>
+          <p className="font-sans text-sm text-ink-muted">No invoices yet.</p>
         </div>
+      ) : (
+        <div className="space-y-8">
+          <InvoiceSection
+            label="Currently due"
+            tone="copper"
+            invoices={open}
+            projectId={id}
+            empty="Nothing waiting — you're all caught up."
+          />
+          <InvoiceSection
+            label="Paid"
+            tone="muted"
+            invoices={paid}
+            projectId={id}
+            empty="No paid invoices yet."
+          />
+          {voided.length > 0 ? (
+            <InvoiceSection
+              label="Voided"
+              tone="muted"
+              invoices={voided}
+              projectId={id}
+            />
+          ) : null}
+        </div>
+      )}
+    </main>
+  );
+}
+
+function InvoiceSection({
+  label,
+  tone,
+  invoices,
+  projectId,
+  empty,
+}: {
+  label: string;
+  tone: 'copper' | 'muted';
+  invoices: ClientInvoice[];
+  projectId: string;
+  empty?: string;
+}) {
+  return (
+    <section>
+      <p
+        className={cn(
+          'mb-3 font-mono text-[10px] font-medium uppercase tracking-[0.22em]',
+          tone === 'copper' ? 'text-copper' : 'text-ink-muted',
+        )}
+      >
+        {label}
+        <span className="ml-2 tabular-nums text-ink-subtle">
+          {invoices.length}
+        </span>
+      </p>
+      {invoices.length === 0 ? (
+        empty ? (
+          <p className="rounded-xl border border-dashed border-border bg-surface/60 px-5 py-6 text-center font-sans text-sm text-ink-muted">
+            {empty}
+          </p>
+        ) : null
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-surface">
           <ul className="divide-y divide-border">
@@ -94,14 +171,15 @@ export default async function ClientProjectInvoicesPage({
                         'bg-ink/5 text-ink-muted',
                     )}
                   >
-                    {INVOICE_STATUS_LABEL[inv.status as InvoiceStatus] ?? inv.status}
+                    {INVOICE_STATUS_LABEL[inv.status as InvoiceStatus] ??
+                      inv.status}
                   </span>
                   <span className="font-mono text-sm font-medium tabular-nums text-ink">
                     {formatUSD(inv.amountCents)}
                   </span>
                   {inv.status === 'sent' || inv.status === 'overdue' ? (
                     <Link
-                      href={`/portal/project/${id}/invoices/${inv.id}/pay`}
+                      href={`/portal/project/${projectId}/invoices/${inv.id}/pay`}
                       className="inline-flex items-center gap-1 rounded-md bg-copper px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-copper-foreground transition-colors hover:bg-copper/90"
                     >
                       Pay
@@ -135,7 +213,7 @@ export default async function ClientProjectInvoicesPage({
           </ul>
         </div>
       )}
-    </main>
+    </section>
   );
 }
 
