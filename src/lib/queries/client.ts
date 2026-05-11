@@ -39,6 +39,7 @@ export type ClientDashboard = {
   unpaidInvoices: ClientInvoiceTile[];
   pendingProposals: ClientDashboardProposal[];
   pendingContracts: ClientDashboardContract[];
+  signedAgreements: ClientDashboardAgreement[];
   unreadMessages: number; // wired in Step 9/10
 };
 
@@ -48,6 +49,14 @@ export type ClientDashboardContract = {
   agreementVersion: string;
   projectId: string | null;
   createdAt: string;
+};
+
+export type ClientDashboardAgreement = {
+  id: string;
+  proposalTitle: string;
+  agreementVersion: string;
+  projectId: string | null;
+  signedAt: string;
 };
 
 export type ClientDashboardProposal = {
@@ -97,15 +106,17 @@ export async function getClientDashboard(
       unpaidInvoices: [],
       pendingProposals: [],
       pendingContracts: [],
+      signedAgreements: [],
       unreadMessages: 0,
     };
   }
 
-  const [projects, invoices, proposals, contracts] = await Promise.all([
+  const [projects, invoices, proposals, contracts, signed] = await Promise.all([
     fetchProjectTiles(contactIds),
     fetchUnpaidInvoices(contactIds),
     fetchDashboardProposals(contactIds),
     fetchPendingContracts(contactIds),
+    fetchSignedAgreements(contactIds),
   ]);
 
   return {
@@ -114,8 +125,45 @@ export async function getClientDashboard(
     unpaidInvoices: invoices,
     pendingProposals: proposals,
     pendingContracts: contracts,
+    signedAgreements: signed,
     unreadMessages: 0,
   };
+}
+
+async function fetchSignedAgreements(
+  contactIds: string[],
+): Promise<ClientDashboardAgreement[]> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('contracts')
+      .select(
+        'id, agreement_version, project_id, signed_at, proposals!inner(title)',
+      )
+      .in('contact_id', contactIds)
+      .eq('status', 'signed')
+      .not('signed_at', 'is', null)
+      .order('signed_at', { ascending: false });
+    type Row = {
+      id: string;
+      agreement_version: string;
+      project_id: string | null;
+      signed_at: string;
+      proposals: { title: string } | { title: string }[];
+    };
+    const rows = (data ?? []) as Row[];
+    return rows.map((r) => {
+      const prop = Array.isArray(r.proposals) ? r.proposals[0] : r.proposals;
+      return {
+        id: r.id,
+        proposalTitle: prop?.title ?? 'Agreement',
+        agreementVersion: r.agreement_version,
+        projectId: r.project_id,
+        signedAt: r.signed_at,
+      };
+    });
+  } catch {
+    return [];
+  }
 }
 
 async function fetchPendingContracts(

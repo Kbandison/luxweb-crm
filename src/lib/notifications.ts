@@ -203,6 +203,15 @@ export type NotifyEvent =
       interval: 'month' | 'year';
       /** client-portal URL */
       portalPath: string;
+    }
+  | {
+      type: 'project_completed';
+      /** client user id */
+      userId: string;
+      projectId: string;
+      projectName: string;
+      /** client portal URL for the project overview (review card lives there) */
+      projectPath: string;
     };
 
 type EmailPrefs = Record<string, boolean>;
@@ -481,6 +490,11 @@ function renderTemplate(
         subject: carePlanActivatedSubject(props),
         react: createElement(CarePlanActivatedEmail, props),
       };
+    }
+    case 'project_completed': {
+      // In-app only — no email template yet. The dashboard tile + bell
+      // already surface a strong nudge for the client to leave a review.
+      return null;
     }
     case 'invoice_overdue': {
       // Only render a pay CTA when the recipient is a client (portal path).

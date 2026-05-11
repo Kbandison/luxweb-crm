@@ -19,8 +19,13 @@ export default async function ClientDashboardPage() {
   if (!session) redirect('/login');
 
   const dash = await getClientDashboard(session.userId);
-  const focus = dash.projects[0] ?? null;
-  const others = dash.projects.slice(1);
+  // Focus is the first non-completed project. Completed projects are
+  // demoted to OtherProjects so the client can still revisit history
+  // from there. If everything is completed, focus stays null and we
+  // fall through to the empty-state / proposals fallback below.
+  const activeProjects = dash.projects.filter((p) => p.status !== 'completed');
+  const focus = activeProjects[0] ?? null;
+  const others = dash.projects.filter((p) => p.id !== focus?.id);
   const greeting = greetingFor();
 
   return (
@@ -59,11 +64,17 @@ export default async function ClientDashboardPage() {
       )}
 
       {(() => {
-        // Proposals tile takes the right slot when there's a focus project AND
-        // pending proposals — pushing other-projects to the bottom row, since
-        // an open proposal is more time-sensitive than a list of past projects.
-        const showProposalsAside =
-          !!focus && dash.pendingProposals.length > 0;
+        // Right-slot tile choice: prefer signed Agreements once a contract
+        // is on file (clients care more about the document they signed than
+        // the proposal that led to it). Fall back to Proposals while still
+        // in the sales phase, otherwise show OtherProjects.
+        const asideKind: 'agreements' | 'proposals' | 'others' =
+          dash.signedAgreements.length > 0
+            ? 'agreements'
+            : dash.pendingProposals.length > 0
+              ? 'proposals'
+              : 'others';
+        const showAsideTile = !!focus && asideKind !== 'others';
         return (
           <>
             <section className="mt-10 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
@@ -71,14 +82,18 @@ export default async function ClientDashboardPage() {
                 invoices={dash.unpaidInvoices}
                 primaryProjectId={focus?.id ?? null}
               />
-              {showProposalsAside ? (
-                <ProposalsTile proposals={dash.pendingProposals} />
+              {showAsideTile ? (
+                asideKind === 'agreements' ? (
+                  <AgreementsTile agreements={dash.signedAgreements} />
+                ) : (
+                  <ProposalsTile proposals={dash.pendingProposals} />
+                )
               ) : (
                 <OtherProjects projects={others} />
               )}
             </section>
 
-            {showProposalsAside ? (
+            {showAsideTile ? (
               <section className="mt-10">
                 <OtherProjects projects={others} />
               </section>
@@ -182,6 +197,47 @@ function PendingProposalsFocus({
         </div>
       </div>
     </section>
+  );
+}
+
+function AgreementsTile({
+  agreements,
+}: {
+  agreements: import('@/lib/queries/client').ClientDashboardAgreement[];
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-6">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+        Agreements
+      </p>
+      <ul className="mt-4 space-y-2">
+        {agreements.map((a) => {
+          const href = a.projectId
+            ? `/portal/project/${a.projectId}/contracts/${a.id}`
+            : `/portal/contracts/${a.id}`;
+          return (
+            <li key={a.id}>
+              <Link
+                href={href}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 transition-colors hover:border-copper/40"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-sans text-sm font-medium text-ink">
+                    {a.proposalTitle}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle">
+                    Signed {formatDateLong(a.signedAt)}
+                  </p>
+                </div>
+                <span className="inline-flex shrink-0 items-center rounded bg-success/15 px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-success">
+                  Signed
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

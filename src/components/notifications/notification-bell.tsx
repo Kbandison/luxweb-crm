@@ -394,6 +394,14 @@ function describe(n: Notification): Described {
           ? normalizePath(str('portalPath'))
           : undefined,
       };
+    case 'project_completed':
+      return {
+        title: `${str('projectName')} is complete`,
+        body: 'Would you leave a quick review?',
+        href: str('projectPath')
+          ? normalizePath(str('projectPath'))
+          : undefined,
+      };
     default:
       return { title: n.type.replace(/_/g, ' ') };
   }

@@ -1,6 +1,7 @@
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
+import { notify, getContactUserId } from '@/lib/notifications';
 
 /**
  * Flip the project to 'completed' if no open milestones remain.
@@ -24,12 +25,40 @@ export async function checkProjectCompletion(
       .not('status', 'in', '("done","blocked")')
       .limit(1);
     if (openRows && openRows.length > 0) return false;
+
+    // Only flip if not already completed — guards against double-firing
+    // the project_completed notification when both webhook + reconcile
+    // close out the final milestone.
     const today = new Date().toISOString().slice(0, 10);
-    await sb
+    const { data: updated } = await sb
       .from('projects')
       .update({ status: 'completed', end_date: today })
       .eq('id', projectId)
-      .neq('status', 'completed');
+      .neq('status', 'completed')
+      .select('id, name, contact_id');
+    type ProjRow = { id: string; name: string; contact_id: string };
+    const justCompleted = (updated as ProjRow[] | null)?.[0] ?? null;
+    if (!justCompleted) {
+      // Already 'completed' on a prior call — nothing to notify about.
+      return true;
+    }
+
+    // Prompt the client to leave a review. The notification deep-links
+    // into the project overview where the review card lives.
+    try {
+      const clientUserId = await getContactUserId(justCompleted.contact_id);
+      if (clientUserId) {
+        await notify({
+          type: 'project_completed',
+          userId: clientUserId,
+          projectId: justCompleted.id,
+          projectName: justCompleted.name,
+          projectPath: `/portal/project/${justCompleted.id}`,
+        });
+      }
+    } catch (err) {
+      console.warn('[check-project-completion] notify failed:', err);
+    }
     return true;
   } catch (err) {
     console.warn('[check-project-completion] failed:', err);
