@@ -133,6 +133,21 @@ export async function POST(
       });
     }
 
+    // Also send a confirmation to the client so they know we received
+    // the acceptance and what to expect next. Without this they're left
+    // hanging until admin counter-signs.
+    await notify({
+      type: 'proposal_accepted_client',
+      userId: session.userId,
+      proposalId: id,
+      title: r.title,
+      totalCents: r.total_cents == null ? null : Number(r.total_cents),
+      acceptedAt,
+      portalPath: r.project_id
+        ? `/portal/project/${r.project_id}`
+        : '/portal/dashboard',
+    });
+
     return Response.json({ ok: true, accepted_at: acceptedAt });
   } catch (err) {
     if (err instanceof Response) return err;

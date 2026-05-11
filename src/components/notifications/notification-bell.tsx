@@ -308,6 +308,14 @@ function describe(n: Notification): Described {
           ? normalizePath(str('proposalPath'))
           : undefined,
       };
+    case 'proposal_accepted_client':
+      return {
+        title: 'Proposal accepted',
+        body: `Thanks — ${str('title')} is in our court next.`,
+        href: str('portalPath')
+          ? normalizePath(str('portalPath'))
+          : undefined,
+      };
     case 'milestone_updated':
       return {
         title: 'Milestone update',

@@ -18,6 +18,9 @@ import ProposalSentEmail, {
 import ProposalAcceptedEmail, {
   proposalAcceptedSubject,
 } from '@/emails/proposal-accepted-email';
+import ProposalAcceptedClientEmail, {
+  proposalAcceptedClientSubject,
+} from '@/emails/proposal-accepted-client-email';
 import MilestoneUpdatedEmail, {
   milestoneUpdatedSubject,
 } from '@/emails/milestone-updated-email';
@@ -107,6 +110,17 @@ export type NotifyEvent =
       acceptedAt: string;
       /** admin-side URL */
       proposalPath: string;
+    }
+  | {
+      type: 'proposal_accepted_client';
+      /** client user id — confirmation email after they accept */
+      userId: string;
+      proposalId: string;
+      title: string;
+      totalCents: number | null;
+      acceptedAt: string;
+      /** client-side portal landing URL */
+      portalPath: string;
     }
   | {
       type: 'milestone_updated';
@@ -379,6 +393,19 @@ function renderTemplate(
       return {
         subject: proposalAcceptedSubject(props),
         react: createElement(ProposalAcceptedEmail, props),
+      };
+    }
+    case 'proposal_accepted_client': {
+      const props = {
+        recipientName,
+        title: event.title,
+        totalCents: event.totalCents,
+        portalUrl: appUrl(event.portalPath),
+        acceptedAt: event.acceptedAt,
+      };
+      return {
+        subject: proposalAcceptedClientSubject(props),
+        react: createElement(ProposalAcceptedClientEmail, props),
       };
     }
     case 'milestone_updated': {
