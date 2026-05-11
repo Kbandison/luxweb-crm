@@ -95,18 +95,14 @@ export async function POST(
     });
 
     // 2) Flip review → changes_requested.
+    // Milestone status STAYS in_progress so the same thread remains the
+    // active review surface — admin replies via comments, then calls
+    // /reopen to ping the client for re-review without spawning a new
+    // revision_request.
     await sb
       .from('revision_requests')
       .update({ status: 'changes_requested' })
       .eq('id', id);
-
-    // 3) Revert the milestone to pending so admin can iterate.
-    if (r.milestone_id) {
-      await sb
-        .from('milestones')
-        .update({ status: 'pending' })
-        .eq('id', r.milestone_id);
-    }
 
     await writeAudit({
       actor_id: session.userId,

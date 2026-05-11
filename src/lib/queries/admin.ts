@@ -619,6 +619,8 @@ export type Milestone = {
   completedAt: string | null;
   amountCents: number | null;
   invoiceId: string | null;
+  /** Most recent open (pending_review|changes_requested) revision id. */
+  openRevisionId: string | null;
 };
 
 export type TimeLog = {
@@ -763,7 +765,8 @@ export async function getProjectDetail(
 
 export async function getProjectMilestones(projectId: string): Promise<Milestone[]> {
   try {
-    const { data } = await supabaseAdmin()
+    const sb = supabaseAdmin();
+    const { data } = await sb
       .from('milestones')
       .select(
         'id, project_id, title, description, due_date, status, source, sort_order, is_client_visible, completed_at, amount_cents, invoice_id',
@@ -785,6 +788,29 @@ export async function getProjectMilestones(projectId: string): Promise<Milestone
       invoice_id: string | null;
     };
     const rows = (data ?? []) as Row[];
+
+    // Resolve the most recent open revision per milestone so the list
+    // can swap "Submit for review" → "See messages" once a thread is
+    // already running.
+    const inReviewIds = rows
+      .filter((r) => r.status === 'in_progress')
+      .map((r) => r.id);
+    const openRevByMilestone = new Map<string, string>();
+    if (inReviewIds.length > 0) {
+      const { data: revRows } = await sb
+        .from('revision_requests')
+        .select('id, milestone_id, created_at')
+        .in('milestone_id', inReviewIds)
+        .in('status', ['pending_review', 'changes_requested'])
+        .order('created_at', { ascending: false });
+      type RevRow = { id: string; milestone_id: string };
+      for (const rv of (revRows ?? []) as RevRow[]) {
+        if (!openRevByMilestone.has(rv.milestone_id)) {
+          openRevByMilestone.set(rv.milestone_id, rv.id);
+        }
+      }
+    }
+
     return rows.map((r) => ({
       id: r.id,
       projectId: r.project_id,
@@ -798,6 +824,7 @@ export async function getProjectMilestones(projectId: string): Promise<Milestone
       amountCents: r.amount_cents == null ? null : Number(r.amount_cents),
       invoiceId: r.invoice_id,
       completedAt: r.completed_at,
+      openRevisionId: openRevByMilestone.get(r.id) ?? null,
     }));
   } catch {
     return [];

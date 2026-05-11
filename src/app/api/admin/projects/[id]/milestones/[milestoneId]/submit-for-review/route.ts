@@ -48,12 +48,15 @@ export async function POST(
       );
     }
     if (mr.status === 'in_progress') {
-      // Already submitted — return the existing pending_review row.
+      // Already submitted — return the existing open review (either
+      // pending_review or changes_requested). Don't spawn a duplicate
+      // revision per round-trip — admin re-pings via /reopen.
       const { data: existing } = await sb
         .from('revision_requests')
-        .select('id')
+        .select('id, status')
         .eq('milestone_id', milestoneId)
-        .eq('status', 'pending_review')
+        .in('status', ['pending_review', 'changes_requested'])
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       return Response.json({

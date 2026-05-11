@@ -53,6 +53,9 @@ export function RevisionThread({
   const isMilestoneReview = isApprovalStatus(revision.status);
   const clientPendingReview =
     viewerRole === 'client' && revision.status === 'pending_review';
+  const adminCanReopen =
+    viewerRole === 'admin' && revision.status === 'changes_requested';
+  const [reopenBusy, setReopenBusy] = useState(false);
 
   async function approve() {
     setApproveBusy(true);
@@ -131,6 +134,39 @@ export function RevisionThread({
       router.refresh();
     } finally {
       setBusy(false);
+    }
+  }
+
+  /**
+   * Admin notifies client that the revision is ready for another look.
+   * Posts the textarea body as a comment in the same call, flips the
+   * revision changes_requested → pending_review, pings the client.
+   * Same thread, no new revision_request row.
+   */
+  async function reopenForClient() {
+    setReopenBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/revisions/${revision.id}/reopen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reply.trim() ? { body: reply.trim() } : {}),
+      });
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        const msg = j.error ?? 'Failed to notify client.';
+        setError(msg);
+        toast.error("Couldn't notify client", msg);
+        return;
+      }
+      setReply('');
+      toast.success(
+        'Client notified',
+        'They can review the milestone again from their portal.',
+      );
+      router.refresh();
+    } finally {
+      setReopenBusy(false);
     }
   }
 
@@ -349,7 +385,11 @@ export function RevisionThread({
             onChange={(e) => setReply(e.target.value)}
             rows={3}
             maxLength={10000}
-            placeholder="Add a reply…"
+            placeholder={
+              adminCanReopen
+                ? 'Reply to the feedback, or pair a note with "Ready for re-review"…'
+                : 'Add a reply…'
+            }
             className="w-full rounded-md border border-border bg-bg px-3 py-2 font-sans text-sm text-ink"
           />
           {error ? (
@@ -357,7 +397,19 @@ export function RevisionThread({
               {error}
             </p>
           ) : null}
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {adminCanReopen ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={reopenForClient}
+                disabled={reopenBusy || busy}
+                title="Flip the review back to the client; sends your note (if any) as a comment too."
+              >
+                {reopenBusy ? 'Notifying…' : 'Ready for re-review'}
+              </Button>
+            ) : null}
             <Button type="submit" size="sm" disabled={busy || !reply.trim()}>
               {busy ? 'Posting…' : 'Reply'}
             </Button>

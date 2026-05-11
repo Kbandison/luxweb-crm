@@ -1,8 +1,9 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Milestone } from '@/lib/queries/admin';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -333,6 +334,16 @@ export function MilestonesList({
                     >
                       Submit for review
                     </Button>
+                  ) : m.status === 'in_progress' && m.openRevisionId ? (
+                    <Link
+                      href={`/admin/projects/${projectId}/revisions/${m.openRevisionId}`}
+                      className={buttonVariants({
+                        variant: 'secondary',
+                        size: 'sm',
+                      })}
+                    >
+                      See messages
+                    </Link>
                   ) : null}
                   <select
                     aria-label="Status"
