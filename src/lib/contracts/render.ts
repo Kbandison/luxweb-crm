@@ -17,6 +17,8 @@ export function deriveContractVariables(
   const byLabel = (needle: string) =>
     milestones.find((m) => m.label.toLowerCase().includes(needle)) ?? null;
 
+  // Legacy variables — only used if we ever render an older agreement
+  // template that doesn't have {{milestones_table}}.
   const deposit = byLabel('deposit');
   const phase1 = byLabel('phase 1') ?? byLabel('design');
   const launch = byLabel('launch');
@@ -32,10 +34,39 @@ export function deriveContractVariables(
       ? formatDateLong(content.timeline.target_launch)
       : 'TBD',
     total_amount: formatUSD(content.investment.total_cents),
+    milestones_table: renderMilestonesTable(milestones),
+    support_months: String(content.scope.post_launch_support_months || 0),
+    net_days: String(content.investment.net_days || 0),
+    late_fee: content.investment.late_fee || '—',
     deposit_amount: deposit ? formatUSD(deposit.amount_cents) : '—',
     phase1_amount: phase1 ? formatUSD(phase1.amount_cents) : '—',
     launch_amount: launch ? formatUSD(launch.amount_cents) : '—',
   };
+}
+
+/**
+ * Pre-render the proposal's milestones as a markdown table with the
+ * exact label / amount / percent / due text the client agreed to on
+ * the proposal. Supports any number and shape of milestones, so a
+ * custom proposal (e.g., 30/30/30/10) shows up correctly instead of
+ * being squeezed into a fixed deposit/phase1/launch layout.
+ */
+function renderMilestonesTable(
+  milestones: ProposalContent['investment']['milestones'],
+): string {
+  if (milestones.length === 0) {
+    return '_No payment milestones defined in the proposal._';
+  }
+  const header =
+    '| Milestone | Amount | % | Due |\n| --- | --- | --- | --- |';
+  const rows = milestones.map((m) => {
+    const label = m.label || '—';
+    const amount = formatUSD(m.amount_cents);
+    const percent = `${m.percent || 0}%`;
+    const due = m.due || '—';
+    return `| ${label} | ${amount} | ${percent} | ${due} |`;
+  });
+  return [header, ...rows].join('\n');
 }
 
 /**

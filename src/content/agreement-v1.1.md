@@ -25,7 +25,7 @@ Contractor will design and develop a custom website (the "Project") that include
 - Migration of existing page content
 - Industry-standard security hardening
 - Conversion-rate optimization best practices
-- Three (3) months of post-launch support (the "Support Period")
+- {{support_months}} months of post-launch support (the "Support Period")
 
 The specific deliverables, timeline, and pricing described in the Proposal dated **{{proposal_date}}** are incorporated into this Agreement by reference as **Exhibit A**. In the event of any conflict between the Proposal and this Agreement, this Agreement governs.
 
@@ -100,14 +100,10 @@ Work begins upon (a) signature of this Agreement and (b) clearance of the initia
 
 **Total Project Investment: {{total_amount}}**
 
-| Milestone        | Amount               | %    | Due                                                         |
-| ---------------- | -------------------- | ---- | ----------------------------------------------------------- |
-| Deposit          | {{deposit_amount}}   | 50%  | On signing (earned upon commencement of work)               |
-| Phase 1 Approval | {{phase1_amount}}    | 25%  | After design phase sign-off, before development begins      |
-| Launch           | {{launch_amount}}    | 25%  | Before publishing to Client's production domain             |
+{{milestones_table}}
 
-- **Payment terms:** Net 7 from invoice date. Payments are considered late on the eighth (8th) day after the invoice is sent.
-- **Late payment:** Unpaid balances accrue the greater of 1.5% per month or the maximum rate permitted by law, plus reasonable collection costs and attorney's fees.
+- **Payment terms:** Net {{net_days}} from invoice date. Payments are considered late the day after the due date.
+- **Late payment:** Unpaid balances accrue {{late_fee}}, plus reasonable collection costs and attorney's fees.
 - **Currency:** All amounts are in USD.
 
 The Deposit is earned by Contractor upon commencement of work and is non-refundable once work has begun. If Client terminates before Contractor has begun any substantive work, the Deposit will be refunded less any documented out-of-pocket costs already incurred specifically for this Project (e.g., paid software licenses, stock photography, or third-party service fees).
@@ -137,7 +133,7 @@ Contractor will issue a "ready-for-review" notice at the end of each phase. If C
 - Perform services in a professional manner consistent with industry standards and all applicable laws.
 - Deliver Work Product that does not, to Contractor's knowledge, infringe third-party intellectual property rights.
 - Keep Client credentials and data confidential per § 10.
-- Provide bug-fix support for three (3) months after launch as defined in § 1.6.
+- Provide bug-fix support for {{support_months}} months after launch as defined in § 1.6.
 - Contractor is not responsible for missed launch deadlines caused by Client delays.
 
 ---
