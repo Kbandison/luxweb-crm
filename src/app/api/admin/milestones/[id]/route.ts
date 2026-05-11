@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
+import { checkProjectCompletion } from '@/lib/milestones/advance-on-payment';
 
 export const runtime = 'nodejs';
 
@@ -67,6 +68,42 @@ export async function PATCH(
       entity_id: id,
       diff: { before, after: update },
     });
+
+    // If admin manually flipped to 'done', mirror the payment-driven
+    // advance: unlock the next inactive proposal-y milestone in sort order,
+    // and run the project-completion check. Without this, an admin force-
+    // flipping the launch milestone wouldn't move the project state.
+    if (
+      parsed.data.status === 'done' &&
+      before &&
+      before.status !== 'done' &&
+      before.project_id
+    ) {
+      try {
+        const { data: nextRow } = await supabaseAdmin()
+          .from('milestones')
+          .select('id, status, sort_order, source')
+          .eq('project_id', before.project_id as string)
+          .or('source.eq.proposal,source.is.null')
+          .gt('sort_order', before.sort_order ?? 0)
+          .order('sort_order', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        const nx = nextRow as {
+          id: string;
+          status: string;
+        } | null;
+        if (nx && nx.status === 'inactive') {
+          await supabaseAdmin()
+            .from('milestones')
+            .update({ status: 'pending' })
+            .eq('id', nx.id);
+        }
+      } catch {
+        // Best-effort.
+      }
+      await checkProjectCompletion(before.project_id as string);
+    }
 
     // Notify the client when a client-visible milestone's status changes.
     if (
