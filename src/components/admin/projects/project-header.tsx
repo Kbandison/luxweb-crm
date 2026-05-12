@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ProjectDetail } from '@/lib/queries/admin';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
-import { PROJECT_STATUS_DOT, PROJECT_STATUS_LABEL } from './status-meta';
+import { ProjectStatusEditor } from './project-status-editor';
 
 export function ProjectHeader({ project }: { project: ProjectDetail }) {
   return (
@@ -30,16 +30,10 @@ export function ProjectHeader({ project }: { project: ProjectDetail }) {
             {project.name}
           </h2>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-              <span
-                className={cn(
-                  'h-1.5 w-1.5 rounded-full',
-                  PROJECT_STATUS_DOT[project.status],
-                )}
-                aria-hidden
-              />
-              {PROJECT_STATUS_LABEL[project.status]}
-            </span>
+            <ProjectStatusEditor
+              projectId={project.id}
+              status={project.status}
+            />
             <Link
               href={`/admin/clients/${project.contactId}`}
               className="font-sans text-sm text-ink-muted hover:text-copper"
