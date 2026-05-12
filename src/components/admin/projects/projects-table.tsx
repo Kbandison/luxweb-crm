@@ -2,12 +2,24 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { ProjectListRow } from '@/lib/queries/admin';
+import type { SortDir } from '@/lib/list-params';
 import { Input } from '@/components/ui/input';
+import { SortableHeader } from '@/components/ui/sortable-header';
 import { formatHours, formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { PROJECT_STATUS_DOT, PROJECT_STATUS_LABEL } from './status-meta';
 
-export function ProjectsTable({ initial }: { initial: ProjectListRow[] }) {
+export function ProjectsTable({
+  initial,
+  currentSort,
+  currentDir,
+  searchParams,
+}: {
+  initial: ProjectListRow[];
+  currentSort: string;
+  currentDir: SortDir;
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
   const [q, setQ] = useState('');
 
   const filtered = useMemo(() => {
@@ -65,12 +77,37 @@ export function ProjectsTable({ initial }: { initial: ProjectListRow[] }) {
           <table className="w-full min-w-[720px]">
             <thead className="border-b border-border bg-surface text-left">
               <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-                <th className="px-6 py-3 font-medium">Project</th>
-                <th className="px-3 py-3 font-medium">Status</th>
+                <th className="px-6 py-3 font-medium">
+                  <SortableHeader
+                    field="name"
+                    label="Project"
+                    currentSort={currentSort}
+                    currentDir={currentDir}
+                    searchParams={searchParams}
+                  />
+                </th>
+                <th className="px-3 py-3 font-medium">
+                  <SortableHeader
+                    field="status"
+                    label="Status"
+                    currentSort={currentSort}
+                    currentDir={currentDir}
+                    searchParams={searchParams}
+                  />
+                </th>
                 <th className="px-3 py-3 font-medium">Client</th>
                 <th className="px-3 py-3 font-medium">Milestones</th>
                 <th className="px-3 py-3 text-right font-medium">Hours</th>
-                <th className="px-3 py-3 text-right font-medium">Budget</th>
+                <th className="px-3 py-3 text-right font-medium">
+                  <SortableHeader
+                    field="budget_cents"
+                    label="Budget"
+                    currentSort={currentSort}
+                    currentDir={currentDir}
+                    searchParams={searchParams}
+                    align="right"
+                  />
+                </th>
                 <th className="w-12 py-3" />
               </tr>
             </thead>

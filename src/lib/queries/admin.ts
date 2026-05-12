@@ -1,5 +1,37 @@
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { applyListParams, type ListParams } from '@/lib/list-params';
+
+/**
+ * Shape returned by paginated list queries. `totalCount` reflects the size
+ * of the *filtered* result set (post-search), not the table at large.
+ */
+export type PaginatedResult<T> = {
+  rows: T[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
+/** Columns the leads/clients pages are allowed to sort on. */
+export const CONTACT_SORTS = [
+  'full_name',
+  'email',
+  'company',
+  'lead_score',
+  'created_at',
+] as const;
+export type ContactSort = (typeof CONTACT_SORTS)[number];
+
+/** Columns the projects page is allowed to sort on. */
+export const PROJECT_SORTS = [
+  'name',
+  'status',
+  'start_date',
+  'end_date',
+  'budget_cents',
+  'created_at',
+] as const;
+export type ProjectSort = (typeof PROJECT_SORTS)[number];
 
 export type PipelineStage =
   | 'lead'
@@ -311,6 +343,13 @@ export type ContactRow = {
   userId: string | null;
 };
 
+/**
+ * Returns all contacts (optionally filtered by `q`). Used by drawers / pickers
+ * that need every contact in memory — not the paginated list pages.
+ *
+ * The leads/clients admin pages now use `getLeadsPaginated` /
+ * `getClientsListPaginated` which apply server-side pagination.
+ */
 export async function getContacts(q?: string): Promise<ContactRow[]> {
   try {
     let query = supabaseAdmin()
@@ -318,8 +357,7 @@ export async function getContacts(q?: string): Promise<ContactRow[]> {
       .select(
         'id, full_name, email, phone, company, source, tags, lead_score, created_at, user_id',
       )
-      .order('created_at', { ascending: false })
-      .limit(200);
+      .order('created_at', { ascending: false });
 
     if (q && q.trim().length > 0) {
       const term = sanitizeOrTerm(q.trim());
@@ -419,8 +457,108 @@ export async function getClientsList(): Promise<ClientRow[]> {
   ]);
   const clients = contacts.filter((c) => clientIds.has(c.id));
   if (clients.length === 0) return [];
+  return enrichClientRows(clients);
+}
 
-  const ids = clients.map((c) => c.id);
+/* -------------------------------------------------------------------------
+ * Paginated leads/clients
+ *
+ * The leads/clients distinction is computed against the `getClientContactIds`
+ * set. To paginate at the SQL layer we pass that set as a filter
+ * (`in(...)` / `not(in,...)`) on the contacts query. For very large client
+ * sets (10k+) we'd want a different design, but at expected CRM volume this
+ * stays well under PostgREST's URL limit.
+ * ------------------------------------------------------------------------- */
+
+function clientFilterList(ids: Set<string>): string {
+  // PostgREST `in.(...)` expects a comma-separated list of bare values.
+  // UUIDs are safe to embed unquoted.
+  return `(${Array.from(ids).join(',')})`;
+}
+
+async function fetchContactsPaginated(
+  params: ListParams,
+  scope: 'leads' | 'clients',
+): Promise<PaginatedResult<ContactRow>> {
+  try {
+    const clientIds = await getClientContactIds();
+
+    let query = supabaseAdmin()
+      .from('contacts')
+      .select(
+        'id, full_name, email, phone, company, source, tags, lead_score, created_at, user_id',
+        { count: 'exact' },
+      );
+
+    if (scope === 'leads') {
+      if (clientIds.size > 0) {
+        query = query.not('id', 'in', clientFilterList(clientIds));
+      }
+    } else {
+      if (clientIds.size === 0) {
+        return { rows: [], totalCount: 0, hasMore: false };
+      }
+      query = query.in('id', Array.from(clientIds));
+    }
+
+    if (params.q) {
+      const term = sanitizeOrTerm(params.q);
+      if (term) {
+        query = query.or(
+          `full_name.ilike.%${term}%,email.ilike.%${term}%,company.ilike.%${term}%`,
+        );
+      }
+    }
+
+    const { data, count } = await applyListParams(query, params);
+    const rows = (data ?? []) as {
+      id: string;
+      full_name: string;
+      email: string | null;
+      phone: string | null;
+      company: string | null;
+      source: string | null;
+      tags: string[] | null;
+      lead_score: number | null;
+      created_at: string;
+      user_id: string | null;
+    }[];
+
+    const mapped: ContactRow[] = rows.map((r) => ({
+      id: r.id,
+      fullName: r.full_name,
+      email: r.email,
+      phone: r.phone,
+      company: r.company,
+      source: r.source,
+      tags: r.tags ?? [],
+      leadScore: r.lead_score ?? 0,
+      createdAt: r.created_at,
+      userId: r.user_id,
+    }));
+
+    const totalCount = count ?? mapped.length;
+    return {
+      rows: mapped,
+      totalCount,
+      hasMore: params.page * params.pageSize < totalCount,
+    };
+  } catch {
+    return { rows: [], totalCount: 0, hasMore: false };
+  }
+}
+
+export async function getLeadsPaginated(
+  params: ListParams,
+): Promise<PaginatedResult<ContactRow>> {
+  return fetchContactsPaginated(params, 'leads');
+}
+
+async function enrichClientRows(
+  contacts: ContactRow[],
+): Promise<ClientRow[]> {
+  if (contacts.length === 0) return [];
+  const ids = contacts.map((c) => c.id);
   try {
     const [deals, projects] = await Promise.all([
       supabaseAdmin()
@@ -442,7 +580,7 @@ export async function getClientsList(): Promise<ClientRow[]> {
       status: string;
     }[];
 
-    return clients.map((c) => {
+    return contacts.map((c) => {
       const dealsForC = dealRows.filter((d) => d.contact_id === c.id);
       const openValue = dealsForC
         .filter((d) =>
@@ -461,7 +599,7 @@ export async function getClientsList(): Promise<ClientRow[]> {
       };
     });
   } catch {
-    return clients.map((c) => ({
+    return contacts.map((c) => ({
       ...c,
       dealCount: 0,
       openValueCents: 0,
@@ -469,6 +607,14 @@ export async function getClientsList(): Promise<ClientRow[]> {
       lastActivityAt: c.createdAt,
     }));
   }
+}
+
+export async function getClientsListPaginated(
+  params: ListParams,
+): Promise<PaginatedResult<ClientRow>> {
+  const page = await fetchContactsPaginated(params, 'clients');
+  const enriched = await enrichClientRows(page.rows);
+  return { rows: enriched, totalCount: page.totalCount, hasMore: page.hasMore };
 }
 
 export type DealSummary = {
@@ -656,13 +802,45 @@ export type TimeLog = {
 };
 
 export async function getProjects(): Promise<ProjectListRow[]> {
+  // Legacy: returns all projects, no pagination. Kept for callers that don't
+  // page (none today after the Backlog 3 update, but exported for future use).
+  const result = await getProjectsPaginated({
+    page: 1,
+    pageSize: 1000,
+    sort: 'created_at',
+    dir: 'desc',
+    q: null,
+  });
+  return result.rows;
+}
+
+/**
+ * Paginated + sortable projects list. Aggregates milestone + hours totals
+ * for the rows on the current page only (keeps the query cheap regardless of
+ * total project count).
+ */
+export async function getProjectsPaginated(
+  params: ListParams,
+): Promise<PaginatedResult<ProjectListRow>> {
   try {
-    const { data } = await supabaseAdmin()
+    let query = supabaseAdmin()
       .from('projects')
       .select(
         'id, name, status, start_date, end_date, budget_cents, contact_id, created_at, contacts!inner(full_name, company)',
-      )
-      .order('created_at', { ascending: false });
+        { count: 'exact' },
+      );
+
+    if (params.q) {
+      const term = sanitizeOrTerm(params.q);
+      if (term) {
+        // PostgREST can't OR across embedded tables, so search on the
+        // project name only. Client-side search on contact name still works
+        // for whatever's already on the page.
+        query = query.ilike('name', `%${term}%`);
+      }
+    }
+
+    const { data, count } = await applyListParams(query, params);
 
     type Row = {
       id: string;
@@ -705,7 +883,7 @@ export async function getProjects(): Promise<ProjectListRow[]> {
       hours: number | string | null;
     }[];
 
-    return rows.map((r) => {
+    const mapped: ProjectListRow[] = rows.map((r) => {
       const c = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
       const ms = milestones.filter((m) => m.project_id === r.id);
       const hours = timeLogs
@@ -727,8 +905,15 @@ export async function getProjects(): Promise<ProjectListRow[]> {
         createdAt: r.created_at,
       };
     });
+
+    const totalCount = count ?? mapped.length;
+    return {
+      rows: mapped,
+      totalCount,
+      hasMore: params.page * params.pageSize < totalCount,
+    };
   } catch {
-    return [];
+    return { rows: [], totalCount: 0, hasMore: false };
   }
 }
 

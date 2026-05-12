@@ -3,7 +3,9 @@ import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ContactRow } from '@/lib/queries/admin';
+import type { SortDir } from '@/lib/list-params';
 import { Input } from '@/components/ui/input';
+import { SortableHeader } from '@/components/ui/sortable-header';
 import { cn } from '@/lib/utils';
 import { LeadScore } from './lead-score';
 import { TagPill } from './tag-pill';
@@ -12,9 +14,15 @@ import { Monogram } from './monogram';
 export function LeadsList({
   initial,
   selectedId,
+  currentSort,
+  currentDir,
+  searchParams: spProps,
 }: {
   initial: ContactRow[];
   selectedId: string | null;
+  currentSort: string;
+  currentDir: SortDir;
+  searchParams: Record<string, string | string[] | undefined>;
 }) {
   const [query, setQuery] = useState('');
   const pathname = usePathname();
@@ -81,6 +89,34 @@ export function LeadsList({
             </button>
           ) : null}
         </div>
+      </div>
+
+      {/* Sort bar */}
+      <div className="flex items-center gap-4 border-b border-border bg-surface px-4 py-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+          Sort
+        </span>
+        <SortableHeader
+          field="full_name"
+          label="Name"
+          currentSort={currentSort}
+          currentDir={currentDir}
+          searchParams={spProps}
+        />
+        <SortableHeader
+          field="lead_score"
+          label="Score"
+          currentSort={currentSort}
+          currentDir={currentDir}
+          searchParams={spProps}
+        />
+        <SortableHeader
+          field="created_at"
+          label="Added"
+          currentSort={currentSort}
+          currentDir={currentDir}
+          searchParams={spProps}
+        />
       </div>
 
       {/* List */}

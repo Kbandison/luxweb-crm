@@ -1,11 +1,27 @@
 import { Topbar } from '@/components/admin/topbar';
-import { getContacts, getProjects } from '@/lib/queries/admin';
+import {
+  getContacts,
+  getProjectsPaginated,
+  PROJECT_SORTS,
+} from '@/lib/queries/admin';
 import { ProjectsTable } from '@/components/admin/projects/projects-table';
 import { NewProjectDrawer } from '@/components/admin/projects/new-project-drawer';
+import { PaginationFooter } from '@/components/ui/pagination-footer';
+import { parseListParams } from '@/lib/list-params';
 
-export default async function ProjectsPage() {
-  const [projects, contacts] = await Promise.all([
-    getProjects(),
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const params = parseListParams(sp, {
+    defaultSort: 'created_at',
+    allowedSorts: PROJECT_SORTS,
+  });
+
+  const [result, contacts] = await Promise.all([
+    getProjectsPaginated(params),
     getContacts(),
   ]);
 
@@ -23,15 +39,27 @@ export default async function ProjectsPage() {
             </nav>
             <span aria-hidden className="h-3 w-px bg-border" />
             <p className="font-mono text-[10px] tabular-nums uppercase tracking-[0.18em] text-ink-muted">
-              {projects.length} total
+              {result.totalCount} total
             </p>
           </div>
           <NewProjectDrawer contacts={contacts} />
         </div>
 
         <div className="min-h-0 flex-1 bg-bg">
-          <ProjectsTable initial={projects} />
+          <ProjectsTable
+            initial={result.rows}
+            currentSort={params.sort}
+            currentDir={params.dir}
+            searchParams={sp}
+          />
         </div>
+
+        <PaginationFooter
+          page={params.page}
+          pageSize={params.pageSize}
+          totalCount={result.totalCount}
+          searchParams={sp}
+        />
       </div>
     </>
   );

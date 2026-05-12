@@ -2,12 +2,24 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { ClientRow } from '@/lib/queries/admin';
+import type { SortDir } from '@/lib/list-params';
 import { Input } from '@/components/ui/input';
+import { SortableHeader } from '@/components/ui/sortable-header';
 import { Monogram } from '@/components/admin/leads/monogram';
 import { TagPill } from '@/components/admin/leads/tag-pill';
 import { formatUSD } from '@/lib/formatters';
 
-export function ClientsTable({ initial }: { initial: ClientRow[] }) {
+export function ClientsTable({
+  initial,
+  currentSort,
+  currentDir,
+  searchParams,
+}: {
+  initial: ClientRow[];
+  currentSort: string;
+  currentDir: SortDir;
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
   const [q, setQ] = useState('');
 
   const filtered = useMemo(() => {
@@ -65,7 +77,24 @@ export function ClientsTable({ initial }: { initial: ClientRow[] }) {
           <table className="w-full min-w-[720px]">
             <thead className="border-b border-border bg-surface text-left">
               <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-                <th className="px-6 py-3 font-medium">Client</th>
+                <th className="px-6 py-3 font-medium">
+                  <SortableHeader
+                    field="full_name"
+                    label="Client"
+                    currentSort={currentSort}
+                    currentDir={currentDir}
+                    searchParams={searchParams}
+                  />
+                </th>
+                <th className="px-3 py-3 font-medium">
+                  <SortableHeader
+                    field="company"
+                    label="Company"
+                    currentSort={currentSort}
+                    currentDir={currentDir}
+                    searchParams={searchParams}
+                  />
+                </th>
                 <th className="px-3 py-3 font-medium">Tags</th>
                 <th className="px-3 py-3 text-right font-medium">Open value</th>
                 <th className="px-3 py-3 text-right font-medium">Deals</th>
@@ -94,6 +123,9 @@ export function ClientsTable({ initial }: { initial: ClientRow[] }) {
                         </p>
                       </div>
                     </Link>
+                  </td>
+                  <td className="px-3 py-3 font-sans text-sm text-ink-muted">
+                    {c.company ?? '—'}
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex flex-wrap gap-1">
