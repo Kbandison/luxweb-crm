@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SecretInput } from '@/components/ui/secret-input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast';
@@ -12,6 +13,88 @@ import {
   type CredentialKind,
 } from '@/lib/types/credential';
 import { cn } from '@/lib/utils';
+
+/**
+ * Each credential kind has its own field shape — a password needs a
+ * username + masked password input, an API key skips the username
+ * entirely, a URL has no secret at all, etc. Centralized here so the
+ * form can lay itself out off one lookup.
+ */
+type FieldConfig = {
+  showUsername: boolean;
+  usernameLabel?: string;
+  usernamePlaceholder?: string;
+  showUrl: boolean;
+  urlLabel?: string;
+  urlPlaceholder?: string;
+  urlRequired?: boolean;
+  showSecret: boolean;
+  secretLabel?: string;
+  secretRequired?: boolean;
+  /** secret_note kinds want a multi-line input instead of single-line masked. */
+  secretAsTextarea?: boolean;
+  showNotes: boolean;
+};
+
+function fieldsFor(kind: CredentialKind): FieldConfig {
+  switch (kind) {
+    case 'password':
+      return {
+        showUsername: true,
+        usernameLabel: 'Username / email',
+        showUrl: true,
+        urlLabel: 'Login URL',
+        urlPlaceholder: 'https://app.example.com/login',
+        showSecret: true,
+        secretLabel: 'Password',
+        secretRequired: true,
+        showNotes: true,
+      };
+    case 'api_key':
+      return {
+        showUsername: false,
+        showUrl: true,
+        urlLabel: "Where it's used",
+        urlPlaceholder: 'https://api.example.com',
+        showSecret: true,
+        secretLabel: 'API key',
+        secretRequired: true,
+        showNotes: true,
+      };
+    case 'url':
+      return {
+        showUsername: false,
+        showUrl: true,
+        urlLabel: 'URL',
+        urlPlaceholder: 'https://example.com',
+        urlRequired: true,
+        showSecret: false,
+        showNotes: true,
+      };
+    case 'sftp':
+      return {
+        showUsername: true,
+        usernameLabel: 'SFTP user',
+        showUrl: true,
+        urlLabel: 'Host (with optional :port)',
+        urlPlaceholder: 'sftp.example.com:22',
+        showSecret: true,
+        secretLabel: 'Password or key',
+        secretRequired: true,
+        showNotes: true,
+      };
+    case 'note':
+      return {
+        showUsername: false,
+        showUrl: false,
+        showSecret: true,
+        secretLabel: 'Note',
+        secretAsTextarea: true,
+        secretRequired: true,
+        showNotes: false,
+      };
+  }
+}
 
 export type CredentialItem = {
   id: string;
@@ -422,6 +505,11 @@ function CredentialFormDialog({
               id="cred_label"
               required
               maxLength={200}
+              placeholder={
+                form.kind === 'note'
+                  ? 'Internal note title'
+                  : 'WordPress admin'
+              }
               value={form.label}
               onChange={(e) =>
                 setForm((f) => ({ ...f, label: e.target.value }))
@@ -430,69 +518,101 @@ function CredentialFormDialog({
           </div>
         </div>
 
-        {form.kind !== 'note' ? (
-          <div className="space-y-1.5">
-            <Label htmlFor="cred_username">Username / account</Label>
-            <Input
-              id="cred_username"
-              maxLength={500}
-              value={form.username}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, username: e.target.value }))
-              }
-            />
-          </div>
-        ) : null}
+        {(() => {
+          const cfg = fieldsFor(form.kind);
+          return (
+            <>
+              {cfg.showUsername ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="cred_username">
+                    {cfg.usernameLabel ?? 'Username'}
+                  </Label>
+                  <Input
+                    id="cred_username"
+                    maxLength={500}
+                    placeholder={cfg.usernamePlaceholder}
+                    value={form.username}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, username: e.target.value }))
+                    }
+                  />
+                </div>
+              ) : null}
 
-        {form.kind !== 'note' ? (
-          <div className="space-y-1.5">
-            <Label htmlFor="cred_url">URL</Label>
-            <Input
-              id="cred_url"
-              type="url"
-              maxLength={2000}
-              value={form.url}
-              onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-            />
-          </div>
-        ) : null}
+              {cfg.showUrl ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="cred_url">{cfg.urlLabel ?? 'URL'}</Label>
+                  <Input
+                    id="cred_url"
+                    type={form.kind === 'url' ? 'url' : 'text'}
+                    required={cfg.urlRequired}
+                    maxLength={2000}
+                    placeholder={cfg.urlPlaceholder}
+                    value={form.url}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, url: e.target.value }))
+                    }
+                  />
+                </div>
+              ) : null}
 
-        <div className="space-y-1.5">
-          <Label htmlFor="cred_secret">
-            {form.kind === 'note' ? 'Note contents' : 'Secret'}
-          </Label>
-          <textarea
-            id="cred_secret"
-            rows={form.kind === 'note' ? 5 : 2}
-            maxLength={20000}
-            placeholder={secretHint ?? ''}
-            required={!secretHint}
-            value={form.secret}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, secret: e.target.value }))
-            }
-            className="w-full rounded-md border border-border bg-bg px-3 py-2 font-mono text-sm text-ink"
-          />
-          {secretHint ? (
-            <p className="font-sans text-xs text-ink-subtle">{secretHint}</p>
-          ) : null}
-        </div>
+              {cfg.showSecret ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="cred_secret">
+                    {cfg.secretLabel ?? 'Secret'}
+                  </Label>
+                  {cfg.secretAsTextarea ? (
+                    <textarea
+                      id="cred_secret"
+                      rows={5}
+                      maxLength={20000}
+                      placeholder={secretHint ?? ''}
+                      required={cfg.secretRequired && !secretHint}
+                      value={form.secret}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, secret: e.target.value }))
+                      }
+                      className="w-full rounded-md border border-border bg-bg px-3 py-2 font-sans text-sm text-ink"
+                    />
+                  ) : (
+                    <SecretInput
+                      id="cred_secret"
+                      maxLength={20000}
+                      placeholder={secretHint ?? ''}
+                      required={cfg.secretRequired && !secretHint}
+                      value={form.secret}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, secret: e.target.value }))
+                      }
+                    />
+                  )}
+                  {secretHint ? (
+                    <p className="font-sans text-xs text-ink-subtle">
+                      {secretHint}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
 
-        {form.kind !== 'note' ? (
-          <div className="space-y-1.5">
-            <Label htmlFor="cred_notes">Notes</Label>
-            <textarea
-              id="cred_notes"
-              rows={2}
-              maxLength={5000}
-              value={form.notes}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, notes: e.target.value }))
-              }
-              className="w-full rounded-md border border-border bg-bg px-3 py-2 font-sans text-sm text-ink"
-            />
-          </div>
-        ) : null}
+              {cfg.showNotes ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="cred_notes">Notes</Label>
+                  <textarea
+                    id="cred_notes"
+                    rows={2}
+                    maxLength={5000}
+                    placeholder="Optional context — e.g. role, scope, recovery codes"
+                    value={form.notes}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, notes: e.target.value }))
+                    }
+                    className="w-full rounded-md border border-border bg-bg px-3 py-2 font-sans text-sm text-ink"
+                  />
+                </div>
+              ) : null}
+            </>
+          );
+        })()}
 
         <label className="flex items-start gap-3 rounded-lg bg-surface-2/60 px-3 py-2.5">
           <input

@@ -7,15 +7,21 @@ import { CREDENTIAL_KINDS } from '@/lib/types/credential';
 
 export const runtime = 'nodejs';
 
-const Schema = z.object({
-  kind: z.enum(CREDENTIAL_KINDS),
-  label: z.string().min(1).max(200),
-  username: z.string().max(500).nullable().optional(),
-  url: z.string().max(2000).nullable().optional(),
-  secret: z.string().min(1).max(20000),
-  notes: z.string().max(5000).nullable().optional(),
-  visible_to_client: z.boolean().optional(),
-});
+const Schema = z
+  .object({
+    kind: z.enum(CREDENTIAL_KINDS),
+    label: z.string().min(1).max(200),
+    username: z.string().max(500).nullable().optional(),
+    url: z.string().max(2000).nullable().optional(),
+    // Optional at the schema level — URL-kind credentials don't have one.
+    secret: z.string().max(20000).optional(),
+    notes: z.string().max(5000).nullable().optional(),
+    visible_to_client: z.boolean().optional(),
+  })
+  .refine(
+    (v) => v.kind === 'url' || (v.secret && v.secret.length > 0),
+    { message: 'Secret is required for this credential type', path: ['secret'] },
+  );
 
 export async function POST(
   req: Request,
@@ -33,7 +39,12 @@ export async function POST(
       );
     }
 
-    const enc = encryptSecret(parsed.data.secret);
+    // URL-kind credentials have no secret to encrypt — we store empty
+    // ciphertext/iv/tag so the existing DB columns stay non-null. Reveal
+    // endpoints surface an empty string for these rows.
+    const enc = parsed.data.secret
+      ? encryptSecret(parsed.data.secret)
+      : { ciphertext: '', iv: '', tag: '' };
 
     const { data, error } = await supabaseAdmin()
       .from('project_credentials')

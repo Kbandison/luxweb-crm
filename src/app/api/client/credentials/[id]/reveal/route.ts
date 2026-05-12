@@ -18,18 +18,23 @@ export async function POST(
       return Response.json({ error: 'Not found' }, { status: 404 });
     }
 
+    // URL-kind credentials are stored with empty ciphertext (no secret).
     let secret: string;
-    try {
-      secret = decryptSecret({
-        ciphertext: row.ciphertext,
-        iv: row.iv,
-        tag: row.tag,
-      });
-    } catch {
-      return Response.json(
-        { error: 'Failed to decrypt.' },
-        { status: 500 },
-      );
+    if (!row.ciphertext) {
+      secret = '';
+    } else {
+      try {
+        secret = decryptSecret({
+          ciphertext: row.ciphertext,
+          iv: row.iv,
+          tag: row.tag,
+        });
+      } catch {
+        return Response.json(
+          { error: 'Failed to decrypt.' },
+          { status: 500 },
+        );
+      }
     }
 
     await writeAudit({
