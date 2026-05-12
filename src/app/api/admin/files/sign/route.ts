@@ -29,6 +29,18 @@ export async function POST(req: Request) {
       );
     }
 
+    // Verify the project exists before we mint a signed URL or insert a
+    // files row. Without this, any valid-shaped UUID would create an orphan
+    // upload slot bound to a non-existent project.
+    const { data: project } = await supabaseAdmin()
+      .from('projects')
+      .select('id')
+      .eq('id', parsed.data.project_id)
+      .maybeSingle();
+    if (!project) {
+      return Response.json({ error: 'Project not found' }, { status: 404 });
+    }
+
     // Build a collision-free path. UUID prefix guards against repeat names.
     const safeName = parsed.data.file_name.replace(/[^\w.\- ]+/g, '_');
     const path = `projects/${parsed.data.project_id}/${randomUUID()}-${safeName}`;

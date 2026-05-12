@@ -106,10 +106,22 @@ export async function DELETE(
   try {
     const session = await requireAdmin();
     const { id } = await params;
-    const { error } = await supabaseAdmin()
-      .from('projects')
-      .delete()
-      .eq('id', id);
+    const sb = supabaseAdmin();
+
+    // Polymorphic notes have no FK — clean up before the project row goes
+    // so we don't leave orphans. Best-effort: failure here doesn't block
+    // the main delete.
+    try {
+      await sb
+        .from('notes')
+        .delete()
+        .eq('entity_type', 'project')
+        .eq('entity_id', id);
+    } catch (err) {
+      console.warn('[projects.delete] notes cleanup failed:', err);
+    }
+
+    const { error } = await sb.from('projects').delete().eq('id', id);
     if (error) return Response.json({ error: error.message }, { status: 500 });
     await writeAudit({
       actor_id: session.userId,

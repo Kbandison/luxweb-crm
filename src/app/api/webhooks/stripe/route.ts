@@ -34,6 +34,17 @@ export async function POST(req: Request) {
     return Response.json({ error: message }, { status: 400 });
   }
 
+  // Run handlers under a guard that durably audits any failure. We still
+  // return 200 — Stripe retry causes duplicate work and our UPDATEs are
+  // idempotent — but every handler error lands in crm.audit_log so it
+  // surfaces in the admin audit viewer instead of vanishing into Vercel
+  // logs.
+  await runHandler(event);
+
+  return Response.json({ received: true });
+}
+
+async function runHandler(event: Stripe.Event): Promise<void> {
   try {
     switch (event.type) {
       case 'invoice.paid':
@@ -62,11 +73,25 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     console.error(`[stripe webhook] ${event.type} failed:`, err);
-    // Still 200 — Stripe retries cause duplicate work. Errors surface in
-    // our logs; the idempotent UPDATEs mean a retry-after-fix is safe.
-  }
 
-  return Response.json({ received: true });
+    // Pull a Stripe invoice/object id from the payload when we can — gives
+    // us a join key back to crm.invoices in the audit viewer.
+    const obj = event.data.object as { id?: string } | null;
+    const stripeInvoiceId = typeof obj?.id === 'string' ? obj.id : event.id;
+
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error && err.stack ? err.stack : '';
+    // Truncate stack to ~500 chars so the audit row stays cheap.
+    const trace = stack ? stack.slice(0, 500) : '';
+
+    await logWebhookIssue({
+      stripeInvoiceId,
+      eventType: event.type,
+      stage: 'handler',
+      message: trace ? `${message}\n${trace}` : message,
+      eventId: event.id,
+    });
+  }
 }
 
 /* --------------------------- handlers ----------------------------------- */
@@ -325,9 +350,10 @@ function pickDescription(inv: Stripe.Invoice): string {
 async function logWebhookIssue(args: {
   stripeInvoiceId: string;
   eventType: string;
-  stage: 'fetch' | 'update';
+  stage: 'fetch' | 'update' | 'handler';
   message: string;
   crmInvoiceId?: string;
+  eventId?: string;
 }) {
   try {
     await writeAudit({
@@ -340,6 +366,7 @@ async function logWebhookIssue(args: {
         event_type: args.eventType,
         stage: args.stage,
         message: args.message,
+        event_id: args.eventId,
       },
     });
   } catch (err) {

@@ -102,6 +102,25 @@ export async function DELETE(
       );
     }
 
+    // Block delete if any contract has been generated from this proposal.
+    // contracts.proposal_id is nullable so there's no FK cascade — orphaned
+    // contracts would lose their legal-trail back-reference. Force admin to
+    // delete the contract first.
+    const { count: contractCount } = await supabaseAdmin()
+      .from('contracts')
+      .select('id', { count: 'exact', head: true })
+      .eq('proposal_id', id)
+      .limit(1);
+    if ((contractCount ?? 0) > 0) {
+      return Response.json(
+        {
+          error:
+            'A contract has been generated from this proposal. Delete the contract first.',
+        },
+        { status: 409 },
+      );
+    }
+
     const { error } = await supabaseAdmin()
       .from('proposals')
       .delete()

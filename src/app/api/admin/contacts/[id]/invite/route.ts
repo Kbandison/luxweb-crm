@@ -1,15 +1,19 @@
 import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { notify } from '@/lib/notifications';
 
 export const runtime = 'nodejs';
 
 /**
  * POST /api/admin/contacts/[id]/invite
  *
- * Sends a Supabase Auth invite email. The handle_new_user trigger links
- * the new auth.users row back to this contact (contact.user_id ↔ user.id)
- * via email match. Resend override + branded template comes in Step 9.
+ * Sends a branded portal invite. We use Supabase's `generateLink()` so the
+ * auth user is provisioned (and the `handle_new_user` trigger links it
+ * back to this contact by email) without sending Supabase's default
+ * unbranded email. The action_link is then routed through `notify()` so
+ * the InviteEmail template fires and an in-app row is created for the
+ * new user.
  */
 export async function POST(
   req: Request,
@@ -47,17 +51,37 @@ export async function POST(
       process.env.NEXT_PUBLIC_APP_URL ??
       'http://localhost:3000';
 
-    const { data, error } = await supabaseAdmin().auth.admin.inviteUserByEmail(
-      contact.email as string,
-      {
+    // generateLink({type:'invite'}) provisions the auth user (firing the
+    // handle_new_user trigger that backfills crm.users + links the
+    // contact) and returns the action_link without sending Supabase's
+    // default email. We then send the branded email ourselves.
+    const { data, error } = await supabaseAdmin().auth.admin.generateLink({
+      type: 'invite',
+      email: contact.email as string,
+      options: {
         data: { full_name: contact.full_name ?? '' },
         redirectTo: `${origin}/accept-invite`,
       },
-    );
+    });
 
-    if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
+    if (error || !data?.properties?.action_link || !data?.user?.id) {
+      return Response.json(
+        { error: error?.message ?? 'Failed to generate invite link' },
+        { status: 500 },
+      );
     }
+
+    const inviteUrl = data.properties.action_link;
+    const newUserId = data.user.id;
+
+    // Branded email + in-app notification. notify() reads the user's
+    // email_prefs but invite emails always go (see notify()).
+    await notify({
+      type: 'invite',
+      userId: newUserId,
+      email: contact.email as string,
+      inviteUrl,
+    });
 
     await writeAudit({
       actor_id: session.userId,
@@ -66,11 +90,11 @@ export async function POST(
       entity_id: (contact.id as string) ?? undefined,
       diff: {
         email: contact.email,
-        new_user_id: data?.user?.id ?? null,
+        new_user_id: newUserId,
       },
     });
 
-    return Response.json({ ok: true, user_id: data?.user?.id ?? null });
+    return Response.json({ ok: true, user_id: newUserId });
   } catch (err) {
     if (err instanceof Response) return err;
     const message = err instanceof Error ? err.message : 'Unexpected error';

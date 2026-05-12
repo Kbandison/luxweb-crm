@@ -181,6 +181,20 @@ export async function DELETE(
       }
     }
 
+    // Polymorphic notes have no FK — clean up before the contact row
+    // disappears so we don't leave dangling notes pointing at a vanished
+    // entity. Best-effort: failure here logs and continues so the main
+    // delete isn't blocked.
+    try {
+      await sb
+        .from('notes')
+        .delete()
+        .eq('entity_type', 'contact')
+        .eq('entity_id', id);
+    } catch (err) {
+      console.warn('[contacts.delete] notes cleanup failed:', err);
+    }
+
     const { error } = await sb.from('contacts').delete().eq('id', id);
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });

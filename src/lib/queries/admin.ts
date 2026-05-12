@@ -277,6 +277,25 @@ export async function getDealsForKanban(): Promise<DealCard[]> {
   }
 }
 
+/**
+ * Sanitize a user-supplied search term before interpolating it into a
+ * PostgREST `.or()` filter. The `or()` filter syntax uses commas, parens,
+ * and backslashes structurally — letting any of those through allows an
+ * attacker to rewrite the filter (e.g. inject `id.eq.<uuid>` or escape into
+ * an unrelated column).
+ *
+ * Rules:
+ *   - comma / paren / backslash → return empty string (caller skips filter)
+ *   - `%` and `_` are escaped so they're literal LIKE wildcards, not
+ *     user-controlled wildcards
+ *   - everything else (including normal punctuation, accented chars,
+ *     spaces) passes through so partial-word matching still works
+ */
+function sanitizeOrTerm(input: string): string {
+  if (/[,()\\]/.test(input)) return '';
+  return input.replace(/[%_]/g, (m) => `\\${m}`);
+}
+
 /* -------------------------------------------------------------------------
  * Contacts (Leads surface)
  * ------------------------------------------------------------------------- */
@@ -305,11 +324,15 @@ export async function getContacts(q?: string): Promise<ContactRow[]> {
       .limit(200);
 
     if (q && q.trim().length > 0) {
-      const term = q.trim();
-      // name, email, company — case-insensitive substring
-      query = query.or(
-        `full_name.ilike.%${term}%,email.ilike.%${term}%,company.ilike.%${term}%`,
-      );
+      const term = sanitizeOrTerm(q.trim());
+      // name, email, company — case-insensitive substring. Falsy term
+      // (e.g. user typed only PostgREST metacharacters) skips the filter
+      // rather than breaking the query.
+      if (term) {
+        query = query.or(
+          `full_name.ilike.%${term}%,email.ilike.%${term}%,company.ilike.%${term}%`,
+        );
+      }
     }
 
     const { data } = await query;
