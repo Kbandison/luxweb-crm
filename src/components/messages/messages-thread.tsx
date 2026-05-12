@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/formatters';
+import { supabaseBrowser } from '@/lib/supabase/browser';
 
 type Message = {
   id: string;
@@ -27,8 +28,10 @@ type Props = {
 
 
 /**
- * Reads the thread on mount + refreshes on focus every 10s. Optimistic
- * append on send. Swaps to Realtime later (see Step 10 notes).
+ * Reads the thread on mount + subscribes to Supabase Realtime for the
+ * current thread. Polling stays as a safety net (10s when realtime is
+ * disconnected, 60s when it's live) so the feature still works without
+ * DB replication enabled. Optimistic append on send.
  */
 export function MessagesThread({
   projectId,
@@ -42,6 +45,7 @@ export function MessagesThread({
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(async () => {
@@ -57,13 +61,51 @@ export function MessagesThread({
     }
   }, [projectId]);
 
-  // Poll on focus + every 10s while open AND visible. Hidden tabs don't
-  // need fresh messages — pausing saves the network round-trip.
+  // Subscribe to crm.messages INSERTs for the current thread. The raw
+  // INSERT payload doesn't include the joined sender info we render, so
+  // we trigger the existing API refresh on each event rather than try to
+  // reconstruct the row. Resubscribes whenever threadId changes.
+  useEffect(() => {
+    if (!threadId) return;
+    let cancelled = false;
+    const supabase = supabaseBrowser();
+    const channel = supabase
+      .channel(`messages:${threadId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'crm',
+          table: 'messages',
+          filter: `thread_id=eq.${threadId}`,
+        },
+        () => {
+          // Trigger a refetch — the API returns hydrated sender info that
+          // the raw INSERT payload doesn't carry.
+          void refresh();
+        },
+      )
+      .subscribe((status) => {
+        if (cancelled) return;
+        setRealtimeConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+      setRealtimeConnected(false);
+    };
+  }, [threadId, refresh]);
+
+  // Poll fallback. Cadence drops to 60s when realtime is live (state
+  // reconciliation only) and stays at the prior 10s when it isn't.
+  // Hidden tabs pause polling.
   useEffect(() => {
     let interval: number | null = null;
     function start() {
       if (interval != null) return;
-      interval = window.setInterval(refresh, 10_000);
+      const ms = realtimeConnected ? 60_000 : 10_000;
+      interval = window.setInterval(refresh, ms);
     }
     function stop() {
       if (interval == null) return;
@@ -91,7 +133,7 @@ export function MessagesThread({
       document.removeEventListener('visibilitychange', onVisibility);
       stop();
     };
-  }, [refresh]);
+  }, [refresh, realtimeConnected]);
 
   // Mark-read on mount + when new inbound messages arrive.
   useEffect(() => {

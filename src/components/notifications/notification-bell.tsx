@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { formatUSD, formatRelative } from '@/lib/formatters';
+import { supabaseBrowser } from '@/lib/supabase/browser';
 
 type Notification = {
   id: string;
@@ -12,16 +13,30 @@ type Notification = {
   createdAt: string;
 };
 
+/** Raw row shape on the `crm.notifications` table — matches the payload
+ *  delivered via the postgres_changes channel. */
+type NotificationRowDb = {
+  id: string;
+  user_id: string;
+  type: string;
+  payload: Record<string, unknown> | null;
+  read_at: string | null;
+  created_at: string;
+};
+
 /**
- * Reads from `/api/notifications/recent` on mount + on window focus.
- * Upgrades trivially to Supabase Realtime once RLS + replication are
- * configured — swap the poll for a channel subscription.
+ * Reads from `/api/notifications/recent` on mount + on window focus, and
+ * subscribes to a Supabase Realtime channel on `crm.notifications` for
+ * instant prepends when a row is inserted for the current user. Polling
+ * remains as a fallback when Realtime isn't connected so the feature still
+ * works without DB replication enabled.
  */
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(async () => {
@@ -41,13 +56,82 @@ export function NotificationBell() {
     }
   }, []);
 
+  // Subscribe to Realtime INSERTs scoped to the current user. Falls back
+  // to polling-only (see effect below) if subscription doesn't reach the
+  // SUBSCRIBED state.
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = supabaseBrowser();
+
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    async function start() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (cancelled || !user) return;
+
+      channel = supabase
+        .channel(`notifications:${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'crm',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload: { new: NotificationRowDb }) => {
+            const r = payload.new;
+            if (!r || !r.id) {
+              // No row data available (e.g. RLS hides payload) — fall back
+              // to refetching via the API route.
+              void refresh();
+              return;
+            }
+            const next: Notification = {
+              id: r.id,
+              type: r.type,
+              payload: (r.payload ?? {}) as Record<string, unknown>,
+              readAt: r.read_at,
+              createdAt: r.created_at,
+            };
+            setItems((prev) => {
+              // De-dupe: skip if we already have this id.
+              if (prev.some((x) => x.id === next.id)) return prev;
+              return [next, ...prev].slice(0, 20);
+            });
+            if (!r.read_at) setUnread((u) => u + 1);
+          },
+        )
+        .subscribe((status) => {
+          if (cancelled) return;
+          setRealtimeConnected(status === 'SUBSCRIBED');
+        });
+    }
+
+    void start();
+
+    return () => {
+      cancelled = true;
+      if (channel) {
+        void supabase.removeChannel(channel);
+      }
+      setRealtimeConnected(false);
+    };
+  }, [refresh]);
+
   useEffect(() => {
     void refresh();
 
+    // Poll interval. When Realtime is connected we throttle to 60s as a
+    // safety-net (state reconciliation). When it isn't, we keep the prior
+    // 30s cadence so behavior is no worse than before.
     let interval: number | null = null;
     function start() {
       if (interval != null) return;
-      interval = window.setInterval(refresh, 30_000);
+      const ms = realtimeConnected ? 60_000 : 30_000;
+      interval = window.setInterval(refresh, ms);
     }
     function stop() {
       if (interval == null) return;
@@ -68,7 +152,7 @@ export function NotificationBell() {
     }
 
     // Start polling iff the tab is visible. Pause on hide so background
-    // tabs don't burn cycles refreshing every 30s.
+    // tabs don't burn cycles refreshing.
     if (document.visibilityState === 'visible') start();
 
     window.addEventListener('focus', onFocus);
@@ -78,7 +162,7 @@ export function NotificationBell() {
       document.removeEventListener('visibilitychange', onVisibility);
       stop();
     };
-  }, [refresh]);
+  }, [refresh, realtimeConnected]);
 
   useEffect(() => {
     if (!open) return;
