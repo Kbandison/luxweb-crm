@@ -473,6 +473,8 @@ export type ClientFile = {
   contentType: string | null;
   createdAt: string;
   previewUrl: string | null;
+  /** True iff the calling user uploaded this — gates the delete button. */
+  uploadedByMe: boolean;
 };
 
 export async function getClientProjectFiles(
@@ -485,7 +487,7 @@ export async function getClientProjectFiles(
     const { data } = await supabaseAdmin()
       .from('files')
       .select(
-        'id, file_name, size_bytes, content_type, storage_path, created_at, is_client_visible',
+        'id, file_name, size_bytes, content_type, storage_path, created_at, is_client_visible, uploaded_by',
       )
       .eq('project_id', projectId)
       .eq('is_client_visible', true)
@@ -497,6 +499,7 @@ export async function getClientProjectFiles(
       content_type: string | null;
       storage_path: string;
       created_at: string;
+      uploaded_by: string | null;
     };
     const rows = (data ?? []) as Row[];
 
@@ -519,6 +522,7 @@ export async function getClientProjectFiles(
       contentType: r.content_type,
       createdAt: r.created_at,
       previewUrl: byPath.get(r.storage_path) ?? null,
+      uploadedByMe: r.uploaded_by === userId,
     }));
   } catch {
     return [];

@@ -16,7 +16,7 @@ export default async function ClientProjectFilesPage({
 
   return (
     <main className="px-6 py-10 md:px-10">
-      <ClientFilesList initial={files} />
+      <ClientFilesList projectId={id} initial={files} />
     </main>
   );
 }
