@@ -237,10 +237,7 @@ export function RevisionThread({
               REVISION_STATUS_TONE[revision.status],
             )}
           >
-            {viewerRole === 'admin' &&
-            revision.status === 'pending_review'
-              ? 'Awaiting client review'
-              : REVISION_STATUS_LABEL[revision.status]}
+            {REVISION_STATUS_LABEL[revision.status]}
           </span>
         </div>
         <p className="whitespace-pre-wrap font-sans text-sm text-ink">

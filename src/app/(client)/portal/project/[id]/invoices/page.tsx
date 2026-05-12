@@ -84,7 +84,7 @@ export default async function ClientProjectInvoicesPage({
             tone="copper"
             invoices={open}
             projectId={id}
-            empty="Nothing waiting. You're all caught up."
+            empty="Nothing waiting — you're all caught up."
           />
           <InvoiceSection
             label="Paid"

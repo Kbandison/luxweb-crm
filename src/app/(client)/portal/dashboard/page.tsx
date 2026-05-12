@@ -121,7 +121,7 @@ function PendingContractsBanner({
     <section className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-copper/30 bg-copper-soft/25 p-6">
       <div>
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
-          Sign your agreement
+          Step 2 · Sign your agreement
         </p>
         <p className="mt-1 font-display text-lg font-medium text-ink">
           {primary.proposalTitle}
