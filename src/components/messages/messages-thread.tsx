@@ -57,16 +57,39 @@ export function MessagesThread({
     }
   }, [projectId]);
 
-  // Poll on focus + every 10s while open.
+  // Poll on focus + every 10s while open AND visible. Hidden tabs don't
+  // need fresh messages — pausing saves the network round-trip.
   useEffect(() => {
+    let interval: number | null = null;
+    function start() {
+      if (interval != null) return;
+      interval = window.setInterval(refresh, 10_000);
+    }
+    function stop() {
+      if (interval == null) return;
+      window.clearInterval(interval);
+      interval = null;
+    }
+
     function onFocus() {
       void refresh();
     }
+    function onVisibility() {
+      if (document.visibilityState === 'visible') {
+        void refresh();
+        start();
+      } else {
+        stop();
+      }
+    }
+
+    if (document.visibilityState === 'visible') start();
     window.addEventListener('focus', onFocus);
-    const interval = window.setInterval(refresh, 10_000);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('focus', onFocus);
-      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+      stop();
     };
   }, [refresh]);
 

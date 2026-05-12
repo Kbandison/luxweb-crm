@@ -3,6 +3,8 @@ import { getSession } from '@/lib/supabase/session';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { ensureProjectThread } from '@/lib/queries/messages';
 import { notify, getAdminUserId, getContactUserId } from '@/lib/notifications';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { truncateGraphemes } from '@/lib/text';
 
 export const runtime = 'nodejs';
 
@@ -23,6 +25,14 @@ export async function POST(req: Request) {
     if (!session) {
       return Response.json({ error: 'Unauthenticated' }, { status: 401 });
     }
+
+    // 30 messages/min per user. Cheap enough to be transparent in normal
+    // use; pinches off runaway loops or abuse.
+    const limit = limitByKey(`messages:${session.userId}`, {
+      capacity: 30,
+      refillPerSec: 30 / 60,
+    });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
 
     const raw = await req.json().catch(() => ({}));
     const parsed = Schema.safeParse(raw);
@@ -80,11 +90,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Notify the other side.
-    const snippet =
-      parsed.data.body.length > 120
-        ? parsed.data.body.slice(0, 117) + '…'
-        : parsed.data.body;
+    // Notify the other side. Use grapheme-aware truncation so multi-byte
+    // emoji aren't cut mid-codepoint into "�".
+    const snippet = truncateGraphemes(parsed.data.body, 117);
 
     if (session.role === 'admin') {
       // Admin → find the client user for this project's contact

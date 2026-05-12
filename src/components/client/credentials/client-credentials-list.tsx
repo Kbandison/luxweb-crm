@@ -1,7 +1,8 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { SecretInput } from '@/components/ui/secret-input';
 import { Label } from '@/components/ui/label';
@@ -297,6 +298,7 @@ function AddCredentialDialog({
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -312,19 +314,20 @@ function AddCredentialDialog({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/70 p-4"
-      onClick={!busy ? onCancel : undefined}
+    <Dialog
+      open
+      onClose={onCancel}
+      closeOnBackdropClick={!busy}
+      closeOnEscape={!busy}
+      labelledBy={titleId}
+      panelClassName="w-full max-w-lg"
     >
       <form
         onSubmit={submit}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xl"
+        className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xl"
       >
         <div className="space-y-1">
-          <h2 className="font-display text-lg font-medium text-ink">
+          <h2 id={titleId} className="font-display text-lg font-medium text-ink">
             Add credential
           </h2>
           <p className="font-sans text-xs text-ink-muted">
@@ -475,6 +478,6 @@ function AddCredentialDialog({
           </Button>
         </div>
       </form>
-    </div>
+    </Dialog>
   );
 }

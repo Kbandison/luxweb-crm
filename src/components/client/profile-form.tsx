@@ -5,48 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
+import { CLIENT_EMAIL_PREFS } from '@/lib/email-prefs';
 
 type Prefs = Record<string, boolean>;
-
-const PREF_LABELS: Array<{
-  key: keyof typeof DEFAULTS;
-  label: string;
-  description: string;
-}> = [
-  {
-    key: 'message',
-    label: 'New messages',
-    description: 'When the team sends you a message in the portal.',
-  },
-  {
-    key: 'invoice_sent',
-    label: 'New invoices',
-    description: 'When a new invoice is ready for payment.',
-  },
-  {
-    key: 'invoice_paid',
-    label: 'Payment receipts',
-    description: 'Confirmation when a payment is successfully processed.',
-  },
-  {
-    key: 'proposal_sent',
-    label: 'New proposals',
-    description: 'When a proposal is ready for your review.',
-  },
-  {
-    key: 'milestone_updated',
-    label: 'Milestone updates',
-    description: 'When a project milestone is completed or changes status.',
-  },
-];
-
-const DEFAULTS = {
-  message: true,
-  invoice_sent: true,
-  invoice_paid: true,
-  proposal_sent: true,
-  milestone_updated: true,
-} as const;
 
 export function ClientProfileForm({
   initialFullName,
@@ -60,7 +21,9 @@ export function ClientProfileForm({
   const router = useRouter();
   const toast = useToast();
   const [fullName, setFullName] = useState(initialFullName);
-  const [prefs, setPrefs] = useState<Prefs>({ ...DEFAULTS, ...initialPrefs });
+  // `undefined` is treated as enabled at render time — don't seed defaults
+  // here or we'll persist toggles the user never touched.
+  const [prefs, setPrefs] = useState<Prefs>({ ...initialPrefs });
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,7 +106,7 @@ export function ClientProfileForm({
           you also get an email.
         </p>
         <ul className="overflow-hidden rounded-xl border border-border bg-surface">
-          {PREF_LABELS.map((p, i) => (
+          {CLIENT_EMAIL_PREFS.map((p, i) => (
             <li
               key={p.key}
               className={`flex items-start gap-4 px-5 py-4 ${i > 0 ? 'border-t border-border' : ''}`}
@@ -162,7 +125,7 @@ export function ClientProfileForm({
                     {p.label}
                   </p>
                   <p className="mt-0.5 font-sans text-xs text-ink-muted">
-                    {p.description}
+                    {p.hint}
                   </p>
                 </div>
               </label>

@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Wordmark } from '@/components/brand/wordmark';
+import { Dialog } from '@/components/ui/dialog';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
 import {
@@ -28,19 +29,6 @@ export function MobileNav({ userEmail, userName }: MobileNavProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
-    };
-  }, [open]);
 
   async function handleSignOut() {
     setBusy(true);
@@ -74,30 +62,21 @@ export function MobileNav({ userEmail, userName }: MobileNavProps) {
       </header>
 
       {/* Drawer + backdrop */}
-      {open ? (
-        <div
-          role="dialog"
-          aria-modal="true"
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        className="z-[70] items-stretch justify-start bg-ink/70 p-0 md:hidden"
+        panelClassName="h-full"
+      >
+        <aside
           aria-label="Admin navigation"
-          className="fixed inset-0 z-[70] md:hidden"
+          className={cn(
+            'relative flex h-full w-[82vw] max-w-sm flex-col',
+            'border-r border-border bg-gradient-to-b from-surface via-surface to-surface-2',
+            'shadow-[0_0_64px_-16px_rgba(0,0,0,0.4)]',
+            'animate-in slide-in-from-left duration-200',
+          )}
         >
-          {/* Backdrop */}
-          <button
-            type="button"
-            aria-label="Close navigation"
-            onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-ink/70"
-          />
-
-          {/* Panel */}
-          <aside
-            className={cn(
-              'relative flex h-full w-[82%] max-w-sm flex-col',
-              'border-r border-border bg-gradient-to-b from-surface via-surface to-surface-2',
-              'shadow-[0_0_64px_-16px_rgba(0,0,0,0.4)]',
-              'animate-in slide-in-from-left duration-200',
-            )}
-          >
             {/* Left-edge copper hairline */}
             <span
               aria-hidden
@@ -247,9 +226,8 @@ export function MobileNav({ userEmail, userName }: MobileNavProps) {
                 {busy ? 'Signing out…' : 'Sign out'}
               </button>
             </div>
-          </aside>
-        </div>
-      ) : null}
+        </aside>
+      </Dialog>
     </>
   );
 }

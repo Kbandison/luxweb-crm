@@ -52,7 +52,7 @@ export function ClientsTable({ initial }: { initial: ClientRow[] }) {
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-x-auto overflow-y-auto">
         {filtered.length === 0 ? (
           <div className="flex h-full items-center justify-center px-6 py-12 text-center">
             <p className="font-sans text-sm text-ink-muted">
@@ -62,7 +62,7 @@ export function ClientsTable({ initial }: { initial: ClientRow[] }) {
             </p>
           </div>
         ) : (
-          <table className="w-full">
+          <table className="w-full min-w-[720px]">
             <thead className="border-b border-border bg-surface text-left">
               <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
                 <th className="px-6 py-3 font-medium">Client</th>

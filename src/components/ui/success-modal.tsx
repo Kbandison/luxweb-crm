@@ -1,6 +1,7 @@
 'use client';
-import { useEffect } from 'react';
+import { useId } from 'react';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 
 /**
  * Full-attention "you did the thing" modal — reserved for milestone
@@ -26,29 +27,17 @@ export function SuccessModal({
   onSecondary?: () => void;
   onClose?: () => void;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose?.();
-    }
-    document.addEventListener('keydown', onEsc);
-    return () => document.removeEventListener('keydown', onEsc);
-  }, [open, onClose]);
-
-  if (!open) return null;
+  const titleId = useId();
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="success-modal-title"
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-ink/70 p-4"
-      onClick={onClose}
+    <Dialog
+      open={open}
+      onClose={() => onClose?.()}
+      labelledBy={titleId}
+      className="z-[70]"
+      panelClassName="w-full max-w-md"
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative isolate w-full max-w-md overflow-hidden rounded-2xl border border-success/30 bg-surface p-7 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.3)]"
-      >
+      <div className="relative isolate overflow-hidden rounded-2xl border border-success/30 bg-surface p-7 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.3)]">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-gradient-to-br from-success/25 via-success/10 to-transparent blur-2xl"
@@ -73,7 +62,7 @@ export function SuccessModal({
           </div>
 
           <h2
-            id="success-modal-title"
+            id={titleId}
             className="mt-5 font-display text-2xl font-medium tracking-tight text-ink"
           >
             {title}
@@ -97,6 +86,6 @@ export function SuccessModal({
           </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

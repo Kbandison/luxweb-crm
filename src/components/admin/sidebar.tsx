@@ -24,7 +24,19 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
+      // Use Alt (Option on Mac) instead of Cmd/Ctrl — Cmd/Ctrl+1..9
+      // collides with native browser tab switching.
+      if (!e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      // Skip while the user is typing — Alt+digit may be an input nav.
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
       const digit = Number(e.key);
       if (!Number.isInteger(digit)) return;
       const item = ADMIN_NAV.find((n) => n.shortcut === digit);
@@ -127,7 +139,7 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
                         )}
                         aria-hidden
                       >
-                        ⌘{item.shortcut}
+                        ⌥{item.shortcut}
                       </kbd>
                     </Link>
                   );

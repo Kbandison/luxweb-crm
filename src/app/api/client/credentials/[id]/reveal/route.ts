@@ -2,6 +2,7 @@ import { requireClient } from '@/lib/auth/guards';
 import { writeAudit } from '@/lib/audit';
 import { decryptSecret } from '@/lib/credentials/crypto';
 import { getClientCredentialSecret } from '@/lib/queries/client';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +12,14 @@ export async function POST(
 ) {
   try {
     const session = await requireClient();
+
+    // 30 reveals/min per client.
+    const limit = limitByKey(`reveal:client:${session.userId}`, {
+      capacity: 30,
+      refillPerSec: 30 / 60,
+    });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
+
     const { id } = await params;
 
     const row = await getClientCredentialSecret(id, session.userId);

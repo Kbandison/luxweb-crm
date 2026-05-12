@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { supabaseServer } from './server';
 import { supabaseAdmin } from './admin';
 
@@ -7,6 +8,26 @@ export type Session = {
   email: string;
   role: 'admin' | 'client';
 };
+
+/**
+ * Per-request dedupe of the crm.users lookup. React's `cache` keys on
+ * argument identity within an RSC render, so multiple guards calling
+ * `getSession()` in the same request only hit Postgres once.
+ *
+ * `cache` is a no-op in route handlers / server actions outside an RSC
+ * render, so we don't lose correctness — just lose the dedupe there.
+ * The previous behaviour (one query per call) is preserved as a worst
+ * case, which is acceptable.
+ */
+const fetchProfile = cache(async (userId: string) => {
+  const { data, error } = await supabaseAdmin()
+    .from('users')
+    .select('id, email, role')
+    .eq('id', userId)
+    .single();
+  if (error || !data) return null;
+  return data as { id: string; email: string; role: 'admin' | 'client' };
+});
 
 /**
  * Resolve the current session to { userId, email, role }.
@@ -18,7 +39,7 @@ export type Session = {
  * yet exposed). Callers use this to decide "authenticated or not" and
  * "which role dashboard to redirect to."
  */
-export async function getSession(): Promise<Session | null> {
+export const getSession = cache(async (): Promise<Session | null> => {
   try {
     const supabase = await supabaseServer();
     const {
@@ -26,19 +47,15 @@ export async function getSession(): Promise<Session | null> {
     } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const { data: profile, error } = await supabaseAdmin()
-      .from('users')
-      .select('id, email, role')
-      .eq('id', user.id)
-      .single();
+    const profile = await fetchProfile(user.id);
+    if (!profile) return null;
 
-    if (error || !profile) return null;
     return {
-      userId: profile.id as string,
-      email: profile.email as string,
-      role: profile.role as 'admin' | 'client',
+      userId: profile.id,
+      email: profile.email,
+      role: profile.role,
     };
   } catch {
     return null;
   }
-}
+});

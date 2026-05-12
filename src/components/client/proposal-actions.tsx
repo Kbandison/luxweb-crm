@@ -1,7 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SuccessModal } from '@/components/ui/success-modal';
@@ -77,19 +78,6 @@ function AcceptBar({
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !busy) setOpen(false);
-    }
-    document.addEventListener('keydown', onEsc);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onEsc);
-      document.body.style.overflow = '';
-    };
-  }, [open, busy]);
-
   async function accept(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!fullName.trim() || !agreed) return;
@@ -144,91 +132,93 @@ function AcceptBar({
         </div>
       </div>
 
-      {open ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4"
-          onClick={!busy ? () => setOpen(false) : undefined}
-        >
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        closeOnBackdropClick={!busy}
+        closeOnEscape={!busy}
+        labelledBy="proposal-accept-title"
+        className="z-50 bg-ink/50 backdrop-blur-sm"
+        panelClassName="w-full max-w-md"
+      >
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_32px_80px_-20px_rgba(0,0,0,0.4)]">
           <div
-            onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_32px_80px_-20px_rgba(0,0,0,0.4)]"
-          >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-gradient-to-br from-copper/18 via-gold/8 to-transparent blur-2xl"
-            />
-            <header className="relative px-6 pb-4 pt-6">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
-                Accept proposal
+            aria-hidden
+            className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-gradient-to-br from-copper/18 via-gold/8 to-transparent blur-2xl"
+          />
+          <header className="relative px-6 pb-4 pt-6">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+              Accept proposal
+            </p>
+            <h2
+              id="proposal-accept-title"
+              className="mt-1 font-display text-xl font-medium tracking-tight text-ink"
+            >
+              Type your name to sign
+            </h2>
+            <p className="mt-1 font-sans text-sm text-ink-muted">
+              Your typed name, IP address, and a timestamp will be captured as
+              your electronic acceptance.
+            </p>
+          </header>
+          <form onSubmit={accept} className="relative space-y-4 px-6 pb-6">
+            <div className="space-y-1.5">
+              <Label htmlFor="accept_name">Full legal name</Label>
+              <Input
+                id="accept_name"
+                required
+                autoFocus
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder={expectedSignerName}
+              />
+              <p className="font-sans text-xs text-ink-subtle">
+                Type <span className="font-mono text-ink">{expectedSignerName}</span>{' '}
+                exactly to sign. (Update your profile first if your legal name
+                differs.)
               </p>
-              <h2 className="mt-1 font-display text-xl font-medium tracking-tight text-ink">
-                Type your name to sign
-              </h2>
-              <p className="mt-1 font-sans text-sm text-ink-muted">
-                Your typed name, IP address, and a timestamp will be captured as
-                your electronic acceptance.
+            </div>
+
+            <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2/40 p-3">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-border accent-copper"
+              />
+              <span className="font-sans text-xs leading-relaxed text-ink">
+                I agree to the scope, investment, and terms outlined in this
+                proposal and its accompanying agreement.
+              </span>
+            </label>
+
+            {error ? (
+              <p role="alert" className="font-sans text-xs text-danger">
+                {error}
               </p>
-            </header>
-            <form onSubmit={accept} className="relative space-y-4 px-6 pb-6">
-              <div className="space-y-1.5">
-                <Label htmlFor="accept_name">Full legal name</Label>
-                <Input
-                  id="accept_name"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder={expectedSignerName}
-                />
-                <p className="font-sans text-xs text-ink-subtle">
-                  Type <span className="font-mono text-ink">{expectedSignerName}</span>{' '}
-                  exactly to sign. (Update your profile first if your legal name
-                  differs.)
-                </p>
-              </div>
+            ) : null}
 
-              <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2/40 p-3">
-                <input
-                  type="checkbox"
-                  checked={agreed}
-                  onChange={(e) => setAgreed(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-border accent-copper"
-                />
-                <span className="font-sans text-xs leading-relaxed text-ink">
-                  I agree to the scope, investment, and terms outlined in this
-                  proposal and its accompanying agreement.
-                </span>
-              </label>
-
-              {error ? (
-                <p role="alert" className="font-sans text-xs text-danger">
-                  {error}
-                </p>
-              ) : null}
-
-              <footer className="flex items-center justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setOpen(false)}
-                  disabled={busy}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={busy || !fullName.trim() || !agreed}
-                >
-                  {busy ? 'Signing…' : 'Sign & accept'}
-                </Button>
-              </footer>
-            </form>
-          </div>
+            <footer className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpen(false)}
+                disabled={busy}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={busy || !fullName.trim() || !agreed}
+              >
+                {busy ? 'Signing…' : 'Sign & accept'}
+              </Button>
+            </footer>
+          </form>
         </div>
-      ) : null}
+      </Dialog>
 
       <SuccessModal
         open={confirmOpen}

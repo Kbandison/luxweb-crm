@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -271,6 +272,7 @@ function EnrollDialog({
   onSubmit: (trialDays: number | null) => void;
 }) {
   const [trial, setTrial] = useState('');
+  const titleId = useId();
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -280,19 +282,20 @@ function EnrollDialog({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/70 p-4"
-      onClick={!busy ? onCancel : undefined}
+    <Dialog
+      open
+      onClose={onCancel}
+      closeOnBackdropClick={!busy}
+      closeOnEscape={!busy}
+      labelledBy={titleId}
+      panelClassName="w-full max-w-md"
     >
       <form
         onSubmit={submit}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xl"
+        className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-xl"
       >
         <div className="space-y-1">
-          <h2 className="font-display text-lg font-medium text-ink">
+          <h2 id={titleId} className="font-display text-lg font-medium text-ink">
             Enroll in Care Plan?
           </h2>
           <p className="font-sans text-xs text-ink-muted">
@@ -308,6 +311,7 @@ function EnrollDialog({
             type="number"
             min={1}
             max={365}
+            autoFocus
             placeholder="e.g. 14"
             value={trial}
             onChange={(e) => setTrial(e.target.value)}
@@ -326,6 +330,6 @@ function EnrollDialog({
           </Button>
         </div>
       </form>
-    </div>
+    </Dialog>
   );
 }

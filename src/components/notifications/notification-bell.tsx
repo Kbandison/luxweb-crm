@@ -43,14 +43,40 @@ export function NotificationBell() {
 
   useEffect(() => {
     void refresh();
+
+    let interval: number | null = null;
+    function start() {
+      if (interval != null) return;
+      interval = window.setInterval(refresh, 30_000);
+    }
+    function stop() {
+      if (interval == null) return;
+      window.clearInterval(interval);
+      interval = null;
+    }
+
     function onFocus() {
       void refresh();
     }
+    function onVisibility() {
+      if (document.visibilityState === 'visible') {
+        void refresh();
+        start();
+      } else {
+        stop();
+      }
+    }
+
+    // Start polling iff the tab is visible. Pause on hide so background
+    // tabs don't burn cycles refreshing every 30s.
+    if (document.visibilityState === 'visible') start();
+
     window.addEventListener('focus', onFocus);
-    const interval = window.setInterval(refresh, 30_000);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('focus', onFocus);
-      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+      stop();
     };
   }, [refresh]);
 
@@ -93,15 +119,21 @@ export function NotificationBell() {
   }
 
   async function markOneRead(id: string) {
-    // Optimistic
-    setItems((prev) =>
-      prev.map((n) =>
-        n.id === id
-          ? { ...n, readAt: n.readAt ?? new Date().toISOString() }
-          : n,
-      ),
-    );
-    setUnread((u) => Math.max(0, u - 1));
+    // Only decrement the unread counter when this client's state still
+    // thinks the row is unread. Multi-tab races and double-clicks were
+    // previously pushing the badge below zero.
+    setItems((prev) => {
+      let didMark = false;
+      const next = prev.map((n) => {
+        if (n.id === id && n.readAt === null) {
+          didMark = true;
+          return { ...n, readAt: new Date().toISOString() };
+        }
+        return n;
+      });
+      if (didMark) setUnread((u) => Math.max(0, u - 1));
+      return next;
+    });
     await fetch('/api/notifications/mark-read', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

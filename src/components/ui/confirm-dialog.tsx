@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 export type ConfirmDialogProps = {
@@ -27,39 +28,37 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const confirmBtnRef = useRef<HTMLButtonElement | null>(null);
+  const titleId = useId();
+  const descId = useId();
 
+  // Hand Enter back to confirm. The Dialog primitive handles Escape +
+  // focus trap. We still autofocus the confirm button so the primary
+  // action is reachable in one keystroke.
   useEffect(() => {
     if (!open) return;
+    confirmBtnRef.current?.focus();
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !busy) onCancel();
       if (e.key === 'Enter' && !busy) void onConfirm();
     }
     document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    // Focus the primary action so Enter works and screen readers announce it.
-    confirmBtnRef.current?.focus();
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
-    };
-  }, [open, busy, onCancel, onConfirm]);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, busy, onConfirm]);
 
   if (!open) return null;
 
   const isDanger = tone === 'danger';
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/70 p-4"
-      onClick={!busy ? onCancel : undefined}
+    <Dialog
+      open={open}
+      onClose={busy ? () => {} : onCancel}
+      labelledBy={titleId}
+      describedBy={description ? descId : undefined}
+      closeOnBackdropClick={!busy}
+      closeOnEscape={!busy}
+      panelClassName="w-full max-w-md"
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_32px_80px_-20px_rgba(0,0,0,0.4)]"
-      >
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_32px_80px_-20px_rgba(0,0,0,0.4)]">
         {/* Top accent — soft danger wash for destructive actions */}
         <div
           aria-hidden
@@ -86,13 +85,16 @@ export function ConfirmDialog({
             </div>
             <div className="min-w-0 flex-1">
               <h2
-                id="confirm-dialog-title"
+                id={titleId}
                 className="font-display text-lg font-medium tracking-tight text-ink"
               >
                 {title}
               </h2>
               {description ? (
-                <div className="mt-2 font-sans text-sm leading-relaxed text-ink-muted">
+                <div
+                  id={descId}
+                  className="mt-2 font-sans text-sm leading-relaxed text-ink-muted"
+                >
                   {description}
                 </div>
               ) : null}
@@ -122,7 +124,7 @@ export function ConfirmDialog({
           </Button>
         </footer>
       </div>
-    </div>
+    </Dialog>
   );
 }
 

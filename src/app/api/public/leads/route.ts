@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserId } from '@/lib/notifications';
+import { clientIp, limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -58,6 +59,17 @@ export async function OPTIONS(req: Request) {
 export async function POST(req: Request) {
   const headers = corsHeaders(req.headers.get('origin'));
 
+  // Rate-limit by IP: 5 submissions per 60s. Bots churning the form get
+  // bounced with a 429 before we touch the database.
+  const ip = clientIp(req);
+  const limit = limitByKey(`lead:${ip}`, {
+    capacity: 5,
+    refillPerSec: 5 / 60,
+  });
+  if (!limit.ok) {
+    return rateLimitResponse(limit.retryAfterSec, headers);
+  }
+
   try {
     const raw = await req.json().catch(() => ({}));
     const parsed = CreateLeadSchema.safeParse(raw);
@@ -68,9 +80,13 @@ export async function POST(req: Request) {
       );
     }
 
-    // Honeypot — return a 200 as if accepted so bots don't retry.
+    // Honeypot — return the same 201 + body shape as a real submit so
+    // bots can't distinguish their failure from a success by status code.
     if (parsed.data.website && parsed.data.website.length > 0) {
-      return Response.json({ ok: true }, { status: 200, headers });
+      return Response.json(
+        { ok: true, created: true },
+        { status: 201, headers },
+      );
     }
 
     const emailLower = parsed.data.email.toLowerCase().trim();

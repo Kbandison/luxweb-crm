@@ -2,6 +2,7 @@ import { requireAdmin } from '@/lib/auth/guards';
 import { writeAudit } from '@/lib/audit';
 import { decryptSecret } from '@/lib/credentials/crypto';
 import { getCredentialSecret } from '@/lib/queries/admin';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +12,15 @@ export async function POST(
 ) {
   try {
     const session = await requireAdmin();
+
+    // 30 reveals/min per admin. Stops a runaway script from siphoning
+    // every secret in the DB at once.
+    const limit = limitByKey(`reveal:admin:${session.userId}`, {
+      capacity: 30,
+      refillPerSec: 30 / 60,
+    });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
+
     const { id } = await params;
 
     const row = await getCredentialSecret(id);
