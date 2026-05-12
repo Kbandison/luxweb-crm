@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
+import { ADMIN_EMAIL_PREFS, defaultPrefsFrom } from '@/lib/email-prefs';
 
 type TabKey = 'profile' | 'notifications' | 'integrations';
 
@@ -17,54 +18,8 @@ type IntegrationStatus = {
   resend: boolean;
 };
 
-const PREFS: Array<{ key: string; label: string; description: string }> = [
-  {
-    key: 'message',
-    label: 'New messages',
-    description: 'Email when a client replies in a project thread.',
-  },
-  {
-    key: 'invoice_sent',
-    label: 'Invoice sent',
-    description: 'Email when an invoice is dispatched via Stripe.',
-  },
-  {
-    key: 'invoice_paid',
-    label: 'Payment received',
-    description: 'Email when a client payment clears.',
-  },
-  {
-    key: 'proposal_sent',
-    label: 'Proposal sent',
-    description: 'Email when a proposal is shared with a client.',
-  },
-  {
-    key: 'contract_signed',
-    label: 'Contract signed',
-    description: 'Email when a client counter-signs the agreement.',
-  },
-  {
-    key: 'milestone_updated',
-    label: 'Milestone update',
-    description: 'Email when a milestone changes state.',
-  },
-  {
-    key: 'revision_requested',
-    label: 'Revision request',
-    description:
-      'Email when a client files a revision or replies on one.',
-  },
-];
-
-const DEFAULTS: Prefs = {
-  message: true,
-  invoice_sent: true,
-  invoice_paid: true,
-  proposal_sent: true,
-  contract_signed: true,
-  milestone_updated: true,
-  revision_requested: true,
-};
+const PREFS = ADMIN_EMAIL_PREFS;
+const DEFAULTS: Prefs = defaultPrefsFrom(ADMIN_EMAIL_PREFS);
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'profile', label: 'Profile' },
