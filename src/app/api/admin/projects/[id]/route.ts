@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { notify, getContactUserId } from '@/lib/notifications';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 
 export const runtime = 'nodejs';
 
@@ -54,6 +56,42 @@ export async function PATCH(
       entity_id: id,
       diff: { before, after: parsed.data },
     });
+
+    // If admin manually flipped status → 'completed', mirror what the
+    // milestone-driven completion path does: notify the client (review
+    // prompt) and revalidate cached client pages so the dashboard
+    // demotes the project out of the focus slot immediately.
+    const beforeStatus = (before as { status?: string } | null)?.status;
+    if (
+      parsed.data.status === 'completed' &&
+      beforeStatus &&
+      beforeStatus !== 'completed'
+    ) {
+      const projRow = before as
+        | { name?: string; contact_id?: string }
+        | null;
+      if (projRow?.contact_id) {
+        try {
+          const clientUserId = await getContactUserId(projRow.contact_id);
+          if (clientUserId) {
+            await notify({
+              type: 'project_completed',
+              userId: clientUserId,
+              projectId: id,
+              projectName: projRow.name ?? 'Project',
+              projectPath: `/portal/project/${id}`,
+            });
+          }
+        } catch (err) {
+          console.warn('[project PATCH] project_completed notify failed:', err);
+        }
+      }
+    }
+
+    // Always revalidate cached project pages on any admin update so the
+    // client portal picks up status changes without a hard reload.
+    revalidateProject(id);
+
     return Response.json({ ok: true });
   } catch (err) {
     if (err instanceof Response) return err;
