@@ -28,7 +28,7 @@ type Props = {
 
 /**
  * Reads the thread on mount + refreshes on focus every 10s. Optimistic
- * append on send.
+ * append on send. Swaps to Realtime later (see Step 10 notes).
  */
 export function MessagesThread({
   projectId,

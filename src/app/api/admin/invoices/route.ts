@@ -4,7 +4,6 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
-import { revalidateProject } from '@/lib/cache/revalidate-project';
 
 export const runtime = 'nodejs';
 
@@ -168,8 +167,6 @@ export async function POST(req: Request) {
         description: parsed.data.description,
       },
     });
-
-    revalidateProject(parsed.data.project_id);
 
     // Notify the client (if they've been invited to the portal).
     const clientUserId = await getContactUserId(p.contact_id);

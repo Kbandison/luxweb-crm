@@ -63,6 +63,16 @@ export function ProjectHeader({ project }: { project: ProjectDetail }) {
                 : '—'
             }
           />
+          <Stat
+            label="Profit"
+            tooltip="Admin only — never sent to the client portal"
+            value={
+              project.profitabilityCents != null
+                ? formatUSD(project.profitabilityCents)
+                : '—'
+            }
+            adminOnly
+          />
         </dl>
       </div>
     </header>

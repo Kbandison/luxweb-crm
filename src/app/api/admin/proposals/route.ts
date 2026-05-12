@@ -3,7 +3,6 @@ import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { defaultProposalContent } from '@/lib/types/proposal';
-import { revalidateProject } from '@/lib/cache/revalidate-project';
 
 export const runtime = 'nodejs';
 
@@ -111,10 +110,6 @@ export async function POST(req: Request) {
       entity_type: 'proposal',
       entity_id: data.id as string,
     });
-
-    if (parsed.data.project_id) {
-      revalidateProject(parsed.data.project_id);
-    }
 
     // Auto-bump the contact's deal to the 'proposal' stage if it's still
     // in earlier stages. Skip downgrades — once a deal is past proposal
