@@ -1,5 +1,6 @@
 import { Topbar } from '@/components/admin/topbar';
 import { MetricTile } from '@/components/metric-tile';
+import { AdminDashboardRefresher } from '@/components/realtime/admin-dashboard-refresher';
 import {
   getAdminDashboardOverview,
   type ActivityRow,
@@ -15,6 +16,7 @@ export default async function AdminDashboardPage() {
   return (
     <>
       <Topbar title="Dashboard" />
+      <AdminDashboardRefresher />
 
       <main className="mx-auto w-full max-w-6xl space-y-12 px-6 pb-16 pt-10 md:px-10">
         <PageMeta timestamp={now} />

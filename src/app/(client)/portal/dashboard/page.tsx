@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/supabase/session';
 import { getClientDashboard } from '@/lib/queries/client';
+import { ClientDashboardRefresher } from '@/components/realtime/client-dashboard-refresher';
 import { cn } from '@/lib/utils';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 import {
@@ -36,6 +37,7 @@ export default async function ClientDashboardPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-10 md:px-10 md:py-14">
+      <ClientDashboardRefresher />
       {/* Greeting */}
       <header className="mb-10 space-y-2">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-copper">

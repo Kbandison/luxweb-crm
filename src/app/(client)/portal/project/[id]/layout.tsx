@@ -8,6 +8,8 @@ import {
   PROJECT_STATUS_DOT as STATUS_DOT,
   PROJECT_STATUS_LABEL as STATUS_LABEL,
 } from '@/components/admin/projects/status-meta';
+import { ProjectRefresher } from '@/components/realtime/project-refresher';
+import { ProjectRowRefresher } from '@/components/realtime/project-row-refresher';
 import { cn } from '@/lib/utils';
 
 export default async function ClientProjectLayout({
@@ -72,6 +74,8 @@ export default async function ClientProjectLayout({
       <ClientProjectNav projectId={id} />
 
       <div className="mx-auto w-full max-w-7xl">{children}</div>
+      <ProjectRefresher projectId={id} />
+      <ProjectRowRefresher projectId={id} />
     </>
   );
 }
