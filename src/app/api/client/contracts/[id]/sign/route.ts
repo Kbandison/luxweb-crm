@@ -3,7 +3,7 @@ import { requireClient } from '@/lib/auth/guards';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
-import { notify, getAdminUserId } from '@/lib/notifications';
+import { notify, getAdminUserIds } from '@/lib/notifications';
 import { createAndSendInvoice } from '@/lib/invoices/create';
 import { namesMatch } from '@/lib/signatures/match';
 import type { ProposalContent } from '@/lib/types/proposal';
@@ -275,23 +275,29 @@ export async function POST(
       }
     }
 
-    // Notify admin that the contract is fully signed.
-    const adminId = await getAdminUserId();
-    if (adminId) {
+    // Notify admin(s) that the contract is fully signed.
+    const adminIds = await getAdminUserIds();
+    if (adminIds.length > 0) {
       const contractPath = `/admin/projects/${projectId}/contracts/${id}`;
-      await notify({
-        type: 'contract_signed',
-        userId: adminId,
-        contractId: id,
-        proposalId: r.proposal_id,
-        title: proposal?.title ?? 'Contract',
-        totalCents:
-          proposal?.total_cents == null ? null : Number(proposal.total_cents),
-        clientName: contact.full_name,
-        signedAt,
-        agreementVersion: r.agreement_version,
-        contractPath,
-      });
+      await Promise.all(
+        adminIds.map((userId) =>
+          notify({
+            type: 'contract_signed',
+            userId,
+            contractId: id,
+            proposalId: r.proposal_id,
+            title: proposal?.title ?? 'Contract',
+            totalCents:
+              proposal?.total_cents == null
+                ? null
+                : Number(proposal.total_cents),
+            clientName: contact.full_name,
+            signedAt,
+            agreementVersion: r.agreement_version,
+            contractPath,
+          }),
+        ),
+      );
     }
 
     if (projectId) revalidateProject(projectId);

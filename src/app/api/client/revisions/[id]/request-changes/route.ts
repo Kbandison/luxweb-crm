@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
-import { notify, getAdminUserId } from '@/lib/notifications';
+import { notify, getAdminUserIds } from '@/lib/notifications';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 
 export const runtime = 'nodejs';
@@ -112,21 +112,25 @@ export async function POST(
       diff: { milestone_id: r.milestone_id, by: 'client' },
     });
 
-    // Notify admin.
-    const adminId = await getAdminUserId();
-    if (adminId) {
-      await notify({
-        type: 'revision_requested',
-        userId: adminId,
-        revisionId: id,
-        title: r.title,
-        bodySnippet: snippet(parsed.data.body),
-        projectId: r.project_id,
-        projectName: project?.name ?? '—',
-        clientName: contact.full_name,
-        kind: 'comment',
-        revisionPath: `/admin/projects/${r.project_id}/revisions/${id}`,
-      });
+    // Notify admin(s).
+    const adminIds = await getAdminUserIds();
+    if (adminIds.length > 0) {
+      await Promise.all(
+        adminIds.map((userId) =>
+          notify({
+            type: 'revision_requested',
+            userId,
+            revisionId: id,
+            title: r.title,
+            bodySnippet: snippet(parsed.data.body),
+            projectId: r.project_id,
+            projectName: project?.name ?? '—',
+            clientName: contact.full_name,
+            kind: 'comment',
+            revisionPath: `/admin/projects/${r.project_id}/revisions/${id}`,
+          }),
+        ),
+      );
     }
 
     revalidateProject(r.project_id);

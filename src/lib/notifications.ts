@@ -546,7 +546,15 @@ function renderTemplate(
  * Helpers for common lookups
  * ------------------------------------------------------------------------- */
 
-/** Resolve the single admin user id. Falls back gracefully when missing. */
+/**
+ * Resolve a single admin user id (Postgres-ordered first row).
+ *
+ * @deprecated For notification fan-out, prefer {@link getAdminUserIds} so
+ * every admin receives the event. This helper remains for callers that
+ * genuinely need a single id (e.g. "the admin" of a scoped concept) and
+ * for backwards compatibility — it returns the first admin to preserve
+ * the previous single-admin behavior.
+ */
 export async function getAdminUserId(): Promise<string | null> {
   try {
     const { data } = await supabaseAdmin()
@@ -558,6 +566,27 @@ export async function getAdminUserId(): Promise<string | null> {
     return (data?.id as string | undefined) ?? null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Resolve every admin user id. Returns `[]` if the lookup fails or no
+ * admin exists. Use this for notification fan-out so multi-admin setups
+ * route events to all staff, not just the Postgres-ordered first row.
+ *
+ * Single-admin case still works: the array has one element and callers
+ * loop over it once with no behavior change.
+ */
+export async function getAdminUserIds(): Promise<string[]> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('users')
+      .select('id')
+      .eq('role', 'admin');
+    const rows = (data ?? []) as Array<{ id: string }>;
+    return rows.map((r) => r.id).filter((id): id is string => !!id);
+  } catch {
+    return [];
   }
 }
 

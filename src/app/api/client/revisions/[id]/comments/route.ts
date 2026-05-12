@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
-import { getAdminUserId, notify } from '@/lib/notifications';
+import { getAdminUserIds, notify } from '@/lib/notifications';
 
 export const runtime = 'nodejs';
 
@@ -81,20 +81,24 @@ export async function POST(
       diff: { revision_id: id, by: 'client' },
     });
 
-    const adminUserId = await getAdminUserId();
-    if (adminUserId) {
-      await notify({
-        type: 'revision_requested',
-        userId: adminUserId,
-        revisionId: id,
-        title: r.title,
-        bodySnippet: snippet(parsed.data.body),
-        projectId: r.project_id,
-        projectName: project.name,
-        clientName: name,
-        kind: 'comment',
-        revisionPath: `/admin/projects/${r.project_id}/revisions/${id}`,
-      });
+    const adminUserIds = await getAdminUserIds();
+    if (adminUserIds.length > 0) {
+      await Promise.all(
+        adminUserIds.map((userId) =>
+          notify({
+            type: 'revision_requested',
+            userId,
+            revisionId: id,
+            title: r.title,
+            bodySnippet: snippet(parsed.data.body),
+            projectId: r.project_id,
+            projectName: project.name,
+            clientName: name,
+            kind: 'comment',
+            revisionPath: `/admin/projects/${r.project_id}/revisions/${id}`,
+          }),
+        ),
+      );
     }
 
     return Response.json({ ok: true });

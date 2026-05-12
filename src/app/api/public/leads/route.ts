@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
-import { notify, getAdminUserId } from '@/lib/notifications';
+import { notify, getAdminUserIds } from '@/lib/notifications';
 import { clientIp, limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -176,20 +176,24 @@ export async function POST(req: Request) {
       });
     }
 
-    // Notify the admin — new lead or fresh inquiry from an existing one.
-    const adminId = await getAdminUserId();
-    if (adminId) {
-      await notify({
-        type: 'new_lead',
-        userId: adminId,
-        contactId,
-        fullName,
-        email: emailLower,
-        company,
-        source,
-        message: parsed.data.message ?? null,
-        leadPath: `/admin/leads?lead=${contactId}`,
-      });
+    // Notify admin(s) — new lead or fresh inquiry from an existing one.
+    const adminIds = await getAdminUserIds();
+    if (adminIds.length > 0) {
+      await Promise.all(
+        adminIds.map((userId) =>
+          notify({
+            type: 'new_lead',
+            userId,
+            contactId,
+            fullName,
+            email: emailLower,
+            company,
+            source,
+            message: parsed.data.message ?? null,
+            leadPath: `/admin/leads?lead=${contactId}`,
+          }),
+        ),
+      );
     }
 
     return Response.json(

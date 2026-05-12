@@ -2,7 +2,7 @@ import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
-import { notify, getAdminUserId, getContactUserId } from '@/lib/notifications';
+import { notify, getAdminUserIds, getContactUserId } from '@/lib/notifications';
 import {
   fetchSubscriptionForSync,
   syncSubscriptionRow,
@@ -216,20 +216,24 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
     });
   }
 
-  const adminId = await getAdminUserId();
-  if (adminId) {
-    await notify({
-      type: 'invoice_paid',
-      userId: adminId,
-      invoiceId: crmInvoiceId,
-      description,
-      amountCents,
-      paidAt,
-      hostedInvoiceUrl,
-      invoicePath: projectId
-        ? `/admin/projects/${projectId}/invoices`
-        : '/admin/dashboard',
-    });
+  const adminIds = await getAdminUserIds();
+  if (adminIds.length > 0) {
+    await Promise.all(
+      adminIds.map((userId) =>
+        notify({
+          type: 'invoice_paid',
+          userId,
+          invoiceId: crmInvoiceId,
+          description,
+          amountCents,
+          paidAt,
+          hostedInvoiceUrl,
+          invoicePath: projectId
+            ? `/admin/projects/${projectId}/invoices`
+            : '/admin/dashboard',
+        }),
+      ),
+    );
   }
 }
 
@@ -314,20 +318,24 @@ async function handleInvoiceOverdue(inv: Stripe.Invoice) {
     });
   }
 
-  const adminId = await getAdminUserId();
-  if (adminId) {
-    await notify({
-      type: 'invoice_overdue',
-      userId: adminId,
-      invoiceId: crmInvoiceId,
-      description,
-      amountCents,
-      dueDate,
-      hostedInvoiceUrl,
-      invoicePath: projectId
-        ? `/admin/projects/${projectId}/invoices`
-        : '/admin/dashboard',
-    });
+  const adminIds = await getAdminUserIds();
+  if (adminIds.length > 0) {
+    await Promise.all(
+      adminIds.map((userId) =>
+        notify({
+          type: 'invoice_overdue',
+          userId,
+          invoiceId: crmInvoiceId,
+          description,
+          amountCents,
+          dueDate,
+          hostedInvoiceUrl,
+          invoicePath: projectId
+            ? `/admin/projects/${projectId}/invoices`
+            : '/admin/dashboard',
+        }),
+      ),
+    );
   }
 }
 

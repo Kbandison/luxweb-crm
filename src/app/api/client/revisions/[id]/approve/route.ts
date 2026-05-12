@@ -1,7 +1,7 @@
 import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
-import { notify, getAdminUserId } from '@/lib/notifications';
+import { notify, getAdminUserIds } from '@/lib/notifications';
 import { createAndSendInvoice } from '@/lib/invoices/create';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 
@@ -157,20 +157,24 @@ export async function POST(
       },
     });
 
-    // Notify admin.
-    const adminId = await getAdminUserId();
-    if (adminId) {
-      await notify({
-        type: 'revision_updated',
-        userId: adminId,
-        revisionId: id,
-        title: r.title,
-        projectId: r.project_id,
-        projectName: project?.name ?? '—',
-        kind: 'status',
-        statusLabel: invoiceId ? 'Approved · invoice sent' : 'Approved',
-        revisionPath: `/admin/projects/${r.project_id}/revisions/${id}`,
-      });
+    // Notify admin(s).
+    const adminIds = await getAdminUserIds();
+    if (adminIds.length > 0) {
+      await Promise.all(
+        adminIds.map((userId) =>
+          notify({
+            type: 'revision_updated',
+            userId,
+            revisionId: id,
+            title: r.title,
+            projectId: r.project_id,
+            projectName: project?.name ?? '—',
+            kind: 'status',
+            statusLabel: invoiceId ? 'Approved · invoice sent' : 'Approved',
+            revisionPath: `/admin/projects/${r.project_id}/revisions/${id}`,
+          }),
+        ),
+      );
     }
 
     revalidateProject(r.project_id);

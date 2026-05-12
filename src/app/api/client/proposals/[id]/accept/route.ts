@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
-import { notify, getAdminUserId } from '@/lib/notifications';
+import { notify, getAdminUserIds } from '@/lib/notifications';
 import { namesMatch } from '@/lib/signatures/match';
 
 export const runtime = 'nodejs';
@@ -116,21 +116,25 @@ export async function POST(
     // two-signature flow, the contract isn't generated here — admin signs
     // first via /admin/projects/[id]/agreement, which creates the contract
     // row with their signature captured, then the client signs separately.
-    const adminId = await getAdminUserId();
-    if (adminId) {
+    const adminIds = await getAdminUserIds();
+    if (adminIds.length > 0) {
       const proposalPath = r.project_id
         ? `/admin/projects/${r.project_id}/proposals/${id}`
         : `/admin/proposals/${id}`;
-      await notify({
-        type: 'proposal_accepted',
-        userId: adminId,
-        proposalId: id,
-        title: r.title,
-        totalCents: r.total_cents == null ? null : Number(r.total_cents),
-        clientName: contact.full_name,
-        acceptedAt,
-        proposalPath,
-      });
+      await Promise.all(
+        adminIds.map((userId) =>
+          notify({
+            type: 'proposal_accepted',
+            userId,
+            proposalId: id,
+            title: r.title,
+            totalCents: r.total_cents == null ? null : Number(r.total_cents),
+            clientName: contact.full_name,
+            acceptedAt,
+            proposalPath,
+          }),
+        ),
+      );
     }
 
     // Also send a confirmation to the client so they know we received

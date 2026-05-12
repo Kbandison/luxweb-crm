@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { getSession } from '@/lib/supabase/session';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { ensureProjectThread } from '@/lib/queries/messages';
-import { notify, getAdminUserId, getContactUserId } from '@/lib/notifications';
+import { notify, getAdminUserIds, getContactUserId } from '@/lib/notifications';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 import { truncateGraphemes } from '@/lib/text';
 
@@ -117,18 +117,24 @@ export async function POST(req: Request) {
         }
       }
     } else {
-      // Client → notify the admin
-      const adminId = await getAdminUserId();
-      if (adminId && adminId !== session.userId) {
-        await notify({
-          type: 'message',
-          userId: adminId,
-          projectId: parsed.data.project_id,
-          threadId: thread.id,
-          senderName: session.email,
-          snippet,
-          threadPath: `/admin/projects/${parsed.data.project_id}/messages`,
-        });
+      // Client → notify every admin (excluding the sender just in case)
+      const adminIds = (await getAdminUserIds()).filter(
+        (id) => id !== session.userId,
+      );
+      if (adminIds.length > 0) {
+        await Promise.all(
+          adminIds.map((userId) =>
+            notify({
+              type: 'message',
+              userId,
+              projectId: parsed.data.project_id,
+              threadId: thread.id,
+              senderName: session.email,
+              snippet,
+              threadPath: `/admin/projects/${parsed.data.project_id}/messages`,
+            }),
+          ),
+        );
       }
     }
 
