@@ -11,7 +11,7 @@ export type ProposalSignatureBlock = {
 /**
  * Renders a ProposalContent as the client will see it in the portal.
  * Used both in the admin editor's preview pane and the client portal's
- * proposal view — same component on both sides for visual fidelity.
+ * proposal view (Step 8 — reuses the same component for fidelity).
  */
 export function ProposalPreview({
   title,

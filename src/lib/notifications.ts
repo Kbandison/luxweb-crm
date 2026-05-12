@@ -298,14 +298,14 @@ export async function notify(event: NotifyEvent): Promise<void> {
       react: rendered.react,
       tag: event.type,
     });
-    // Surface provider-level failures (the SDK resolves rather than rejects
-    // on non-2xx responses, so a swallowed `error` here is invisible).
-    const errMsg = (result as { error?: { message?: string } }).error?.message;
-    if (errMsg) {
-      console.warn(
-        `[notify] ${event.type} email to ${user.email} returned an error: ${errMsg}`,
-      );
-    }
+    console.log(
+      `[notify] sent ${event.type} email to ${user.email}`,
+      // Resend SDK returns { id } on success or { error }.
+      (result as { data?: { id?: string }; error?: unknown }).data?.id
+        ? `id=${(result as { data?: { id?: string } }).data?.id}`
+        : (result as { error?: { message?: string } }).error?.message ??
+            'no id returned',
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(
