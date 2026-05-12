@@ -19,7 +19,42 @@ export async function PATCH(req: Request) {
       return Response.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin()
+    const sb = supabaseAdmin();
+
+    // If the admin is trying to change full_name, lock it once they've
+    // counter-signed a contract. The signing flow burns the admin's
+    // current full_name into the contract metadata; letting them rename
+    // post-signing would let them forge a signature retroactively.
+    if (typeof parsed.data.full_name === 'string') {
+      const { data: currentUser } = await sb
+        .from('users')
+        .select('full_name')
+        .eq('id', session.userId)
+        .single();
+      const currentName = (currentUser?.full_name as string | null) ?? null;
+      const nextName = parsed.data.full_name;
+
+      // No-op rename: accept silently.
+      if (currentName !== nextName) {
+        const { data: signedContract } = await sb
+          .from('contracts')
+          .select('id')
+          .not('admin_signed_at', 'is', null)
+          .limit(1)
+          .maybeSingle();
+        if (signedContract) {
+          return Response.json(
+            {
+              error:
+                "Your name is locked because you've signed documents. Contact us if it needs to change.",
+            },
+            { status: 409 },
+          );
+        }
+      }
+    }
+
+    const { error } = await sb
       .from('users')
       .update(parsed.data)
       .eq('id', session.userId);

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { getSession } from '@/lib/supabase/session';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { ensureProjectThread, threadBelongsToUser } from '@/lib/queries/messages';
+import { ensureProjectThread } from '@/lib/queries/messages';
 import { notify, getAdminUserId, getContactUserId } from '@/lib/notifications';
 
 export const runtime = 'nodejs';
@@ -30,16 +30,37 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    const thread = await ensureProjectThread(parsed.data.project_id);
-    if (!thread) {
-      return Response.json({ error: 'Could not open thread' }, { status: 500 });
+    // Verify ownership / existence BEFORE we open a thread row. Otherwise
+    // a stranger pinging a random project UUID inserts a phantom thread.
+    // Admins must also pass — they need to have access to a real project,
+    // not be able to materialize one by guessing an id.
+    const { data: project } = await supabaseAdmin()
+      .from('projects')
+      .select('id, contact_id, contacts!inner(user_id)')
+      .eq('id', parsed.data.project_id)
+      .maybeSingle();
+
+    if (!project) {
+      return Response.json({ error: 'Not found' }, { status: 404 });
     }
 
     if (session.role === 'client') {
-      const ok = await threadBelongsToUser(thread.id, session.userId);
-      if (!ok) {
+      type Row = {
+        contacts:
+          | { user_id: string | null }
+          | { user_id: string | null }[]
+          | null;
+      };
+      const r = project as unknown as Row;
+      const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+      if (contact?.user_id !== session.userId) {
         return Response.json({ error: 'Not found' }, { status: 404 });
       }
+    }
+
+    const thread = await ensureProjectThread(parsed.data.project_id);
+    if (!thread) {
+      return Response.json({ error: 'Could not open thread' }, { status: 500 });
     }
 
     const { data, error } = await supabaseAdmin()

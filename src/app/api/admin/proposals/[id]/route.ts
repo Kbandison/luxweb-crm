@@ -42,6 +42,26 @@ export async function PATCH(
       );
     }
 
+    // Sent proposals are mid-review by the client — mutating title /
+    // total_cents / content_json out from under them is a trust break.
+    // Admin must explicitly revise back to draft (POST /revise) first.
+    // Status-only transitions (e.g. reject/expire) are still allowed.
+    if ((current?.status as string) === 'sent') {
+      const dataFields = Object.keys(parsed.data);
+      const lockedFields = dataFields.filter((f) =>
+        ['title', 'total_cents', 'content_json', 'expires_at'].includes(f),
+      );
+      if (lockedFields.length > 0) {
+        return Response.json(
+          {
+            error:
+              'Proposal is currently sent to the client. Revise to draft before editing.',
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     const { error } = await supabaseAdmin()
       .from('proposals')
       .update(parsed.data)

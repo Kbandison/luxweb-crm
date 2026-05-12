@@ -1,9 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { getSession } from '@/lib/supabase/session';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import {
   ensureProjectThread,
   getThreadMessages,
-  threadBelongsToUser,
 } from '@/lib/queries/messages';
 
 export const runtime = 'nodejs';
@@ -23,14 +23,36 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: 'Missing project_id' }, { status: 400 });
   }
 
-  const thread = await ensureProjectThread(projectId);
-  if (!thread) {
-    return Response.json({ messages: [] });
+  // Verify ownership BEFORE materializing a thread row. Otherwise polling
+  // a random project_id creates phantom threads. Admin needs the project
+  // to exist; client needs to own it via contact.
+  const { data: project } = await supabaseAdmin()
+    .from('projects')
+    .select('id, contact_id, contacts!inner(user_id)')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (!project) {
+    return Response.json({ error: 'Not found' }, { status: 404 });
   }
 
   if (session.role === 'client') {
-    const ok = await threadBelongsToUser(thread.id, session.userId);
-    if (!ok) return Response.json({ error: 'Not found' }, { status: 404 });
+    type Row = {
+      contacts:
+        | { user_id: string | null }
+        | { user_id: string | null }[]
+        | null;
+    };
+    const r = project as unknown as Row;
+    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    if (contact?.user_id !== session.userId) {
+      return Response.json({ error: 'Not found' }, { status: 404 });
+    }
+  }
+
+  const thread = await ensureProjectThread(projectId);
+  if (!thread) {
+    return Response.json({ messages: [] });
   }
 
   const messages = await getThreadMessages(thread.id);
