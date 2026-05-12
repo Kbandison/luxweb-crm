@@ -1620,6 +1620,8 @@ export type CredentialRow = {
   visibleToClient: boolean;
   createdAt: string;
   updatedAt: string;
+  /** True iff this credential was uploaded by the project's client. */
+  createdByClient: boolean;
 };
 
 type CredentialSelectRow = {
@@ -1633,9 +1635,13 @@ type CredentialSelectRow = {
   visible_to_client: boolean;
   created_at: string;
   updated_at: string;
+  created_by: string | null;
 };
 
-function toCredentialRow(r: CredentialSelectRow): CredentialRow {
+function toCredentialRow(
+  r: CredentialSelectRow,
+  clientUserId: string | null,
+): CredentialRow {
   return {
     id: r.id,
     projectId: r.project_id,
@@ -1647,6 +1653,10 @@ function toCredentialRow(r: CredentialSelectRow): CredentialRow {
     visibleToClient: r.visible_to_client,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    // Anything created by the project's contact user is a client upload.
+    // Admin shouldn't edit those — surface a flag so the UI can gate.
+    createdByClient:
+      !!clientUserId && r.created_by === clientUserId,
   };
 }
 
@@ -1654,14 +1664,37 @@ export async function getProjectCredentials(
   projectId: string,
 ): Promise<CredentialRow[]> {
   try {
-    const { data } = await supabaseAdmin()
+    const sb = supabaseAdmin();
+    // Resolve the project's contact user id once so we can label
+    // client-uploaded credentials.
+    const { data: project } = await sb
+      .from('projects')
+      .select('id, contacts!inner(user_id)')
+      .eq('id', projectId)
+      .maybeSingle();
+    type ProjRow = {
+      contacts:
+        | { user_id: string | null }
+        | { user_id: string | null }[];
+    };
+    const p = project as unknown as ProjRow | null;
+    const contact = p
+      ? Array.isArray(p.contacts)
+        ? p.contacts[0]
+        : p.contacts
+      : null;
+    const clientUserId = contact?.user_id ?? null;
+
+    const { data } = await sb
       .from('project_credentials')
       .select(
-        'id, project_id, kind, label, username, url, notes, visible_to_client, created_at, updated_at',
+        'id, project_id, kind, label, username, url, notes, visible_to_client, created_at, updated_at, created_by',
       )
       .eq('project_id', projectId)
       .order('created_at', { ascending: false });
-    return ((data ?? []) as CredentialSelectRow[]).map(toCredentialRow);
+    return ((data ?? []) as CredentialSelectRow[]).map((r) =>
+      toCredentialRow(r, clientUserId),
+    );
   } catch {
     return [];
   }

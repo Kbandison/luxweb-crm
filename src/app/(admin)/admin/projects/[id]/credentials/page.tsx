@@ -32,6 +32,7 @@ export default async function AdminProjectCredentialsPage({
           notes: c.notes,
           visibleToClient: c.visibleToClient,
           createdAt: c.createdAt,
+          createdByClient: c.createdByClient,
         }))}
       />
     </main>

@@ -105,6 +105,8 @@ export type CredentialItem = {
   notes: string | null;
   visibleToClient: boolean;
   createdAt: string;
+  /** True iff this credential was uploaded by the client. Admin can't edit. */
+  createdByClient: boolean;
 };
 
 type FormState = {
@@ -136,7 +138,10 @@ export function CredentialsManager({
 }) {
   const router = useRouter();
   const toast = useToast();
-  const [items] = useState<CredentialItem[]>(initial);
+  // No local state for the list — render directly from the `initial`
+  // server prop so router.refresh() actually picks up new rows. The
+  // prior useState init froze the list at mount.
+  const items = initial;
   const [editing, setEditing] = useState<CredentialItem | null>(null);
   const [adding, setAdding] = useState(false);
   const [confirmingDelete, setConfirmingDelete] =
@@ -370,6 +375,14 @@ function CredentialRow({
                 Internal
               </span>
             )}
+            {item.createdByClient ? (
+              <span
+                className="rounded bg-copper-soft/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-copper"
+                title="Uploaded by the client. You can reveal and delete, but not edit."
+              >
+                Client added
+              </span>
+            ) : null}
           </div>
           {item.username || item.url ? (
             <p className="mt-1 truncate font-mono text-xs text-ink-muted">
@@ -402,9 +415,13 @@ function CredentialRow({
           >
             {revealed ? 'Refresh' : 'Reveal'}
           </Button>
-          <Button variant="ghost" size="sm" onClick={onEdit}>
-            Edit
-          </Button>
+          {/* Edit is hidden for client-uploaded credentials — admin
+              shouldn't be modifying a client's stored username/password. */}
+          {!item.createdByClient ? (
+            <Button variant="ghost" size="sm" onClick={onEdit}>
+              Edit
+            </Button>
+          ) : null}
           <Button variant="ghost" size="sm" onClick={onDelete}>
             Delete
           </Button>
