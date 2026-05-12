@@ -36,7 +36,7 @@ export default async function ClientProjectLayout({
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-px copper-rule"
         />
-        <div className="relative mx-auto w-full max-w-6xl px-6 pb-8 pt-7 md:px-10">
+        <div className="relative mx-auto w-full max-w-7xl px-6 pb-8 pt-7 md:px-10">
           <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-subtle">
             <Link href="/portal/dashboard" className="hover:text-ink">
               Dashboard
@@ -71,7 +71,7 @@ export default async function ClientProjectLayout({
 
       <ClientProjectNav projectId={id} />
 
-      <div className="mx-auto w-full max-w-6xl">{children}</div>
+      <div className="mx-auto w-full max-w-7xl">{children}</div>
     </>
   );
 }
