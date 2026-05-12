@@ -24,7 +24,6 @@ import ProposalAcceptedClientEmail, {
 import MilestoneUpdatedEmail, {
   milestoneUpdatedSubject,
 } from '@/emails/milestone-updated-email';
-import InviteEmail, { inviteSubject } from '@/emails/invite-email';
 import NewLeadEmail, { newLeadSubject } from '@/emails/new-lead-email';
 import ContractSignedEmail, {
   contractSignedSubject,
@@ -132,13 +131,6 @@ export type NotifyEvent =
       status: 'inactive' | 'pending' | 'in_progress' | 'done' | 'blocked';
       /** path to the project workspace */
       projectPath: string;
-    }
-  | {
-      type: 'invite';
-      userId: string;
-      /** email the invite was sent to (used for deduping in logs) */
-      email: string;
-      inviteUrl: string;
     }
   | {
       type: 'new_lead';
@@ -284,10 +276,9 @@ export async function notify(event: NotifyEvent): Promise<void> {
     return;
   }
 
-  // 3. Invite emails always go (opting out of your own invite doesn't
-  //    make sense). All other types respect email_prefs.
+  // 3. Respect email_prefs opt-outs.
   const prefKey = event.type;
-  if (event.type !== 'invite' && user.email_prefs[prefKey] === false) {
+  if (user.email_prefs[prefKey] === false) {
     console.warn(
       `[notify] ${event.type} email opt-out for ${user.email}; skipped`,
     );
@@ -419,16 +410,6 @@ function renderTemplate(
       return {
         subject: milestoneUpdatedSubject(props),
         react: createElement(MilestoneUpdatedEmail, props),
-      };
-    }
-    case 'invite': {
-      const props = {
-        recipientName,
-        inviteUrl: event.inviteUrl,
-      };
-      return {
-        subject: inviteSubject(),
-        react: createElement(InviteEmail, props),
       };
     }
     case 'new_lead': {

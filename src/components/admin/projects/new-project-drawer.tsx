@@ -6,14 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 import type { ContactRow } from '@/lib/queries/admin';
-import {
-  PROJECT_STATUSES,
-  PROJECT_STATUS_LABEL,
-  type MilestoneStatus,
-} from './status-meta';
-// MilestoneStatus type re-export only used to satisfy TS in the export list;
-// keep import explicit to avoid unused-import warnings down the line.
-void (null as unknown as MilestoneStatus);
+import { PROJECT_STATUSES, PROJECT_STATUS_LABEL } from './status-meta';
 
 export function NewProjectDrawer({ contacts }: { contacts: ContactRow[] }) {
   const router = useRouter();
