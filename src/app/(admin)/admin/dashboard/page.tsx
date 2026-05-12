@@ -28,8 +28,8 @@ export default async function AdminDashboardPage() {
         />
 
         {/* 02 — Snapshot */}
-        <Section number="02" title="Snapshot" subtitle="Live counts across projects, invoices, and the inbox.">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Section number="02" title="Snapshot" subtitle="Live counts across projects and invoices.">
+          <div className="grid gap-4 md:grid-cols-3">
             <MetricTile
               label="This month · paid"
               value={formatUSD(o.thisMonthEarningsCents)}
@@ -49,11 +49,6 @@ export default async function AdminDashboardPage() {
                 value: `${o.unpaidInvoiceCount} open`,
                 trend: 'flat',
               }}
-            />
-            <MetricTile
-              label="Unread messages"
-              value={String(o.unreadMessagesCount)}
-              unit="threads"
             />
           </div>
         </Section>

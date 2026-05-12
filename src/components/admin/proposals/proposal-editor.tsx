@@ -393,11 +393,6 @@ export function ProposalEditor({
             Saves any unsaved edits, then locks the proposal as{' '}
             <span className="font-mono text-ink">Sent</span>. The client will be
             able to view and accept it from their portal.
-            <br />
-            <span className="font-mono text-[11px] text-ink-subtle">
-              (Email dispatch via Resend wires up in Step 9 — for now the
-              client sees the new proposal on their portal dashboard.)
-            </span>
           </>
         }
         confirmLabel="Save & send"

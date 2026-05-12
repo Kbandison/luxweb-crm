@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
  *
  * Sends a Supabase Auth invite email. The handle_new_user trigger links
  * the new auth.users row back to this contact (contact.user_id ↔ user.id)
- * via email match. Resend override + branded template comes in Step 9.
+ * via email match.
  */
 export async function POST(
   req: Request,

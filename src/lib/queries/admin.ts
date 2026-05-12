@@ -60,7 +60,6 @@ export type DashboardOverview = {
   unpaidInvoiceCount: number;
   thisMonthEarningsCents: number;
   thisMonthEarningsCount: number;
-  unreadMessagesCount: number;
   recentActivity: ActivityRow[];
 };
 
@@ -99,7 +98,6 @@ export async function getAdminDashboardOverview(): Promise<DashboardOverview> {
     unpaidInvoiceCount: invoices.count,
     thisMonthEarningsCents: earnings.valueCents,
     thisMonthEarningsCount: earnings.count,
-    unreadMessagesCount: 0, // wired in step 10 with notifications
     recentActivity: activity,
   };
 }
@@ -1301,7 +1299,7 @@ async function recentActivity(): Promise<ActivityRow[]> {
 }
 
 /* -------------------------------------------------------------------------
- * Earnings — Step 14
+ * Earnings
  *
  * Cost = sum(time_logs.hours) × project.hourly_rate_cents per project.
  * Revenue = sum(invoices.amount_cents where status = 'paid').
@@ -1989,7 +1987,7 @@ export async function getAllOpenRevisions(): Promise<RevisionWithContext[]> {
       .select(
         'id, project_id, milestone_id, contact_id, title, body, status, resolved_at, created_at, updated_at, projects!inner(name), contacts!inner(full_name), milestones(title)',
       )
-      .in('status', ['open', 'in_progress'])
+      .in('status', ['open', 'in_progress', 'pending_review', 'changes_requested'])
       .order('created_at', { ascending: false });
     type Row = RevisionSelectRow & {
       projects: { name: string } | { name: string }[];
