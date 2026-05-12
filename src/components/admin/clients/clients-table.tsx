@@ -14,11 +14,19 @@ export function ClientsTable({
   currentSort,
   currentDir,
   searchParams,
+  selectedIds,
+  onToggleRow,
+  onToggleAll,
 }: {
   initial: ClientRow[];
   currentSort: string;
   currentDir: SortDir;
   searchParams: Record<string, string | string[] | undefined>;
+  /** Optional — when present, renders selection checkboxes. */
+  selectedIds?: Set<string>;
+  onToggleRow?: (id: string) => void;
+  /** Called with the currently-visible (filtered) rows. */
+  onToggleAll?: (rows: ClientRow[]) => void;
 }) {
   const [q, setQ] = useState('');
 
@@ -31,6 +39,16 @@ export function ClientsTable({
         .some((v) => String(v).toLowerCase().includes(term)),
     );
   }, [initial, q]);
+
+  const selectable = Boolean(selectedIds && onToggleRow && onToggleAll);
+  const selectedCount = selectable
+    ? filtered.reduce(
+        (n, r) => (selectedIds!.has(r.id) ? n + 1 : n),
+        0,
+      )
+    : 0;
+  const allSelected = selectable && filtered.length > 0 && selectedCount === filtered.length;
+  const someSelected = selectable && selectedCount > 0 && !allSelected;
 
   return (
     <div className="flex h-full flex-col">
@@ -77,6 +95,22 @@ export function ClientsTable({
           <table className="w-full min-w-[720px]">
             <thead className="border-b border-border bg-surface text-left">
               <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                {selectable ? (
+                  <th className="w-10 px-3 py-3 font-medium">
+                    <input
+                      type="checkbox"
+                      aria-label={
+                        allSelected ? 'Deselect all clients' : 'Select all clients'
+                      }
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected;
+                      }}
+                      onChange={() => onToggleAll!(filtered)}
+                      className="h-4 w-4 cursor-pointer accent-copper"
+                    />
+                  </th>
+                ) : null}
                 <th className="px-6 py-3 font-medium">
                   <SortableHeader
                     field="full_name"
@@ -108,6 +142,17 @@ export function ClientsTable({
                   key={c.id}
                   className="border-b border-border bg-surface transition-colors hover:bg-copper-soft/15"
                 >
+                  {selectable ? (
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${c.fullName}`}
+                        checked={selectedIds!.has(c.id)}
+                        onChange={() => onToggleRow!(c.id)}
+                        className="h-4 w-4 cursor-pointer accent-copper"
+                      />
+                    </td>
+                  ) : null}
                   <td className="px-6 py-3">
                     <Link
                       href={`/admin/clients/${c.id}`}

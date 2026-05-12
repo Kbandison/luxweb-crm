@@ -23,9 +23,17 @@ export default async function AdminEarningsPage() {
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-copper">
             Workspace
           </p>
-          <h1 className="font-display text-3xl font-medium tracking-tight text-ink md:text-4xl">
-            Earnings
-          </h1>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <h1 className="font-display text-3xl font-medium tracking-tight text-ink md:text-4xl">
+              Earnings
+            </h1>
+            <a
+              href="/api/admin/earnings/export.csv"
+              className="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-4 font-sans text-xs font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2"
+            >
+              Export CSV
+            </a>
+          </div>
           <p className="font-sans text-sm text-ink-muted">
             Revenue from paid invoices, outstanding balance, and per-project
             profitability based on logged time and the project&apos;s hourly

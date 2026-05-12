@@ -3,7 +3,7 @@ import {
   getClientsListPaginated,
   CONTACT_SORTS,
 } from '@/lib/queries/admin';
-import { ClientsTable } from '@/components/admin/clients/clients-table';
+import { ClientsListWithSelection } from '@/components/admin/clients/clients-list-with-selection';
 import { PaginationFooter } from '@/components/ui/pagination-footer';
 import { parseListParams } from '@/lib/list-params';
 
@@ -40,8 +40,8 @@ export default async function ClientsPage({
         </div>
 
         <div className="min-h-0 flex-1 bg-bg">
-          <ClientsTable
-            initial={result.rows}
+          <ClientsListWithSelection
+            rows={result.rows}
             currentSort={params.sort}
             currentDir={params.dir}
             searchParams={sp}

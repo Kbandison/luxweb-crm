@@ -617,6 +617,131 @@ export async function getClientsListPaginated(
   return { rows: enriched, totalCount: page.totalCount, hasMore: page.hasMore };
 }
 
+/* -------------------------------------------------------------------------
+ * CSV export helpers
+ *
+ * Two shapes:
+ *   - `getContactsForExport`: returns every row matching `q` + scope, with
+ *     optional `ids` restriction. No pagination — exports are full result
+ *     sets. Capped at 10k rows defensively.
+ *   - `getLeadInquiriesByContactId`: returns the earliest contact-note body
+ *     per contact id (the "message" the lead originally submitted).
+ * ------------------------------------------------------------------------- */
+
+const EXPORT_ROW_CAP = 10_000;
+
+export type ContactExportOpts = {
+  scope: 'leads' | 'clients';
+  q?: string | null;
+  /** Restrict to these contact ids (e.g. user-selected rows). */
+  ids?: string[];
+  /** Sort column (whitelisted upstream). Defaults to `created_at`. */
+  sort?: string;
+  /** Sort direction. Defaults to `desc`. */
+  dir?: 'asc' | 'desc';
+};
+
+export async function getContactsForExport(
+  opts: ContactExportOpts,
+): Promise<ContactRow[]> {
+  try {
+    const clientIds = await getClientContactIds();
+
+    let query = supabaseAdmin()
+      .from('contacts')
+      .select(
+        'id, full_name, email, phone, company, source, tags, lead_score, created_at, user_id',
+      );
+
+    if (opts.scope === 'leads') {
+      if (clientIds.size > 0) {
+        query = query.not('id', 'in', clientFilterList(clientIds));
+      }
+    } else {
+      if (clientIds.size === 0) return [];
+      query = query.in('id', Array.from(clientIds));
+    }
+
+    if (opts.ids && opts.ids.length > 0) {
+      query = query.in('id', opts.ids);
+    }
+
+    if (opts.q) {
+      const term = sanitizeOrTerm(opts.q);
+      if (term) {
+        query = query.or(
+          `full_name.ilike.%${term}%,email.ilike.%${term}%,company.ilike.%${term}%`,
+        );
+      }
+    }
+
+    const sort = opts.sort && CONTACT_SORTS.includes(opts.sort as ContactSort)
+      ? opts.sort
+      : 'created_at';
+    const dir = opts.dir === 'asc' ? 'asc' : 'desc';
+
+    const { data } = await query
+      .order(sort, { ascending: dir === 'asc' })
+      .limit(EXPORT_ROW_CAP);
+
+    const rows = (data ?? []) as {
+      id: string;
+      full_name: string;
+      email: string | null;
+      phone: string | null;
+      company: string | null;
+      source: string | null;
+      tags: string[] | null;
+      lead_score: number | null;
+      created_at: string;
+      user_id: string | null;
+    }[];
+
+    return rows.map((r) => ({
+      id: r.id,
+      fullName: r.full_name,
+      email: r.email,
+      phone: r.phone,
+      company: r.company,
+      source: r.source,
+      tags: r.tags ?? [],
+      leadScore: r.lead_score ?? 0,
+      createdAt: r.created_at,
+      userId: r.user_id,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * For each contact id, return the earliest note body — the "message" the
+ * lead originally submitted via the public form. Returns a Map for O(1)
+ * lookup at CSV-build time.
+ */
+export async function getLeadInquiriesByContactId(
+  contactIds: string[],
+): Promise<Map<string, string>> {
+  if (contactIds.length === 0) return new Map();
+  try {
+    const { data } = await supabaseAdmin()
+      .from('notes')
+      .select('entity_id, body, created_at')
+      .eq('entity_type', 'contact')
+      .in('entity_id', contactIds)
+      .order('created_at', { ascending: true });
+    type Row = { entity_id: string; body: string; created_at: string };
+    const rows = (data ?? []) as Row[];
+    const map = new Map<string, string>();
+    for (const r of rows) {
+      if (!map.has(r.entity_id)) map.set(r.entity_id, r.body);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 export type DealSummary = {
   id: string;
   title: string;

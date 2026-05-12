@@ -5,7 +5,7 @@ import {
   getLeadsPaginated,
   CONTACT_SORTS,
 } from '@/lib/queries/admin';
-import { LeadsList } from '@/components/admin/leads/leads-list';
+import { LeadsListWithSelection } from '@/components/admin/leads/leads-list-with-selection';
 import {
   LeadDetail,
   LeadDetailEmpty,
@@ -57,8 +57,8 @@ export default async function LeadsPage({
           <div
             className={`${selected ? 'hidden lg:block' : ''} flex min-h-0 flex-col border-r border-border bg-surface`}
           >
-            <LeadsList
-              initial={result.rows}
+            <LeadsListWithSelection
+              rows={result.rows}
               selectedId={selected?.id ?? null}
               currentSort={params.sort}
               currentDir={params.dir}

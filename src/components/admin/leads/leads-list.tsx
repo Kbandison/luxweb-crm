@@ -17,12 +17,19 @@ export function LeadsList({
   currentSort,
   currentDir,
   searchParams: spProps,
+  selectedIds,
+  onToggleRow,
+  onToggleAll,
 }: {
   initial: ContactRow[];
   selectedId: string | null;
   currentSort: string;
   currentDir: SortDir;
   searchParams: Record<string, string | string[] | undefined>;
+  /** Optional bulk-selection state — when present, each row gets a checkbox. */
+  selectedIds?: Set<string>;
+  onToggleRow?: (id: string) => void;
+  onToggleAll?: (rows: ContactRow[]) => void;
 }) {
   const [query, setQuery] = useState('');
   const pathname = usePathname();
@@ -39,6 +46,16 @@ export function LeadsList({
         .some((v) => String(v).toLowerCase().includes(q)),
     );
   }, [initial, query]);
+
+  const selectable = Boolean(selectedIds && onToggleRow && onToggleAll);
+  const selectedCount = selectable
+    ? filtered.reduce(
+        (n, r) => (selectedIds!.has(r.id) ? n + 1 : n),
+        0,
+      )
+    : 0;
+  const allSelected = selectable && filtered.length > 0 && selectedCount === filtered.length;
+  const someSelected = selectable && selectedCount > 0 && !allSelected;
 
   function hrefFor(leadId: string) {
     const sp = new URLSearchParams(searchParams.toString());
@@ -93,6 +110,20 @@ export function LeadsList({
 
       {/* Sort bar */}
       <div className="flex items-center gap-4 border-b border-border bg-surface px-4 py-2">
+        {selectable ? (
+          <input
+            type="checkbox"
+            aria-label={
+              allSelected ? 'Deselect all leads' : 'Select all leads'
+            }
+            checked={allSelected}
+            ref={(el) => {
+              if (el) el.indeterminate = someSelected;
+            }}
+            onChange={() => onToggleAll!(filtered)}
+            className="h-4 w-4 cursor-pointer accent-copper"
+          />
+        ) : null}
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
           Sort
         </span>
@@ -132,13 +163,28 @@ export function LeadsList({
         ) : (
           <ul className="divide-y divide-border">
             {filtered.map((lead) => (
-              <li key={lead.id}>
+              <li key={lead.id} className={cn(
+                'flex items-start',
+                selectedId === lead.id ? 'bg-copper-soft/25' : '',
+              )}>
+                {selectable ? (
+                  <label className="flex shrink-0 cursor-pointer items-center self-stretch px-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${lead.fullName}`}
+                      checked={selectedIds!.has(lead.id)}
+                      onChange={() => onToggleRow!(lead.id)}
+                      className="h-4 w-4 cursor-pointer accent-copper"
+                    />
+                  </label>
+                ) : null}
                 <Link
                   href={hrefFor(lead.id)}
                   className={cn(
-                    'block px-4 py-3 transition-colors',
+                    'block flex-1 px-4 py-3 transition-colors',
+                    selectable ? 'pl-0' : '',
                     selectedId === lead.id
-                      ? 'bg-copper-soft/25'
+                      ? ''
                       : 'hover:bg-surface-2',
                   )}
                 >
