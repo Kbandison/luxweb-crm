@@ -5,12 +5,48 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
-import { CLIENT_EMAIL_PREFS, defaultPrefsFrom } from '@/lib/email-prefs';
 
 type Prefs = Record<string, boolean>;
 
-const PREF_LABELS = CLIENT_EMAIL_PREFS;
-const DEFAULTS = defaultPrefsFrom(CLIENT_EMAIL_PREFS);
+const PREF_LABELS: Array<{
+  key: keyof typeof DEFAULTS;
+  label: string;
+  description: string;
+}> = [
+  {
+    key: 'message',
+    label: 'New messages',
+    description: 'When the team sends you a message in the portal.',
+  },
+  {
+    key: 'invoice_sent',
+    label: 'New invoices',
+    description: 'When a new invoice is ready for payment.',
+  },
+  {
+    key: 'invoice_paid',
+    label: 'Payment receipts',
+    description: 'Confirmation when a payment is successfully processed.',
+  },
+  {
+    key: 'proposal_sent',
+    label: 'New proposals',
+    description: 'When a proposal is ready for your review.',
+  },
+  {
+    key: 'milestone_updated',
+    label: 'Milestone updates',
+    description: 'When a project milestone is completed or changes status.',
+  },
+];
+
+const DEFAULTS = {
+  message: true,
+  invoice_sent: true,
+  invoice_paid: true,
+  proposal_sent: true,
+  milestone_updated: true,
+} as const;
 
 export function ClientProfileForm({
   initialFullName,
