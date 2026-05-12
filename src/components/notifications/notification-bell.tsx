@@ -332,6 +332,11 @@ function describe(n: Notification): Described {
           ? normalizePath(str('threadPath'))
           : undefined,
       };
+    case 'invite':
+      return {
+        title: 'Portal invite sent',
+        body: str('email') || undefined,
+      };
     case 'new_lead':
       return {
         title: `New lead · ${str('fullName')}`,
