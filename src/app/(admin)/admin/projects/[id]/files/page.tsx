@@ -10,7 +10,7 @@ export default async function ProjectFilesPage({
   const files = await getProjectFiles(id);
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-8 py-8">
+    <main className="mx-auto w-full max-w-7xl px-8 py-8">
       <FilesList projectId={id} initial={files} />
     </main>
   );
