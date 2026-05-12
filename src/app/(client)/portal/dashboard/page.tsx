@@ -26,6 +26,12 @@ export default async function ClientDashboardPage() {
   const activeProjects = dash.projects.filter((p) => p.status !== 'completed');
   const focus = activeProjects[0] ?? null;
   const others = dash.projects.filter((p) => p.id !== focus?.id);
+  // Only truly-awaiting proposals warrant a focus card. Accepted /
+  // rejected / expired stay reachable via /portal/proposals but don't
+  // get elevated above completed-project history.
+  const awaitingProposals = dash.pendingProposals.filter(
+    (p) => p.status === 'sent',
+  );
   const greeting = greetingFor();
 
   return (
@@ -49,8 +55,8 @@ export default async function ClientDashboardPage() {
 
       {focus ? (
         <FocusProject project={focus} />
-      ) : dash.pendingProposals.length > 0 ? (
-        <PendingProposalsFocus proposals={dash.pendingProposals} />
+      ) : awaitingProposals.length > 0 ? (
+        <PendingProposalsFocus proposals={awaitingProposals} />
       ) : (
         <div className="rounded-2xl border border-dashed border-border bg-surface p-12 text-center">
           <p className="font-display text-lg font-medium text-ink">
@@ -71,7 +77,7 @@ export default async function ClientDashboardPage() {
         const asideKind: 'agreements' | 'proposals' | 'others' =
           dash.signedAgreements.length > 0
             ? 'agreements'
-            : dash.pendingProposals.length > 0
+            : awaitingProposals.length > 0
               ? 'proposals'
               : 'others';
         const showAsideTile = !!focus && asideKind !== 'others';
@@ -86,7 +92,7 @@ export default async function ClientDashboardPage() {
                 asideKind === 'agreements' ? (
                   <AgreementsTile agreements={dash.signedAgreements} />
                 ) : (
-                  <ProposalsTile proposals={dash.pendingProposals} />
+                  <ProposalsTile proposals={awaitingProposals} />
                 )
               ) : (
                 <OtherProjects projects={others} />
