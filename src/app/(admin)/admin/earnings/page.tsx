@@ -290,8 +290,8 @@ function EmptyProjects() {
   return (
     <div className="rounded-xl border border-dashed border-border bg-surface/60 p-10 text-center">
       <p className="font-sans text-sm text-ink-muted">
-        No projects with logged time. Once you log hours and set an hourly
-        rate, profitability shows up here.
+        No projects with logged time yet. Open any project to set its hourly
+        rate, then log hours to see profitability here.
       </p>
     </div>
   );

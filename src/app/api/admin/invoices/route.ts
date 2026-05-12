@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { writeAudit } from '@/lib/audit';
@@ -167,6 +168,8 @@ export async function POST(req: Request) {
         description: parsed.data.description,
       },
     });
+
+    revalidateProject(parsed.data.project_id);
 
     // Notify the client (if they've been invited to the portal).
     const clientUserId = await getContactUserId(p.contact_id);

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { requireClient } from '@/lib/auth/guards';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserId } from '@/lib/notifications';
@@ -292,6 +293,8 @@ export async function POST(
         contractPath,
       });
     }
+
+    if (projectId) revalidateProject(projectId);
 
     return Response.json({
       ok: true,

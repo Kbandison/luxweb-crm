@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 
@@ -55,6 +56,10 @@ export async function POST(req: Request) {
         is_private: parsed.data.is_private,
       },
     });
+
+    if (parsed.data.entity_type === 'project') {
+      revalidateProject(parsed.data.entity_id);
+    }
 
     return Response.json({ id: data.id });
   } catch (err) {

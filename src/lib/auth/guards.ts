@@ -31,8 +31,20 @@ export async function requireProjectAccess(projectId: string) {
     .eq('id', projectId)
     .single();
 
-  // @ts-expect-error — join shape resolved at runtime
-  if (!data || data.contacts.user_id !== session.userId) {
+  // Supabase typegen infers !inner joins as arrays even when they're 1:1.
+  // Normalize the runtime shape so we can compare user_id directly.
+  type Shape = {
+    contacts:
+      | { user_id: string | null }
+      | { user_id: string | null }[];
+  };
+  const row = data as unknown as Shape | null;
+  const contact = row
+    ? Array.isArray(row.contacts)
+      ? row.contacts[0]
+      : row.contacts
+    : null;
+  if (!data || !contact || contact.user_id !== session.userId) {
     throw new Response('Not found', { status: 404 });
   }
   return { session, project: data };

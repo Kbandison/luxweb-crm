@@ -307,14 +307,12 @@ export async function notify(event: NotifyEvent): Promise<void> {
       react: rendered.react,
       tag: event.type,
     });
-    console.log(
-      `[notify] sent ${event.type} email to ${user.email}`,
-      // Resend SDK returns { id } on success or { error }.
-      (result as { data?: { id?: string }; error?: unknown }).data?.id
-        ? `id=${(result as { data?: { id?: string } }).data?.id}`
-        : (result as { error?: { message?: string } }).error?.message ??
-            'no id returned',
-    );
+    const messageId = (result as { data?: { id?: string } }).data?.id;
+    if (messageId) {
+      console.log(`[notify] sent ${event.type} email id=${messageId}`);
+    } else {
+      console.log(`[notify] sent ${event.type} email (no id returned)`);
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(

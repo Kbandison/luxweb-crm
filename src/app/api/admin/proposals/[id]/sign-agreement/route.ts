@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
@@ -174,6 +175,8 @@ export async function POST(
         by: 'admin',
       },
     });
+
+    if (r.project_id) revalidateProject(r.project_id);
 
     // Notify the client to add their signature.
     if (r.contact_id) {

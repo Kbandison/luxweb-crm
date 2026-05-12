@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { requireAdmin } from '@/lib/auth/guards';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 
@@ -88,6 +89,8 @@ export async function POST(req: Request) {
       entity_id: inserted.id as string,
       diff: { file_name: parsed.data.file_name, size_bytes: parsed.data.size_bytes },
     });
+
+    revalidateProject(parsed.data.project_id);
 
     return Response.json({
       id: inserted.id,

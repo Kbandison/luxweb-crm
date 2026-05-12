@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 
@@ -49,6 +50,8 @@ export async function POST(req: Request) {
       entity_type: 'time_log',
       entity_id: data.id as string,
     });
+
+    revalidateProject(parsed.data.project_id);
 
     return Response.json({ id: data.id });
   } catch (err) {

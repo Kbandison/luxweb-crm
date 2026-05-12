@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { writeAudit } from '@/lib/audit';
@@ -126,6 +127,8 @@ export async function POST(
         trial_period_days: trialDays,
       },
     });
+
+    revalidateProject(projectId);
 
     return Response.json({ ok: true, subscription_id: sub.id });
   } catch (err) {

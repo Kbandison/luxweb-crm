@@ -148,7 +148,7 @@ function SignBar({
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
-              Step 2 · Sign the agreement
+              Sign your agreement
             </p>
             <p className="mt-1 font-display text-lg font-medium text-ink">
               Review the legal terms, then add your second signature.

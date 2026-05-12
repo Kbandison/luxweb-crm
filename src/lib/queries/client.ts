@@ -40,7 +40,6 @@ export type ClientDashboard = {
   pendingProposals: ClientDashboardProposal[];
   pendingContracts: ClientDashboardContract[];
   signedAgreements: ClientDashboardAgreement[];
-  unreadMessages: number; // wired in Step 9/10
 };
 
 export type ClientDashboardContract = {
@@ -107,7 +106,6 @@ export async function getClientDashboard(
       pendingProposals: [],
       pendingContracts: [],
       signedAgreements: [],
-      unreadMessages: 0,
     };
   }
 
@@ -126,7 +124,6 @@ export async function getClientDashboard(
     pendingProposals: proposals,
     pendingContracts: contracts,
     signedAgreements: signed,
-    unreadMessages: 0,
   };
 }
 

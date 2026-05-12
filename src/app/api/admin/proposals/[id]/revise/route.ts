@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/auth/guards';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 
@@ -27,7 +28,7 @@ export async function POST(
 
     const { data: before } = await sb
       .from('proposals')
-      .select('id, status, title, content_json, revision, sent_at')
+      .select('id, status, title, content_json, revision, sent_at, project_id')
       .eq('id', id)
       .single();
 
@@ -86,6 +87,9 @@ export async function POST(
         revision: { from: prevRevision, to: nextRevision },
       },
     });
+
+    const projectId = before.project_id as string | null;
+    if (projectId) revalidateProject(projectId);
 
     return Response.json({ ok: true, revision: nextRevision });
   } catch (err) {

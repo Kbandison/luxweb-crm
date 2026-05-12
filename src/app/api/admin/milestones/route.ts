@@ -1,11 +1,18 @@
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 
 export const runtime = 'nodejs';
 
-const STATUSES = ['pending', 'in_progress', 'done', 'blocked'] as const;
+const STATUSES = [
+  'inactive',
+  'pending',
+  'in_progress',
+  'done',
+  'blocked',
+] as const;
 
 const CreateSchema = z.object({
   project_id: z.string().uuid(),
@@ -64,6 +71,8 @@ export async function POST(req: Request) {
       entity_type: 'milestone',
       entity_id: data.id as string,
     });
+
+    revalidateProject(parsed.data.project_id);
 
     return Response.json({ id: data.id });
   } catch (err) {

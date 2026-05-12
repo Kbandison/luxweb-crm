@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/auth/guards';
+import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
@@ -20,7 +21,7 @@ export async function POST(
 
     const { data: before } = await supabaseAdmin()
       .from('proposals')
-      .select('status, title, total_cents, contact_id')
+      .select('status, title, total_cents, contact_id, project_id')
       .eq('id', id)
       .single();
 
@@ -49,6 +50,9 @@ export async function POST(
       entity_id: id,
       diff: { status: { from: 'draft', to: 'sent' }, sent_at: sentAt },
     });
+
+    const projectId = before.project_id as string | null;
+    if (projectId) revalidateProject(projectId);
 
     // Notify the client (if invited to the portal + not opted out).
     const contactId = before.contact_id as string | null;
