@@ -1439,14 +1439,21 @@ async function fetchProjects(contactId: string): Promise<ProjectSummary[]> {
 }
 
 async function fetchNotesForContact(contactId: string): Promise<NoteRow[]> {
+  return getNotesForEntity('contact', contactId);
+}
+
+export async function getNotesForEntity(
+  entityType: 'contact' | 'deal' | 'project',
+  entityId: string,
+): Promise<NoteRow[]> {
   try {
     const { data } = await supabaseAdmin()
       .from('notes')
       .select(
         'id, body, is_private, author_id, created_at, users!notes_author_id_fkey(email)',
       )
-      .eq('entity_type', 'contact')
-      .eq('entity_id', contactId)
+      .eq('entity_type', entityType)
+      .eq('entity_id', entityId)
       .order('created_at', { ascending: false });
     type Row = {
       id: string;
@@ -1468,6 +1475,12 @@ async function fetchNotesForContact(contactId: string): Promise<NoteRow[]> {
   } catch {
     return [];
   }
+}
+
+export async function getContactActivity(
+  contactId: string,
+): Promise<ClientActivity[]> {
+  return fetchActivityForContact(contactId);
 }
 
 async function fetchActivityForContact(

@@ -1,7 +1,9 @@
+import Link from 'next/link';
 import type { ClientActivity } from '@/lib/queries/admin';
 import { EmptyState } from '@/components/ui/empty-state';
 import { StatusPill } from '@/components/ui/status-pill';
 import { formatRelative } from '@/lib/formatters';
+import { entityHref } from '@/lib/entity-link';
 
 const ACTION_COLORS: Record<string, string> = {
   create: 'bg-success/10 text-success',
@@ -24,38 +26,54 @@ export function ActivityList({ rows }: { rows: ClientActivity[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface">
       <ul className="divide-y divide-border">
-        {rows.map((r) => (
-          <li
-            key={r.id}
-            className="flex items-center justify-between gap-4 px-5 py-4"
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <StatusPill
-                label={r.action}
-                tone={ACTION_COLORS[r.action] ?? 'bg-ink/5 text-ink-muted'}
-              />
-              <div className="min-w-0">
-                <p className="truncate font-sans text-sm text-ink">
-                  <span className="font-medium">{r.entityType}</span>
-                  {r.entityId ? (
-                    <span className="font-mono text-xs text-ink-subtle">
-                      {' '}· {r.entityId.slice(0, 8)}
-                    </span>
-                  ) : null}
-                </p>
-                <p className="mt-0.5 truncate font-sans text-xs text-ink-muted">
-                  {r.actorEmail ?? 'system'}
-                </p>
+        {rows.map((r) => {
+          const href = entityHref(r.entityType, r.entityId);
+          const body = (
+            <>
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <StatusPill
+                  label={r.action}
+                  tone={ACTION_COLORS[r.action] ?? 'bg-ink/5 text-ink-muted'}
+                />
+                <div className="min-w-0">
+                  <p className="truncate font-sans text-sm text-ink">
+                    <span className="font-medium">{r.entityType}</span>
+                    {r.entityId ? (
+                      <span className="font-mono text-xs text-ink-subtle">
+                        {' '}· {r.entityId.slice(0, 8)}
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="mt-0.5 truncate font-sans text-xs text-ink-muted">
+                    {r.actorEmail ?? 'system'}
+                  </p>
+                </div>
               </div>
-            </div>
-            <time
-              className="shrink-0 font-mono text-xs tabular-nums text-ink-subtle"
-              dateTime={r.createdAt}
-            >
-              {formatRelative(r.createdAt)}
-            </time>
-          </li>
-        ))}
+              <time
+                className="shrink-0 font-mono text-xs tabular-nums text-ink-subtle"
+                dateTime={r.createdAt}
+              >
+                {formatRelative(r.createdAt)}
+              </time>
+            </>
+          );
+          return (
+            <li key={r.id}>
+              {href ? (
+                <Link
+                  href={href}
+                  className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-surface-2/50"
+                >
+                  {body}
+                </Link>
+              ) : (
+                <div className="flex items-center justify-between gap-4 px-5 py-4">
+                  {body}
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

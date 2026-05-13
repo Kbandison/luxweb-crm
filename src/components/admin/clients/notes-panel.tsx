@@ -10,12 +10,21 @@ import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/formatters';
 
 export function NotesPanel({
-  contactId,
+  entityType = 'contact',
+  entityId,
   notes: initial,
+  // Legacy alias — older call sites pass `contactId`. Kept for back-compat.
+  contactId,
 }: {
-  contactId: string;
+  entityType?: 'contact' | 'deal' | 'project';
+  entityId?: string;
+  contactId?: string;
   notes: NoteRow[];
 }) {
+  const resolvedEntityId = entityId ?? contactId;
+  if (!resolvedEntityId) {
+    throw new Error('NotesPanel: entityId is required');
+  }
   const router = useRouter();
   const toast = useToast();
   const [body, setBody] = useState('');
@@ -36,8 +45,8 @@ export function NotesPanel({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          entity_type: 'contact',
-          entity_id: contactId,
+          entity_type: entityType,
+          entity_id: resolvedEntityId,
           body: body.trim(),
           is_private: isPrivate,
         }),

@@ -1,8 +1,10 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import type { AuditEntry } from '@/lib/queries/audit';
 import { StatusPill } from '@/components/ui/status-pill';
 import { formatDateTimeWithTz } from '@/lib/formatters';
+import { entityHref } from '@/lib/entity-link';
 import { cn } from '@/lib/utils';
 
 const ACTION_TONE: Record<string, string> = {
@@ -83,10 +85,28 @@ function ExpandableRow({
           <StatusPill label={e.action} tone={tone} />
         </td>
         <td className="px-3 py-3 font-mono text-xs text-ink">
-          <span className="font-medium">{e.entityType}</span>
-          {e.entityId ? (
-            <span className="text-ink-subtle"> · {e.entityId.slice(0, 8)}</span>
-          ) : null}
+          {(() => {
+            const href = entityHref(e.entityType, e.entityId);
+            const label = (
+              <>
+                <span className="font-medium">{e.entityType}</span>
+                {e.entityId ? (
+                  <span className="text-ink-subtle"> · {e.entityId.slice(0, 8)}</span>
+                ) : null}
+              </>
+            );
+            return href ? (
+              <Link
+                href={href}
+                onClick={(ev) => ev.stopPropagation()}
+                className="hover:text-copper"
+              >
+                {label}
+              </Link>
+            ) : (
+              label
+            );
+          })()}
         </td>
         <td className="px-3 py-3 font-sans text-xs text-ink-muted">
           {e.actorName ?? e.actorEmail ?? (

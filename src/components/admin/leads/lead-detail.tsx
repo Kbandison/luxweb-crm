@@ -1,8 +1,15 @@
 import Link from 'next/link';
-import type { ContactRow, ProposalRow } from '@/lib/queries/admin';
+import type {
+  ClientActivity,
+  ContactRow,
+  NoteRow,
+  ProposalRow,
+} from '@/lib/queries/admin';
 import { InviteToPortalButton } from '@/components/admin/contacts/invite-button';
 import { DeleteContactButton } from '@/components/admin/contacts/delete-button';
 import { EditContactDrawer } from '@/components/admin/contacts/edit-contact-drawer';
+import { NotesPanel } from '@/components/admin/clients/notes-panel';
+import { ActivityList } from '@/components/admin/clients/activity-list';
 import { LeadProposalsSection } from './lead-proposals-section';
 import { LeadScore } from './lead-score';
 import { TagPill } from './tag-pill';
@@ -12,9 +19,13 @@ import { formatDateLong } from '@/lib/formatters';
 export function LeadDetail({
   lead,
   proposals,
+  notes = [],
+  activity = [],
 }: {
   lead: ContactRow;
   proposals: ProposalRow[];
+  notes?: NoteRow[];
+  activity?: ClientActivity[];
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -116,7 +127,13 @@ export function LeadDetail({
           <Section number="03" title="Proposals" />
           <LeadProposalsSection contactId={lead.id} proposals={proposals} />
 
-          <Section number="04" title="Timeline" />
+          <Section number="04" title="Notes" />
+          <NotesPanel entityType="contact" entityId={lead.id} notes={notes} />
+
+          <Section number="05" title="Activity" />
+          <ActivityList rows={activity} />
+
+          <Section number="06" title="Timeline" />
           <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
             <Field
               label="Created"

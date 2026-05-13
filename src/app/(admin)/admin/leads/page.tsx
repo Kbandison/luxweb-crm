@@ -1,8 +1,10 @@
 import { Topbar } from '@/components/admin/topbar';
 import {
+  getContactActivity,
   getContactDetail,
   getContactProposals,
   getLeadsPaginated,
+  getNotesForEntity,
   CONTACT_SORTS,
 } from '@/lib/queries/admin';
 import { LeadsListWithSelection } from '@/components/admin/leads/leads-list-with-selection';
@@ -31,7 +33,13 @@ export default async function LeadsPage({
     getLeadsPaginated(params),
     leadId ? getContactDetail(leadId) : Promise.resolve(null),
   ]);
-  const proposals = selected ? await getContactProposals(selected.id) : [];
+  const [proposals, notes, activity] = selected
+    ? await Promise.all([
+        getContactProposals(selected.id),
+        getNotesForEntity('contact', selected.id),
+        getContactActivity(selected.id),
+      ])
+    : [[], [], []];
 
   return (
     <>
@@ -63,7 +71,12 @@ export default async function LeadsPage({
             className={`${selected ? '' : 'hidden lg:block'} min-h-0 bg-bg`}
           >
             {selected ? (
-              <LeadDetail lead={selected} proposals={proposals} />
+              <LeadDetail
+                lead={selected}
+                proposals={proposals}
+                notes={notes}
+                activity={activity}
+              />
             ) : (
               <LeadDetailEmpty />
             )}

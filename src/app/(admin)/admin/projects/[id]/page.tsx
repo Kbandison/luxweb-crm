@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
+  getNotesForEntity,
   getProjectCarePlan,
   getProjectDetail,
   getProjectInvoices,
   getProjectMilestones,
   getProjectReview,
 } from '@/lib/queries/admin';
+import { NotesPanel } from '@/components/admin/clients/notes-panel';
 import { getCarePlanInvoiceHistory } from '@/lib/care-plan/billing-history';
 import { AdminCarePlanSection } from '@/components/admin/care-plan/care-plan-section';
 import { CarePlanBillingHistory } from '@/components/care-plan/billing-history';
@@ -26,12 +28,13 @@ export default async function ProjectOverviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [project, milestones, invoices, carePlan, review] = await Promise.all([
+  const [project, milestones, invoices, carePlan, review, notes] = await Promise.all([
     getProjectDetail(id),
     getProjectMilestones(id),
     getProjectInvoices(id),
     getProjectCarePlan(id),
     getProjectReview(id),
+    getNotesForEntity('project', id),
   ]);
   if (!project) notFound();
   const billingHistory = carePlan
@@ -192,6 +195,18 @@ export default async function ProjectOverviewPage({
           <SectionHead number={n} title="Review" />
           <div className="mt-5">
             <AdminReviewCard projectId={project.id} review={review} />
+          </div>
+        </section>
+      ),
+    },
+    {
+      visible: true,
+      key: 'notes',
+      render: (n) => (
+        <section key="notes">
+          <SectionHead number={n} title="Notes" />
+          <div className="mt-5">
+            <NotesPanel entityType="project" entityId={project.id} notes={notes} />
           </div>
         </section>
       ),
