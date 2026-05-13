@@ -20,15 +20,14 @@ This Agreement is dated **{{effective_date}}** and is between:
 
 Contractor will design and develop a custom website (the "Project") that includes:
 
-- **Pages:** Up to **{{pages_count}}** pages
-- **Design:** {{design}}
-- **Content migration:** {{content_migration}}
-- **Integrations:** {{integrations_list}}
-- **Security:** {{security}}
-- **Performance:** {{performance}}
-- **Post-launch support:** {{support_months}} months (the "Support Period")
+- Up to **{{pages_count}}** pages
+- Custom design with two (2) revision rounds per phase (one revision round is a single collection of exchanges submitted at one time)
+- Migration of existing page content
+- Industry-standard security hardening
+- Conversion-rate optimization best practices
+- {{support_months}} months of post-launch support (the "Support Period")
 
-"Revision round" means a single collection of consolidated client feedback submitted at one time. The specific deliverables, timeline, and pricing described in the Proposal dated **{{proposal_date}}** are incorporated into this Agreement by reference as **Exhibit A**. In the event of any conflict between the Proposal and this Agreement, this Agreement governs.
+The specific deliverables, timeline, and pricing described in the Proposal dated **{{proposal_date}}** are incorporated into this Agreement by reference as **Exhibit A**. In the event of any conflict between the Proposal and this Agreement, this Agreement governs.
 
 ### 1.2 Out of Scope / Ongoing Maintenance
 

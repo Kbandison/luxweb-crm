@@ -23,6 +23,19 @@ export function deriveContractVariables(
   const phase1 = byLabel('phase 1') ?? byLabel('design');
   const launch = byLabel('launch');
 
+  // Scope fields come straight from the proposal so the Agreement
+  // section 1.1 mirrors exactly what the client agreed to. Empty strings
+  // collapse to em-dash so the contract never renders a stray blank
+  // bullet ("- " on a line by itself).
+  const designLine = (content.scope.design || '').trim() || '—';
+  const migrationLine = (content.scope.content_migration || '').trim() || '—';
+  const securityLine = (content.scope.security || '').trim() || '—';
+  const performanceLine = (content.scope.performance || '').trim() || '—';
+  const integrations = (content.scope.integrations || []).filter((s) =>
+    Boolean(s?.trim()),
+  );
+  const integrationsLine = integrations.length > 0 ? integrations.join(', ') : '—';
+
   return {
     effective_date: formatDateLong(opts.effectiveDate),
     proposal_date: formatDateLong(content.prepared_date),
@@ -38,6 +51,11 @@ export function deriveContractVariables(
     support_months: String(content.scope.post_launch_support_months || 0),
     net_days: String(content.investment.net_days || 0),
     late_fee: content.investment.late_fee || '—',
+    design: designLine,
+    content_migration: migrationLine,
+    integrations_list: integrationsLine,
+    security: securityLine,
+    performance: performanceLine,
     deposit_amount: deposit ? formatUSD(deposit.amount_cents) : '—',
     phase1_amount: phase1 ? formatUSD(phase1.amount_cents) : '—',
     launch_amount: launch ? formatUSD(launch.amount_cents) : '—',

@@ -30,8 +30,21 @@ export type ContractVariables = {
   net_days: string;
   /** Late-fee clause text, exactly as on the proposal. */
   late_fee: string;
+  // v1.2 scope fields — pulled verbatim from proposal.scope so the
+  // Agreement reflects exactly what the client agreed to in the proposal
+  // (not the template's default boilerplate). v1.1 ignored these.
+  /** scope.design — e.g. "Custom UI/UX, two (2) revision rounds per phase." */
+  design: string;
+  /** scope.content_migration — e.g. "Port existing copy and imagery." */
+  content_migration: string;
+  /** scope.integrations rendered as inline markdown list. */
+  integrations_list: string;
+  /** scope.security — e.g. "HTTPS, best-practice hardening …" */
+  security: string;
+  /** scope.performance — e.g. "Image optimization, lazy-loading …" */
+  performance: string;
   // Legacy variables — kept so older agreement template revisions still
-  // resolve cleanly. The current v1.1 template renders {{milestones_table}}
+  // resolve cleanly. The current v1.2 template renders {{milestones_table}}
   // instead of these three individual amounts.
   deposit_amount: string;
   phase1_amount: string;
