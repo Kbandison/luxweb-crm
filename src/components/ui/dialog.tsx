@@ -53,6 +53,19 @@ export function Dialog({
   const panelRef = React.useRef<HTMLDivElement | null>(null);
   const previouslyFocusedRef = React.useRef<HTMLElement | null>(null);
 
+  // Mirror the latest handler + closeOnEscape in refs so the autofocus +
+  // keydown effect can read them WITHOUT subscribing as dependencies.
+  // Without this, every parent re-render (e.g. keystroke into an input)
+  // produces a new inline onClose closure, the effect re-runs, and
+  // autofocus snaps back to the panel's first focusable — usually the
+  // close button — yanking focus away on every keystroke.
+  const onCloseRef = React.useRef(onClose);
+  const closeOnEscapeRef = React.useRef(closeOnEscape);
+  React.useEffect(() => {
+    onCloseRef.current = onClose;
+    closeOnEscapeRef.current = closeOnEscape;
+  });
+
   React.useEffect(() => {
     if (!open) return;
 
@@ -83,9 +96,9 @@ export function Dialog({
     }, 0);
 
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && closeOnEscape) {
+      if (e.key === 'Escape' && closeOnEscapeRef.current) {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -127,7 +140,7 @@ export function Dialog({
         prev.focus();
       }
     };
-  }, [open, onClose, closeOnEscape]);
+  }, [open]);
 
   if (!open) return null;
 
