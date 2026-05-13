@@ -1285,6 +1285,47 @@ export async function getContactContracts(
   }
 }
 
+export type ContractListRow = ContractRow & {
+  contactName: string;
+  contactCompany: string | null;
+  proposalTitle: string | null;
+};
+
+/** Global contracts list for the /admin/contracts index page. */
+export async function getAllContracts(): Promise<ContractListRow[]> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('contracts')
+      .select(
+        `id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name,
+         contacts!inner(full_name, company),
+         proposals(title)`,
+      )
+      .order('created_at', { ascending: false });
+    type Row = ContractSelectRow & {
+      contacts:
+        | { full_name: string; company: string | null }
+        | { full_name: string; company: string | null }[]
+        | null;
+      proposals: { title: string } | { title: string }[] | null;
+    };
+    const rows = (data ?? []) as unknown as Row[];
+    return rows.map((r) => {
+      const base = toContractRow(r);
+      const contact = flattenJoin(r.contacts);
+      const prop = flattenJoin(r.proposals);
+      return {
+        ...base,
+        contactName: contact?.full_name ?? '—',
+        contactCompany: contact?.company ?? null,
+        proposalTitle: prop?.title ?? null,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function getProposal(id: string): Promise<ProposalDetail | null> {
   try {
     const { data } = await supabaseAdmin()

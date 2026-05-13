@@ -128,14 +128,26 @@ function IconStar(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function IconContract(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...props}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="9" y1="13" x2="15" y2="13" />
+      <line x1="9" y1="17" x2="15" y2="17" />
+    </svg>
+  );
+}
+
 export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: IconGauge, shortcut: 1, group: 'Pipeline' },
   { href: '/admin/leads', label: 'Leads', icon: IconInbox, shortcut: 2, group: 'Pipeline' },
   { href: '/admin/pipeline', label: 'Pipeline', icon: IconKanban, shortcut: 3, group: 'Pipeline' },
   { href: '/admin/clients', label: 'Clients', icon: IconUsers, shortcut: 4, group: 'Delivery' },
   { href: '/admin/projects', label: 'Projects', icon: IconBriefcase, shortcut: 5, group: 'Delivery' },
-  { href: '/admin/care-plans', label: 'Care Plans', icon: IconRefresh, shortcut: 6, group: 'Lifecycle' },
-  { href: '/admin/revisions', label: 'Revisions', icon: IconMessageSquare, shortcut: 7, group: 'Lifecycle' },
-  { href: '/admin/reviews', label: 'Reviews', icon: IconStar, shortcut: 8, group: 'Lifecycle' },
-  { href: '/admin/earnings', label: 'Earnings', icon: IconCoins, shortcut: 9, group: 'Money' },
+  { href: '/admin/contracts', label: 'Contracts', icon: IconContract, shortcut: 6, group: 'Delivery' },
+  { href: '/admin/care-plans', label: 'Care Plans', icon: IconRefresh, shortcut: 7, group: 'Lifecycle' },
+  { href: '/admin/revisions', label: 'Revisions', icon: IconMessageSquare, shortcut: 8, group: 'Lifecycle' },
+  { href: '/admin/reviews', label: 'Reviews', icon: IconStar, shortcut: 9, group: 'Lifecycle' },
+  { href: '/admin/earnings', label: 'Earnings', icon: IconCoins, shortcut: 0, group: 'Money' },
 ];
