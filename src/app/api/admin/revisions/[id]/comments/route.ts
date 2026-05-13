@@ -5,6 +5,7 @@ import { writeAudit } from '@/lib/audit';
 import { notify } from '@/lib/notifications';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -64,10 +65,8 @@ export async function POST(
           }[];
     };
     const r = rev as unknown as RevRow;
-    const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
-    const contact = Array.isArray(project.contacts)
-      ? project.contacts[0]
-      : project.contacts;
+    const project = flattenJoin(r.projects);
+    const contact = flattenJoin(project.contacts);
 
     const { data: profile } = await supabaseAdmin()
       .from('users')

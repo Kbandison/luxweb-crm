@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -118,7 +119,7 @@ export async function GET(req: Request) {
     };
     const projectRows = (projectsRes.data ?? []) as unknown as ProjectRow[];
     const projects: ProjectHit[] = projectRows.map((r) => {
-      const c = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+      const c = flattenJoin(r.contacts);
       return {
         id: r.id,
         name: r.name,

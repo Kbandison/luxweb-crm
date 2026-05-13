@@ -12,6 +12,7 @@ import { namesMatch } from '@/lib/signatures/match';
 import type { ProposalContent } from '@/lib/types/proposal';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -71,7 +72,7 @@ export async function POST(
         | { full_name: string }[];
     };
     const r = row as unknown as Shape;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const contact = flattenJoin(r.contacts);
 
     if (r.status !== 'accepted') {
       return Response.json(

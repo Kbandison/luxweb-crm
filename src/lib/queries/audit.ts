@@ -1,5 +1,6 @@
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { flattenJoin } from '@/lib/array-join';
 export { ENTITY_TYPES, ACTIONS } from '@/lib/audit-meta';
 
 export type AuditFilters = {
@@ -74,7 +75,7 @@ export async function getAuditLog(filters: AuditFilters = {}): Promise<AuditPage
     };
     const rows = (data ?? []) as unknown as Row[];
     let entries = rows.map((r) => {
-      const u = Array.isArray(r.users) ? r.users[0] : r.users;
+      const u = flattenJoin(r.users);
       return {
         id: r.id,
         action: r.action,

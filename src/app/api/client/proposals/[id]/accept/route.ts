@@ -5,6 +5,7 @@ import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserIds } from '@/lib/notifications';
 import { namesMatch } from '@/lib/signatures/match';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -58,7 +59,7 @@ export async function POST(
         | { full_name: string; user_id: string | null }[];
     };
     const r = row as unknown as Shape;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const contact = flattenJoin(r.contacts);
 
     if (!contact || contact.user_id !== session.userId) {
       return Response.json({ error: 'Not found' }, { status: 404 });

@@ -8,6 +8,7 @@ import { createAndSendInvoice } from '@/lib/invoices/create';
 import { namesMatch } from '@/lib/signatures/match';
 import type { ProposalContent } from '@/lib/types/proposal';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -79,8 +80,8 @@ export async function POST(
           }[];
     };
     const r = row as unknown as Shape;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
-    const proposal = Array.isArray(r.proposals) ? r.proposals[0] : r.proposals;
+    const contact = flattenJoin(r.contacts);
+    const proposal = flattenJoin(r.proposals);
 
     if (!contact || contact.user_id !== session.userId) {
       return Response.json({ error: 'Not found' }, { status: 404 });

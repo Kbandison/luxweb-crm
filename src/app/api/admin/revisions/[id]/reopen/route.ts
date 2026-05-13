@@ -6,6 +6,7 @@ import { notify } from '@/lib/notifications';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -80,10 +81,8 @@ export async function POST(
           }[];
     };
     const r = row as unknown as Shape;
-    const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
-    const contact = Array.isArray(project.contacts)
-      ? project.contacts[0]
-      : project.contacts;
+    const project = flattenJoin(r.projects);
+    const contact = flattenJoin(project.contacts);
 
     if (r.status === 'approved') {
       return Response.json(

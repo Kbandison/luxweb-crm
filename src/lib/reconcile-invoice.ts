@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { writeAudit } from '@/lib/audit';
 import { advanceProposalMilestoneChain } from '@/lib/milestones/advance-on-payment';
+import { flattenJoin } from '@/lib/array-join';
 
 /**
  * Eager reconciliation for an invoice just after the client returned from
@@ -41,7 +42,7 @@ export async function reconcileInvoicePaid(
       | { user_id: string | null }[];
   };
   const r = inv as unknown as Shape;
-  const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+  const contact = flattenJoin(r.contacts);
   if (!contact || contact.user_id !== userId) return false;
 
   // Already terminal — nothing to do.

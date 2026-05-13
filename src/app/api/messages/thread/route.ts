@@ -5,6 +5,7 @@ import {
   ensureProjectThread,
   getThreadMessages,
 } from '@/lib/queries/messages';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
         | null;
     };
     const r = project as unknown as Row;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const contact = flattenJoin(r.contacts);
     if (contact?.user_id !== session.userId) {
       return Response.json({ error: 'Not found' }, { status: 404 });
     }

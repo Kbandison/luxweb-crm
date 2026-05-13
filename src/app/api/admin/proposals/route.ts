@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { defaultProposalContent } from '@/lib/types/proposal';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
           | { full_name: string; email: string | null }[];
       };
       const p = project as unknown as Project;
-      const c = Array.isArray(p.contacts) ? p.contacts[0] : p.contacts;
+      const c = flattenJoin(p.contacts);
       contactId = p.contact_id;
       dealId = p.deal_id;
       contactName = c?.full_name ?? '';

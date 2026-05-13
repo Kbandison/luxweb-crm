@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { clientIp, limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -133,7 +134,7 @@ export async function GET(req: Request) {
     const rows = (data ?? []) as ReviewRow[];
     const reviews: PublicReview[] = [];
     for (const r of rows) {
-      const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
+      const project = flattenJoin(r.projects);
       if (!project) continue;
       // Belt-and-suspenders: even with the eq filter, refuse to publish
       // anything that isn't explicitly completed.
@@ -146,9 +147,7 @@ export async function GET(req: Request) {
       if (!body) continue;
       if (!submittedAt) continue;
 
-      const contact = Array.isArray(project.contacts)
-        ? project.contacts[0]
-        : project.contacts;
+      const contact = flattenJoin(project.contacts);
       const { first, initial } = splitName(contact?.full_name);
 
       reviews.push({

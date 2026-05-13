@@ -1,5 +1,6 @@
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { flattenJoin } from '@/lib/array-join';
 
 export type MessageRow = {
   id: string;
@@ -93,7 +94,7 @@ export async function getThreadMessages(
     };
     const rows = (data ?? []) as unknown as Row[];
     return rows.map((r) => {
-      const u = Array.isArray(r.users) ? r.users[0] : r.users;
+      const u = flattenJoin(r.users);
       return {
         id: r.id,
         threadId: r.thread_id,
@@ -160,10 +161,8 @@ export async function threadBelongsToUser(
         | { contacts: { user_id: string | null } | { user_id: string | null }[] }[];
     };
     const r = data as unknown as Row;
-    const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
-    const contact = Array.isArray(project?.contacts)
-      ? project?.contacts[0]
-      : project?.contacts;
+    const project = flattenJoin(r.projects);
+    const contact = flattenJoin(project?.contacts);
     return contact?.user_id === userId;
   } catch {
     return false;

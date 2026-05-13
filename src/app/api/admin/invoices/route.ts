@@ -7,6 +7,7 @@ import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
         | { full_name: string; email: string | null }[];
     };
     const p = project as unknown as Project;
-    const contact = Array.isArray(p.contacts) ? p.contacts[0] : p.contacts;
+    const contact = flattenJoin(p.contacts);
 
     if (!contact?.email) {
       return Response.json(

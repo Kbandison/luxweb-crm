@@ -4,14 +4,14 @@
  * Keep in sync with the enums in crm-master/migrations/000_complete.sql.
  * Centralized here so admin + client surfaces + email templates render
  * the same label / tone for a given enum value.
+ *
+ * Enum types come from the canonical const arrays under src/lib/types/.
  */
 
-export type ProposalStatus =
-  | 'draft'
-  | 'sent'
-  | 'accepted'
-  | 'rejected'
-  | 'expired';
+import type { ProposalStatus } from '@/lib/types/proposal';
+import type { ContractStatus } from '@/lib/types/contract';
+
+export type { ProposalStatus, ContractStatus };
 
 export const PROPOSAL_STATUS_LABEL: Record<ProposalStatus, string> = {
   draft: 'Draft',
@@ -28,13 +28,6 @@ export const PROPOSAL_STATUS_TONE: Record<ProposalStatus, string> = {
   rejected: 'bg-danger/10 text-danger',
   expired: 'bg-warning/15 text-warning',
 };
-
-export type ContractStatus =
-  | 'pending_admin_signature'
-  | 'pending_client_signature'
-  | 'pending_signature'
-  | 'signed'
-  | 'void';
 
 export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
   pending_admin_signature: 'Awaiting our signature',

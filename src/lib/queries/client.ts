@@ -5,6 +5,7 @@ import type { ContractStatus } from '@/lib/types/contract';
 import type { CredentialKind } from '@/lib/types/credential';
 import type { CarePlanStatus } from '@/lib/care-plan/types';
 import type { RevisionStatus } from '@/lib/types/revision';
+import { flattenJoin } from '@/lib/array-join';
 
 /**
  * ─────────────────────────────────────────────────────────────────────────
@@ -148,7 +149,7 @@ async function fetchSignedAgreements(
     };
     const rows = (data ?? []) as Row[];
     return rows.map((r) => {
-      const prop = Array.isArray(r.proposals) ? r.proposals[0] : r.proposals;
+      const prop = flattenJoin(r.proposals);
       return {
         id: r.id,
         proposalTitle: prop?.title ?? 'Agreement',
@@ -186,7 +187,7 @@ async function fetchPendingContracts(
     };
     const rows = (data ?? []) as Row[];
     return rows.map((r) => {
-      const prop = Array.isArray(r.proposals) ? r.proposals[0] : r.proposals;
+      const prop = flattenJoin(r.proposals);
       return {
         id: r.id,
         proposalTitle: prop?.title ?? 'Agreement',
@@ -269,7 +270,7 @@ export async function getClientProposalById(
         | { user_id: string | null; full_name: string }[];
     };
     const r = data as unknown as Row;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const contact = flattenJoin(r.contacts);
     if (!contact || contact.user_id !== userId) return null;
     if (r.status === 'draft') return null;
 
@@ -354,7 +355,7 @@ export async function getClientProject(
         | { full_name: string; user_id: string | null }[];
     };
     const r = data as unknown as Row;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const contact = flattenJoin(r.contacts);
 
     // Ownership check.
     if (contact?.user_id !== userId) return null;
@@ -787,7 +788,7 @@ export async function getClientContract(
         | { user_id: string | null; full_name: string }[];
     };
     const r = data as unknown as Row;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const contact = flattenJoin(r.contacts);
     if (!contact || contact.user_id !== userId) return null;
 
     return {
@@ -902,7 +903,7 @@ export async function getClientCredentialSecret(
     };
     const r = data as unknown as Row;
     if (!r.visible_to_client) return null;
-    const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
+    const project = flattenJoin(r.projects);
     const contact = Array.isArray(project?.contacts)
       ? project.contacts[0]
       : project?.contacts;
@@ -998,7 +999,7 @@ async function projectIsOwnedBy(
         | { user_id: string | null }[];
     };
     const r = data as unknown as Row;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const contact = flattenJoin(r.contacts);
     return contact?.user_id === userId;
   } catch {
     return false;
@@ -1210,7 +1211,7 @@ export async function clientOwnsSubscription(
       contacts: { user_id: string | null } | { user_id: string | null }[];
     };
     const r = data as unknown as Row;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const contact = flattenJoin(r.contacts);
     if (!contact || contact.user_id !== userId) return null;
     return {
       stripeSubscriptionId: r.stripe_subscription_id,
@@ -1290,9 +1291,7 @@ export async function getClientProjectRevisions(
     }
 
     return rows.map((r) => {
-      const milestone = Array.isArray(r.milestones)
-        ? r.milestones[0]
-        : r.milestones;
+      const milestone = flattenJoin(r.milestones);
       return {
         id: r.id,
         title: r.title,
@@ -1336,11 +1335,9 @@ export async function getClientRevision(
       contacts: { user_id: string | null } | { user_id: string | null }[];
     };
     const r = data as unknown as Row;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const contact = flattenJoin(r.contacts);
     if (!contact || contact.user_id !== userId) return null;
-    const milestone = Array.isArray(r.milestones)
-      ? r.milestones[0]
-      : r.milestones;
+    const milestone = flattenJoin(r.milestones);
 
     const { data: cdata } = await supabaseAdmin()
       .from('revision_comments')

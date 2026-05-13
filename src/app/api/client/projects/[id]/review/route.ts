@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -45,7 +46,7 @@ export async function POST(
       contacts: { user_id: string | null } | { user_id: string | null }[];
     };
     const p = project as unknown as ProjectRow;
-    const contact = Array.isArray(p.contacts) ? p.contacts[0] : p.contacts;
+    const contact = flattenJoin(p.contacts);
     if (!contact || contact.user_id !== session.userId) {
       return Response.json({ error: 'Not found' }, { status: 404 });
     }

@@ -5,6 +5,7 @@ import { ensureProjectThread } from '@/lib/queries/messages';
 import { notify, getAdminUserIds, getContactUserId } from '@/lib/notifications';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 import { truncateGraphemes } from '@/lib/text';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
           | null;
       };
       const r = project as unknown as Row;
-      const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+      const contact = flattenJoin(r.contacts);
       if (contact?.user_id !== session.userId) {
         return Response.json({ error: 'Not found' }, { status: 404 });
       }

@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
+import { flattenJoin } from '@/lib/array-join';
 
 /**
  * Create + finalize + send an invoice end-to-end. Mirrors the full pipeline
@@ -41,7 +42,7 @@ export async function createAndSendInvoice(opts: {
       | { full_name: string; email: string | null }[];
   };
   const p = project as unknown as Project;
-  const contact = Array.isArray(p.contacts) ? p.contacts[0] : p.contacts;
+  const contact = flattenJoin(p.contacts);
 
   if (!contact?.email) {
     throw new Error('Contact is missing an email address.');

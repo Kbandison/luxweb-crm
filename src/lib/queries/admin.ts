@@ -287,7 +287,7 @@ export async function getDealsForKanban(): Promise<DealCard[]> {
     const rows = (data ?? []) as unknown as Row[];
 
     return rows.map((r) => {
-      const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+      const contact = flattenJoin(r.contacts);
       return {
         id: r.id,
         contactId: r.contact_id,
@@ -983,7 +983,7 @@ export async function getProjectsPaginated(
     }[];
 
     const mapped: ProjectListRow[] = rows.map((r) => {
-      const c = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+      const c = flattenJoin(r.contacts);
       const ms = milestones.filter((m) => m.project_id === r.id);
       return {
         id: r.id,
@@ -1041,7 +1041,7 @@ export async function getProjectDetail(
         | { full_name: string; company: string | null }[];
     };
     const r = data as unknown as Row;
-    const c = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const c = flattenJoin(r.contacts);
 
     return {
       id: r.id,
@@ -1134,8 +1134,6 @@ export async function getProjectMilestones(projectId: string): Promise<Milestone
  * Invoices
  * ------------------------------------------------------------------------- */
 
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'void';
-
 export type InvoiceRow = {
   id: string;
   projectId: string | null;
@@ -1201,6 +1199,9 @@ import type { ContractStatus } from '@/lib/types/contract';
 import type { CredentialKind } from '@/lib/types/credential';
 import type { CarePlanStatus } from '@/lib/care-plan/types';
 import type { RevisionStatus } from '@/lib/types/revision';
+import type { InvoiceStatus } from '@/lib/status-meta';
+import { flattenJoin } from '@/lib/array-join';
+export type { InvoiceStatus };
 
 export type ProposalRow = {
   id: string;
@@ -1683,7 +1684,7 @@ export async function getEarningsOverview(): Promise<EarningsOverview> {
   }
 
   const projectRows: EarningsProjectRow[] = projects.map((p) => {
-    const c = Array.isArray(p.contacts) ? p.contacts[0] : p.contacts;
+    const c = flattenJoin(p.contacts);
     const paidCents = paidByProject.get(p.id) ?? 0;
     const invoicedCents = invoicedByProject.get(p.id) ?? 0;
     return {
@@ -1819,8 +1820,8 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
       contacts: { full_name: string } | { full_name: string }[];
     };
     const r = data as unknown as Shape;
-    const proposal = Array.isArray(r.proposals) ? r.proposals[0] : r.proposals;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const proposal = flattenJoin(r.proposals);
+    const contact = flattenJoin(r.contacts);
     return {
       ...toContractRow(r),
       bodyMd: r.body_md,
@@ -1915,9 +1916,7 @@ export async function getProjectCredentials(
     };
     const p = project as unknown as ProjRow | null;
     const contact = p
-      ? Array.isArray(p.contacts)
-        ? p.contacts[0]
-        : p.contacts
+      ? flattenJoin(p.contacts)
       : null;
     const clientUserId = contact?.user_id ?? null;
 
@@ -2085,8 +2084,8 @@ export async function getAllCarePlans(): Promise<CarePlanWithContext[]> {
     };
     const rows = (data ?? []) as Row[];
     return rows.map((r) => {
-      const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
-      const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
+      const contact = flattenJoin(r.contacts);
+      const project = flattenJoin(r.projects);
       return {
         ...toCarePlanRow(r),
         contactName: contact?.full_name ?? '—',
@@ -2128,7 +2127,7 @@ export async function getRunningTimerForUser(
       projects: { name: string } | { name: string }[];
     };
     const r = data as unknown as Row;
-    const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
+    const project = flattenJoin(r.projects);
     return {
       id: r.id,
       projectId: r.project_id,
@@ -2255,11 +2254,9 @@ export async function getAllOpenRevisions(): Promise<RevisionWithContext[]> {
     }
 
     return rows.map((r) => {
-      const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
-      const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
-      const milestone = Array.isArray(r.milestones)
-        ? r.milestones[0]
-        : r.milestones;
+      const project = flattenJoin(r.projects);
+      const contact = flattenJoin(r.contacts);
+      const milestone = flattenJoin(r.milestones);
       return {
         ...toRevisionRow(r),
         projectName: project?.name ?? '—',
@@ -2294,11 +2291,9 @@ export async function getRevision(
       milestones: { title: string } | { title: string }[] | null;
     };
     const r = data as unknown as Row;
-    const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
-    const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
-    const milestone = Array.isArray(r.milestones)
-      ? r.milestones[0]
-      : r.milestones;
+    const project = flattenJoin(r.projects);
+    const contact = flattenJoin(r.contacts);
+    const milestone = flattenJoin(r.milestones);
 
     const { data: cdata } = await supabaseAdmin()
       .from('revision_comments')
@@ -2420,7 +2415,7 @@ export async function getAllProjectReviews(): Promise<
     };
     const rows = (data ?? []) as Row[];
     return rows.map((r) => {
-      const project = Array.isArray(r.projects) ? r.projects[0] : r.projects;
+      const project = flattenJoin(r.projects);
       const contact = Array.isArray(project?.contacts)
         ? project.contacts[0]
         : project?.contacts;

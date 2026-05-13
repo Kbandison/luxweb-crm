@@ -12,6 +12,7 @@ import {
 } from '@/lib/care-plan/sync';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { flattenJoin } from '@/lib/array-join';
 
 export const runtime = 'nodejs';
 
@@ -78,7 +79,7 @@ export async function POST(
         | { full_name: string; email: string | null }[];
     };
     const p = project as unknown as ProjectRow;
-    const contact = Array.isArray(p.contacts) ? p.contacts[0] : p.contacts;
+    const contact = flattenJoin(p.contacts);
     if (!contact?.email) {
       return Response.json(
         { error: 'Contact is missing an email address.' },
