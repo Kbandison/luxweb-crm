@@ -12,6 +12,7 @@ import { CarePlanBillingHistory } from '@/components/care-plan/billing-history';
 import { getCarePlanInvoiceHistory } from '@/lib/care-plan/billing-history';
 import { ClientReviewCard } from '@/components/client/reviews/client-review-card';
 import { SectionHead } from '@/components/ui/section-head';
+import { StatusPill } from '@/components/ui/status-pill';
 import { formatDate } from '@/lib/formatters';
 import {
   MILESTONE_STATUS_LABEL as MILESTONE_LABEL,
@@ -172,14 +173,10 @@ export default async function ClientProjectOverviewPage({
                       >
                         {m.title}
                       </h4>
-                      <span
-                        className={cn(
-                          'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-                          MILESTONE_TONE[m.status],
-                        )}
-                      >
-                        {MILESTONE_LABEL[m.status]}
-                      </span>
+                      <StatusPill
+                        label={MILESTONE_LABEL[m.status]}
+                        tone={MILESTONE_TONE[m.status]}
+                      />
                     </div>
                     {m.description ? (
                       <p className="mt-1 whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink-muted">

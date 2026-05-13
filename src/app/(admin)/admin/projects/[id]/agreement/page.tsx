@@ -6,6 +6,7 @@ import {
 } from '@/lib/queries/admin';
 import { SignAgreementButton } from '@/components/admin/proposals/sign-agreement-button';
 import { SectionHead } from '@/components/ui/section-head';
+import { StatusPill } from '@/components/ui/status-pill';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import {
   CONTRACT_STATUS_LABEL,
@@ -78,15 +79,16 @@ export default async function AdminProjectAgreementPage({
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
-                      <span
-                        className={cn(
-                          'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
+                      <StatusPill
+                        label={
+                          PROPOSAL_STATUS_LABEL[p.status as ProposalStatus] ??
+                          p.status
+                        }
+                        tone={
                           PROPOSAL_STATUS_TONE[p.status as ProposalStatus] ??
-                            'bg-ink/5 text-ink-muted',
-                        )}
-                      >
-                        {PROPOSAL_STATUS_LABEL[p.status as ProposalStatus] ?? p.status}
-                      </span>
+                          'bg-ink/5 text-ink-muted'
+                        }
+                      />
                       {p.totalCents != null ? (
                         <span className="font-mono text-sm font-medium tabular-nums text-ink">
                           {formatUSD(p.totalCents)}
@@ -145,15 +147,16 @@ export default async function AdminProjectAgreementPage({
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
-                    <span
-                      className={cn(
-                        'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
+                    <StatusPill
+                      label={
+                        CONTRACT_STATUS_LABEL[c.status as ContractStatus] ??
+                        c.status
+                      }
+                      tone={
                         CONTRACT_STATUS_TONE[c.status as ContractStatus] ??
-                          'bg-ink/5 text-ink-muted',
-                      )}
-                    >
-                      {CONTRACT_STATUS_LABEL[c.status as ContractStatus] ?? c.status}
-                    </span>
+                        'bg-ink/5 text-ink-muted'
+                      }
+                    />
                     <span
                       aria-hidden
                       className="font-mono text-[10px] uppercase tracking-meta text-copper"

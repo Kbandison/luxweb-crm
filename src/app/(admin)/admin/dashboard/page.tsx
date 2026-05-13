@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Topbar } from '@/components/admin/topbar';
 import { StatCard } from '@/components/ui/stat-card';
 import { SectionHead } from '@/components/ui/section-head';
+import { StatusPill } from '@/components/ui/status-pill';
 import { AdminDashboardRefresher } from '@/components/realtime/admin-dashboard-refresher';
 import {
   getAdminDashboardOverview,
@@ -275,16 +276,7 @@ const ACTION_COLORS: Record<string, string> = {
 
 function ActionBadge({ action }: { action: string }) {
   const tone = ACTION_COLORS[action] ?? 'bg-ink/5 text-ink-muted';
-  return (
-    <span
-      className={cn(
-        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-        tone,
-      )}
-    >
-      {action}
-    </span>
-  );
+  return <StatusPill label={action} tone={tone} />;
 }
 
 function EmptyActivity() {

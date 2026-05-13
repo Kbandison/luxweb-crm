@@ -5,8 +5,8 @@ import type { ProjectListRow } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
 import { Input } from '@/components/ui/input';
 import { SortableHeader } from '@/components/ui/sortable-header';
+import { StatusPill } from '@/components/ui/status-pill';
 import { formatHours, formatUSD } from '@/lib/formatters';
-import { cn } from '@/lib/utils';
 import { useUrlSearchInput } from '@/lib/hooks/use-url-search';
 import { PROJECT_STATUS_DOT, PROJECT_STATUS_LABEL } from './status-meta';
 
@@ -129,16 +129,12 @@ export function ProjectsTable({
                     </Link>
                   </td>
                   <td className="px-3 py-3">
-                    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-meta text-ink-muted">
-                      <span
-                        className={cn(
-                          'h-1.5 w-1.5 rounded-full',
-                          PROJECT_STATUS_DOT[p.status],
-                        )}
-                        aria-hidden
-                      />
-                      {PROJECT_STATUS_LABEL[p.status]}
-                    </span>
+                    <StatusPill
+                      withDot
+                      dotClass={PROJECT_STATUS_DOT[p.status]}
+                      label={PROJECT_STATUS_LABEL[p.status]}
+                      tone="bg-surface-2 text-ink-muted"
+                    />
                   </td>
                   <td className="px-3 py-3 font-sans text-sm text-ink">
                     <Link

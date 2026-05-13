@@ -1,6 +1,6 @@
 import type { ClientActivity } from '@/lib/queries/admin';
 import { Card } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { StatusPill } from '@/components/ui/status-pill';
 import { formatRelative } from '@/lib/formatters';
 
 const ACTION_COLORS: Record<string, string> = {
@@ -31,14 +31,10 @@ export function ActivityList({ rows }: { rows: ClientActivity[] }) {
             className="flex items-center justify-between gap-4 px-5 py-4"
           >
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span
-                className={cn(
-                  'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-                  ACTION_COLORS[r.action] ?? 'bg-ink/5 text-ink-muted',
-                )}
-              >
-                {r.action}
-              </span>
+              <StatusPill
+                label={r.action}
+                tone={ACTION_COLORS[r.action] ?? 'bg-ink/5 text-ink-muted'}
+              />
               <div className="min-w-0">
                 <p className="truncate font-sans text-sm text-ink">
                   <span className="font-medium">{r.entityType}</span>

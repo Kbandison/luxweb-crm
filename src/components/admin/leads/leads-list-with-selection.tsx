@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ContactRow } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { useToast } from '@/components/ui/toast';
 import { BulkActionBar } from '@/components/admin/bulk-action-bar';
@@ -111,7 +111,7 @@ export function LeadsListWithSelection({
             <>
               <a
                 href={exportAllHref}
-                className="inline-flex items-center font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
+                className={buttonVariants({ variant: 'secondary', size: 'sm' })}
               >
                 Export CSV
               </a>
@@ -137,7 +137,7 @@ export function LeadsListWithSelection({
             </Button>
             <a
               href={exportSelectedHref}
-              className="inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-3 font-sans text-xs font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2"
+              className={buttonVariants({ variant: 'secondary', size: 'sm' })}
             >
               Export selected
             </a>

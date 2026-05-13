@@ -1,6 +1,7 @@
 'use client';
 import { useId } from 'react';
 import type { ProjectFile } from '@/lib/queries/admin';
+import { buttonVariants } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
@@ -57,7 +58,7 @@ export function FilePreview({
           <div className="relative flex items-center gap-2">
             <a
               href={downloadSrc}
-              className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+              className={buttonVariants({ variant: 'secondary', size: 'sm' })}
             >
               Download
             </a>
@@ -162,7 +163,7 @@ export function FilePreview({
               </div>
               <a
                 href={downloadSrc}
-                className="inline-flex items-center gap-1.5 rounded-md bg-copper px-3 py-1.5 font-mono text-[11px] uppercase tracking-meta text-copper-foreground transition-colors hover:bg-copper/90"
+                className={buttonVariants({ variant: 'primary', size: 'sm' })}
               >
                 Download
               </a>

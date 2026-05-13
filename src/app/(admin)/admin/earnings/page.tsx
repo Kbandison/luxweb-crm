@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Topbar } from '@/components/admin/topbar';
+import { buttonVariants } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionHead } from '@/components/ui/section-head';
 import { StatCard } from '@/components/ui/stat-card';
@@ -30,7 +31,7 @@ export default async function AdminEarningsPage() {
           actions={
             <a
               href="/api/admin/earnings/export.csv"
-              className="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-4 font-sans text-xs font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2"
+              className={buttonVariants({ variant: 'secondary', size: 'sm' })}
             >
               Export CSV
             </a>

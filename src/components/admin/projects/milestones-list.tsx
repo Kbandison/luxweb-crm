@@ -7,6 +7,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { StatusPill } from '@/components/ui/status-pill';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import {
@@ -321,21 +322,17 @@ export function MilestonesList({
                     >
                       {m.title}
                     </h4>
-                    <span
-                      className={cn(
-                        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-                        MILESTONE_STATUS_TONE[m.status],
-                      )}
-                    >
-                      {MILESTONE_STATUS_LABEL[m.status]}
-                    </span>
+                    <StatusPill
+                      label={MILESTONE_STATUS_LABEL[m.status]}
+                      tone={MILESTONE_STATUS_TONE[m.status]}
+                    />
                     {m.source === 'proposal' ? (
-                      <span
-                        className="inline-flex shrink-0 items-center rounded bg-copper-soft/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-meta-tight text-copper"
-                        title="Auto-flips on payment"
-                      >
-                        Proposal
-                      </span>
+                      <StatusPill
+                        label="Proposal"
+                        tone="bg-copper-soft/60 text-copper"
+                        size="sm"
+                        className="font-normal"
+                      />
                     ) : null}
                   </div>
                   {m.description ? (

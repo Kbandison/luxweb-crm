@@ -1,6 +1,6 @@
 import type { CarePlanInvoice } from '@/lib/care-plan/billing-history';
+import { StatusPill } from '@/components/ui/status-pill';
 import { formatDateLong, formatUSD } from '@/lib/formatters';
-import { cn } from '@/lib/utils';
 
 const STATUS_LABEL: Record<CarePlanInvoice['status'], string> = {
   draft: 'Draft',
@@ -51,14 +51,10 @@ export function CarePlanBillingHistory({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <span
-              className={cn(
-                'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-                STATUS_TONE[inv.status],
-              )}
-            >
-              {STATUS_LABEL[inv.status]}
-            </span>
+            <StatusPill
+              label={STATUS_LABEL[inv.status]}
+              tone={STATUS_TONE[inv.status]}
+            />
             <span className="font-mono text-sm font-medium tabular-nums text-ink">
               {formatUSD(
                 inv.status === 'paid' ? inv.amountPaidCents : inv.amountDueCents,

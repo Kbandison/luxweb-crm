@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast';
 
@@ -85,13 +86,15 @@ export function DeleteContactButton({
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="secondary"
+        size="sm"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:border-danger/40 hover:text-danger"
+        className="hover:border-danger/40 hover:text-danger"
       >
         Delete {kind}
-      </button>
+      </Button>
 
       {/* Stage 1: standard confirm */}
       <ConfirmDialog

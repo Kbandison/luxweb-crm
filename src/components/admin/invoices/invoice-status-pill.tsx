@@ -1,16 +1,12 @@
 import type { InvoiceStatus } from '@/lib/queries/admin';
 import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE } from '@/lib/status-meta';
-import { cn } from '@/lib/utils';
+import { StatusPill } from '@/components/ui/status-pill';
 
 export function InvoiceStatusPill({ status }: { status: InvoiceStatus }) {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-        INVOICE_STATUS_TONE[status],
-      )}
-    >
-      {INVOICE_STATUS_LABEL[status]}
-    </span>
+    <StatusPill
+      label={INVOICE_STATUS_LABEL[status]}
+      tone={INVOICE_STATUS_TONE[status]}
+    />
   );
 }

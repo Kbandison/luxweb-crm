@@ -4,6 +4,7 @@ import { getSession } from '@/lib/supabase/session';
 import { getClientDashboard } from '@/lib/queries/client';
 import { ClientDashboardRefresher } from '@/components/realtime/client-dashboard-refresher';
 import { buttonVariants } from '@/components/ui/button';
+import { StatusPill } from '@/components/ui/status-pill';
 import { cn } from '@/lib/utils';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 import {
@@ -238,9 +239,7 @@ function AgreementsTile({
                     Signed {formatDateLong(a.signedAt)}
                   </p>
                 </div>
-                <span className="inline-flex shrink-0 items-center rounded bg-success/15 px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight text-success">
-                  Signed
-                </span>
+                <StatusPill label="Signed" tone="bg-success/15 text-success" />
               </Link>
             </li>
           );
@@ -278,15 +277,15 @@ function ProposalsTile({
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                <span
-                  className={cn(
-                    'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
+                <StatusPill
+                  label={
+                    PROPOSAL_STATUS_LABEL[p.status as ProposalStatus] ?? p.status
+                  }
+                  tone={
                     PROPOSAL_STATUS_TONE[p.status as ProposalStatus] ??
-                      'bg-ink/5 text-ink-muted',
-                  )}
-                >
-                  {PROPOSAL_STATUS_LABEL[p.status as ProposalStatus] ?? p.status}
-                </span>
+                    'bg-ink/5 text-ink-muted'
+                  }
+                />
                 {p.totalCents != null ? (
                   <span className="font-mono text-sm font-medium tabular-nums text-ink">
                     {formatUSD(p.totalCents)}

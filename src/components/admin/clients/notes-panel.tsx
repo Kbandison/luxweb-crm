@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { NoteRow } from '@/lib/queries/admin';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { StatusPill } from '@/components/ui/status-pill';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/formatters';
@@ -152,16 +153,15 @@ export function NotesPanel({
             >
               <div className="flex items-center justify-between gap-3 border-b border-border bg-surface-2/40 px-4 py-2">
                 <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-meta-tight',
+                  <StatusPill
+                    label={note.isPrivate ? '🔒 Private' : '◐ Client visible'}
+                    tone={
                       note.isPrivate
                         ? 'bg-copper-soft/60 text-copper'
-                        : 'bg-success/10 text-success',
-                    )}
-                  >
-                    {note.isPrivate ? '🔒 Private' : '◐ Client visible'}
-                  </span>
+                        : 'bg-success/10 text-success'
+                    }
+                    className="font-normal"
+                  />
                   <span className="font-mono text-[11px] text-ink-subtle">
                     {note.authorEmail ?? 'system'}
                   </span>

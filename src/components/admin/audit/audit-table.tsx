@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import type { AuditEntry } from '@/lib/queries/audit';
+import { StatusPill } from '@/components/ui/status-pill';
 import { formatDateTimeWithTz } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -79,14 +80,7 @@ function ExpandableRow({
         )}
       >
         <td className="px-4 py-3">
-          <span
-            className={cn(
-              'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-              tone,
-            )}
-          >
-            {e.action}
-          </span>
+          <StatusPill label={e.action} tone={tone} />
         </td>
         <td className="px-3 py-3 font-mono text-xs text-ink">
           <span className="font-medium">{e.entityType}</span>

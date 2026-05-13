@@ -20,6 +20,7 @@ import { HourlyRateForm } from '@/components/admin/projects/hourly-rate-form';
 import { StatCard } from '@/components/ui/stat-card';
 import { SectionHead } from '@/components/ui/section-head';
 import { Card } from '@/components/ui/card';
+import { StatusPill } from '@/components/ui/status-pill';
 import { formatDate, formatHours, formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -253,14 +254,10 @@ export default async function ProjectOverviewPage({
                       Due {formatDate(m.dueDate!)}
                     </p>
                   </div>
-                  <span
-                    className={cn(
-                      'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-                      MILESTONE_STATUS_TONE[m.status],
-                    )}
-                  >
-                    {MILESTONE_STATUS_LABEL[m.status]}
-                  </span>
+                  <StatusPill
+                    label={MILESTONE_STATUS_LABEL[m.status]}
+                    tone={MILESTONE_STATUS_TONE[m.status]}
+                  />
                 </li>
               ))}
             </ul>

@@ -4,11 +4,11 @@ import { getContract } from '@/lib/queries/admin';
 import { ContractBody } from '@/components/contract/contract-body';
 import { PrintButton } from '@/components/contract/print-button';
 import { SignaturePair } from '@/components/contract/signature-block';
+import { StatusPill } from '@/components/ui/status-pill';
 import {
   CONTRACT_STATUS_LABEL,
   CONTRACT_STATUS_TONE,
 } from '@/lib/status-meta';
-import { cn } from '@/lib/utils';
 
 export default async function AdminContractPage({
   params,
@@ -30,14 +30,10 @@ export default async function AdminContractPage({
             ← Agreement
           </Link>
           <span aria-hidden className="h-3 w-px bg-border" />
-          <span
-            className={cn(
-              'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-              CONTRACT_STATUS_TONE[contract.status] ?? 'bg-ink/5 text-ink-muted',
-            )}
-          >
-            {CONTRACT_STATUS_LABEL[contract.status] ?? contract.status}
-          </span>
+          <StatusPill
+            label={CONTRACT_STATUS_LABEL[contract.status] ?? contract.status}
+            tone={CONTRACT_STATUS_TONE[contract.status] ?? 'bg-ink/5 text-ink-muted'}
+          />
         </div>
         <PrintButton />
       </div>

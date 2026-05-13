@@ -8,6 +8,7 @@ import {
 import { reconcileInvoicePaid } from '@/lib/reconcile-invoice';
 import { StatCard } from '@/components/ui/stat-card';
 import { SectionHead } from '@/components/ui/section-head';
+import { StatusPill } from '@/components/ui/status-pill';
 import { buttonVariants } from '@/components/ui/button';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import {
@@ -161,16 +162,16 @@ function InvoiceSection({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
+                  <StatusPill
+                    label={
+                      INVOICE_STATUS_LABEL[inv.status as InvoiceStatus] ??
+                      inv.status
+                    }
+                    tone={
                       INVOICE_STATUS_TONE[inv.status as InvoiceStatus] ??
-                        'bg-ink/5 text-ink-muted',
-                    )}
-                  >
-                    {INVOICE_STATUS_LABEL[inv.status as InvoiceStatus] ??
-                      inv.status}
-                  </span>
+                      'bg-ink/5 text-ink-muted'
+                    }
+                  />
                   <span className="font-mono text-sm font-medium tabular-nums text-ink">
                     {formatUSD(inv.amountCents)}
                   </span>

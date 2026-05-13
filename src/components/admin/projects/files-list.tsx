@@ -5,6 +5,7 @@ import type { ProjectFile } from '@/lib/queries/admin';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { StatusPill } from '@/components/ui/status-pill';
 import { useToast } from '@/components/ui/toast';
 import { FilePreview } from './file-preview';
 import { formatDateTime } from '@/lib/formatters';
@@ -299,16 +300,15 @@ export function FilesList({
                     {formatBytes(f.sizeBytes)}
                   </td>
                   <td className="px-3 py-3">
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-meta-tight',
+                    <StatusPill
+                      label={f.isClientVisible ? '◐ Client' : '🔒 Internal'}
+                      tone={
                         f.isClientVisible
                           ? 'bg-success/15 text-success'
-                          : 'bg-copper-soft/60 text-copper',
-                      )}
-                    >
-                      {f.isClientVisible ? '◐ Client' : '🔒 Internal'}
-                    </span>
+                          : 'bg-copper-soft/60 text-copper'
+                      }
+                      className="font-normal"
+                    />
                   </td>
                   <td className="px-3 py-3 font-mono text-xs tabular-nums text-ink-muted">
                     <div>{formatDateTime(f.createdAt)}</div>

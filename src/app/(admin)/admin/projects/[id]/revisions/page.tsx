@@ -4,6 +4,7 @@ import {
   REVISION_STATUS_LABEL,
   REVISION_STATUS_TONE,
 } from '@/lib/types/revision';
+import { StatusPill } from '@/components/ui/status-pill';
 import { formatRelative } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -52,14 +53,10 @@ export default async function AdminProjectRevisionsPage({
                     Opened {formatRelative(r.createdAt)}
                   </p>
                 </div>
-                <span
-                  className={cn(
-                    'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-                    REVISION_STATUS_TONE[r.status],
-                  )}
-                >
-                  {REVISION_STATUS_LABEL[r.status]}
-                </span>
+                <StatusPill
+                  label={REVISION_STATUS_LABEL[r.status]}
+                  tone={REVISION_STATUS_TONE[r.status]}
+                />
               </Link>
             </li>
           ))}

@@ -4,12 +4,12 @@ import { getAllCarePlans } from '@/lib/queries/admin';
 import { StatCard } from '@/components/ui/stat-card';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionHead } from '@/components/ui/section-head';
+import { StatusPill } from '@/components/ui/status-pill';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 import {
   CARE_PLAN_STATUS_LABEL,
   CARE_PLAN_STATUS_TONE,
 } from '@/lib/care-plan/types';
-import { cn } from '@/lib/utils';
 
 export default async function AdminCarePlansPage() {
   const plans = await getAllCarePlans();
@@ -95,14 +95,10 @@ export default async function AdminCarePlansPage() {
                             /{p.interval}
                           </span>
                         </span>
-                        <span
-                          className={cn(
-                            'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-                            CARE_PLAN_STATUS_TONE[p.status],
-                          )}
-                        >
-                          {CARE_PLAN_STATUS_LABEL[p.status]}
-                        </span>
+                        <StatusPill
+                          label={CARE_PLAN_STATUS_LABEL[p.status]}
+                          tone={CARE_PLAN_STATUS_TONE[p.status]}
+                        />
                       </div>
                     </Link>
                   </li>
