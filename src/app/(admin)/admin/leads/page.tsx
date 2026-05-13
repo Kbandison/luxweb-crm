@@ -1,6 +1,7 @@
 import { Topbar } from '@/components/admin/topbar';
 import {
   getContactActivity,
+  getContactContracts,
   getContactDetail,
   getContactProposals,
   getLeadsPaginated,
@@ -33,13 +34,14 @@ export default async function LeadsPage({
     getLeadsPaginated(params),
     leadId ? getContactDetail(leadId) : Promise.resolve(null),
   ]);
-  const [proposals, notes, activity] = selected
+  const [proposals, contracts, notes, activity] = selected
     ? await Promise.all([
         getContactProposals(selected.id),
+        getContactContracts(selected.id),
         getNotesForEntity('contact', selected.id),
         getContactActivity(selected.id),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
 
   return (
     <>
@@ -74,6 +76,7 @@ export default async function LeadsPage({
               <LeadDetail
                 lead={selected}
                 proposals={proposals}
+                contracts={contracts}
                 notes={notes}
                 activity={activity}
               />

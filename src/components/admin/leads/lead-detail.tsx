@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type {
   ClientActivity,
   ContactRow,
+  ContractRow,
   NoteRow,
   ProposalRow,
 } from '@/lib/queries/admin';
@@ -14,16 +15,24 @@ import { LeadProposalsSection } from './lead-proposals-section';
 import { LeadScore } from './lead-score';
 import { TagPill } from './tag-pill';
 import { Monogram } from './monogram';
-import { formatDateLong } from '@/lib/formatters';
+import { StatusPill } from '@/components/ui/status-pill';
+import { formatDate, formatDateLong } from '@/lib/formatters';
+import {
+  CONTRACT_STATUS_LABEL,
+  CONTRACT_STATUS_TONE,
+  type ContractStatus,
+} from '@/lib/status-meta';
 
 export function LeadDetail({
   lead,
   proposals,
+  contracts = [],
   notes = [],
   activity = [],
 }: {
   lead: ContactRow;
   proposals: ProposalRow[];
+  contracts?: ContractRow[];
   notes?: NoteRow[];
   activity?: ClientActivity[];
 }) {
@@ -137,13 +146,65 @@ export function LeadDetail({
           <Section number="03" title="Proposals" />
           <LeadProposalsSection contactId={lead.id} proposals={proposals} />
 
-          <Section number="04" title="Notes" />
+          <Section number="04" title="Contracts" />
+          {contracts.length === 0 ? (
+            <p className="font-sans text-sm text-ink-muted">
+              Contracts auto-generate when a proposal is accepted by the
+              client.
+            </p>
+          ) : (
+            <ul className="overflow-hidden rounded-xl border border-border bg-surface divide-y divide-border">
+              {contracts.map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={
+                      c.projectId
+                        ? `/admin/projects/${c.projectId}/contracts/${c.id}`
+                        : `/admin/contracts/${c.id}`
+                    }
+                    className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-surface-2/50"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-sans text-sm font-medium text-ink">
+                        Agreement {c.agreementVersion}
+                      </p>
+                      <p className="mt-0.5 font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
+                        {c.signedAt
+                          ? `Signed ${formatDate(c.signedAt)}`
+                          : `Created ${formatDate(c.createdAt)}`}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <StatusPill
+                        label={
+                          CONTRACT_STATUS_LABEL[c.status as ContractStatus] ??
+                          c.status
+                        }
+                        tone={
+                          CONTRACT_STATUS_TONE[c.status as ContractStatus] ??
+                          'bg-ink/5 text-ink-muted'
+                        }
+                      />
+                      <span
+                        aria-hidden
+                        className="font-mono text-[10px] uppercase tracking-meta text-copper"
+                      >
+                        Open →
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <Section number="05" title="Notes" />
           <NotesPanel entityType="contact" entityId={lead.id} notes={notes} />
 
-          <Section number="05" title="Activity" />
+          <Section number="06" title="Activity" />
           <ActivityList rows={activity} />
 
-          <Section number="06" title="Timeline" />
+          <Section number="07" title="Timeline" />
           <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
             <Field
               label="Created"

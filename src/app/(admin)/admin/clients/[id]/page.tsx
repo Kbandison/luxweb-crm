@@ -3,8 +3,16 @@ import { notFound } from 'next/navigation';
 import { Topbar } from '@/components/admin/topbar';
 import {
   getClientWithDetails,
+  getContactContracts,
   getContactProposals,
 } from '@/lib/queries/admin';
+import { StatusPill } from '@/components/ui/status-pill';
+import { formatDate } from '@/lib/formatters';
+import {
+  CONTRACT_STATUS_LABEL,
+  CONTRACT_STATUS_TONE,
+  type ContractStatus,
+} from '@/lib/status-meta';
 import { InviteToPortalButton } from '@/components/admin/contacts/invite-button';
 import { Monogram } from '@/components/admin/leads/monogram';
 import { TagPill } from '@/components/admin/leads/tag-pill';
@@ -36,7 +44,10 @@ export default async function ClientDetailPage({
   const { tab } = await searchParams;
   const client = await getClientWithDetails(id);
   if (!client) notFound();
-  const proposals = await getContactProposals(id);
+  const [proposals, contracts] = await Promise.all([
+    getContactProposals(id),
+    getContactContracts(id),
+  ]);
 
   // Legacy ?tab=deals|projects|proposals all map to the new combined tab.
   const activeTab: ClientTabKey =
@@ -51,7 +62,10 @@ export default async function ClientDetailPage({
 
   const counts = {
     engagements:
-      client.deals.length + client.projects.length + proposals.length,
+      client.deals.length +
+      client.projects.length +
+      proposals.length +
+      contracts.length,
     notes: client.notes.length,
     activity: client.activity.length,
   };
@@ -181,6 +195,7 @@ export default async function ClientDetailPage({
             <Engagements
               client={client}
               proposals={proposals}
+              contracts={contracts}
             />
           ) : null}
           {activeTab === 'notes' ? (
@@ -274,9 +289,11 @@ function Overview({
 function Engagements({
   client,
   proposals,
+  contracts,
 }: {
   client: import('@/lib/queries/admin').ClientWithDetails;
   proposals: import('@/lib/queries/admin').ProposalRow[];
+  contracts: import('@/lib/queries/admin').ContractRow[];
 }) {
   return (
     <div className="space-y-10">
@@ -286,7 +303,58 @@ function Engagements({
       <SectionHead number="02" title="Proposals" />
       <LeadProposalsSection contactId={client.id} proposals={proposals} />
 
-      <SectionHead number="03" title="Projects" />
+      <SectionHead number="03" title="Contracts" />
+      {contracts.length === 0 ? (
+        <p className="font-sans text-sm text-ink-muted">
+          Contracts auto-generate when a proposal is accepted by the client.
+        </p>
+      ) : (
+        <ul className="overflow-hidden rounded-xl border border-border bg-surface divide-y divide-border">
+          {contracts.map((c) => (
+            <li key={c.id}>
+              <Link
+                href={
+                  c.projectId
+                    ? `/admin/projects/${c.projectId}/contracts/${c.id}`
+                    : `/admin/contracts/${c.id}`
+                }
+                className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-surface-2/50"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-sans text-sm font-medium text-ink">
+                    Agreement {c.agreementVersion}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
+                    {c.signedAt
+                      ? `Signed ${formatDate(c.signedAt)}`
+                      : `Created ${formatDate(c.createdAt)}`}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <StatusPill
+                    label={
+                      CONTRACT_STATUS_LABEL[c.status as ContractStatus] ??
+                      c.status
+                    }
+                    tone={
+                      CONTRACT_STATUS_TONE[c.status as ContractStatus] ??
+                      'bg-ink/5 text-ink-muted'
+                    }
+                  />
+                  <span
+                    aria-hidden
+                    className="font-mono text-[10px] uppercase tracking-meta text-copper"
+                  >
+                    Open →
+                  </span>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <SectionHead number="04" title="Projects" />
       <ProjectsSection projects={client.projects} />
     </div>
   );

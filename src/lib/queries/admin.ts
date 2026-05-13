@@ -1268,6 +1268,23 @@ export async function getContactProposals(
   }
 }
 
+export async function getContactContracts(
+  contactId: string,
+): Promise<ContractRow[]> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('contracts')
+      .select(
+        'id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name',
+      )
+      .eq('contact_id', contactId)
+      .order('created_at', { ascending: false });
+    return ((data ?? []) as ContractSelectRow[]).map(toContractRow);
+  } catch {
+    return [];
+  }
+}
+
 export async function getProposal(id: string): Promise<ProposalDetail | null> {
   try {
     const { data } = await supabaseAdmin()
