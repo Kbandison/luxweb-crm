@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Topbar } from '@/components/admin/topbar';
 import { getAllProjectReviews } from '@/lib/queries/admin';
 import { StarDisplay } from '@/components/reviews/star-input';
+import { StatCard } from '@/components/ui/stat-card';
 import { formatDateLong } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +33,7 @@ export default async function AdminReviewsPage() {
         </header>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <Stat
+          <StatCard
             label="Client reviews"
             value={String(submitted.length)}
             hint={
@@ -40,13 +41,15 @@ export default async function AdminReviewsPage() {
                 ? `Avg ${avgClient.toFixed(1)} ★`
                 : 'None yet'
             }
+            size="lg"
           />
-          <Stat
+          <StatCard
             label="Publishable"
             value={String(publishable.length)}
             hint="Client opted in to share"
+            size="lg"
           />
-          <Stat label="All projects" value={String(all.length)} />
+          <StatCard label="All projects" value={String(all.length)} size="lg" />
         </div>
 
         {all.length === 0 ? (
@@ -120,26 +123,3 @@ export default async function AdminReviewsPage() {
   );
 }
 
-function Stat({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-surface p-5">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </p>
-      <p className="mt-3 font-mono text-3xl font-medium tabular-nums tracking-tight text-ink">
-        {value}
-      </p>
-      {hint ? (
-        <p className="mt-1.5 font-sans text-xs text-ink-muted">{hint}</p>
-      ) : null}
-    </div>
-  );
-}

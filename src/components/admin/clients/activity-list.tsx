@@ -1,4 +1,5 @@
 import type { ClientActivity } from '@/lib/queries/admin';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/formatters';
 
@@ -14,11 +15,11 @@ const ACTION_COLORS: Record<string, string> = {
 export function ActivityList({ rows }: { rows: ClientActivity[] }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-surface/60 p-8 text-center">
+      <Card tone="dashed" rounded="lg" padding="xl" className="text-center">
         <p className="font-sans text-sm text-ink-muted">
           No audit log entries for this client.
         </p>
-      </div>
+      </Card>
     );
   }
   return (

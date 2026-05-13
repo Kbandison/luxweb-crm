@@ -22,6 +22,7 @@ import { NotesPanel } from '@/components/admin/clients/notes-panel';
 import { ActivityList } from '@/components/admin/clients/activity-list';
 import { DeleteContactButton } from '@/components/admin/contacts/delete-button';
 import { EditContactDrawer } from '@/components/admin/contacts/edit-contact-drawer';
+import { SectionHead } from '@/components/ui/section-head';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 
 export default async function ClientDetailPage({
@@ -279,31 +280,6 @@ function Engagements({
 
       <SectionHead number="03" title={`Projects · ${client.projects.length}`} />
       <ProjectsSection projects={client.projects} />
-    </div>
-  );
-}
-
-function SectionHead({
-  number,
-  title,
-  right,
-}: {
-  number: string;
-  title: string;
-  right?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-end justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <span className="font-mono text-lg font-semibold tabular-nums text-copper">
-          {number}
-        </span>
-        <span aria-hidden className="h-3.5 w-px bg-copper/40" />
-        <h2 className="font-display text-lg font-medium tracking-tight text-ink">
-          {title}
-        </h2>
-      </div>
-      {right}
     </div>
   );
 }

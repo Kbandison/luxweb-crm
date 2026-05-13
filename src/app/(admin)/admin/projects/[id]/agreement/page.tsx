@@ -5,6 +5,7 @@ import {
   linkOrphanProposalsToProject,
 } from '@/lib/queries/admin';
 import { SignAgreementButton } from '@/components/admin/proposals/sign-agreement-button';
+import { SectionHead } from '@/components/ui/section-head';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import {
   CONTRACT_STATUS_LABEL,
@@ -170,19 +171,6 @@ export default async function AdminProjectAgreementPage({
   );
 }
 
-function SectionHead({ number, title }: { number: string; title: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="font-mono text-lg font-semibold tabular-nums text-copper">
-        {number}
-      </span>
-      <span aria-hidden className="h-3.5 w-px bg-copper/40" />
-      <h2 className="font-display text-lg font-medium tracking-tight text-ink">
-        {title}
-      </h2>
-    </div>
-  );
-}
 
 function Empty({ label, className }: { label: string; className?: string }) {
   return (

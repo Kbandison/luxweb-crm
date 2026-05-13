@@ -11,6 +11,7 @@ import { CarePlanCard } from '@/components/client/care-plan/care-plan-card';
 import { CarePlanBillingHistory } from '@/components/care-plan/billing-history';
 import { getCarePlanInvoiceHistory } from '@/lib/care-plan/billing-history';
 import { ClientReviewCard } from '@/components/client/reviews/client-review-card';
+import { SectionHead } from '@/components/ui/section-head';
 import { formatDate } from '@/lib/formatters';
 import {
   MILESTONE_STATUS_LABEL as MILESTONE_LABEL,
@@ -143,15 +144,7 @@ export default async function ClientProjectOverviewPage({
 
       {/* Milestones */}
       <section>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-lg font-semibold tabular-nums text-copper">
-            01
-          </span>
-          <span aria-hidden className="h-3.5 w-px bg-copper/40" />
-          <h2 className="font-display text-lg font-medium tracking-tight text-ink">
-            Milestones
-          </h2>
-        </div>
+        <SectionHead number="01" title="Milestones" />
 
         {project.milestones.length === 0 ? (
           <div className="mt-5 rounded-xl border border-dashed border-border bg-surface/60 p-8 text-center">

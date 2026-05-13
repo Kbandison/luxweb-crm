@@ -1,5 +1,6 @@
 import { Topbar } from '@/components/admin/topbar';
-import { MetricTile } from '@/components/metric-tile';
+import { StatCard } from '@/components/ui/stat-card';
+import { SectionHead } from '@/components/ui/section-head';
 import { AdminDashboardRefresher } from '@/components/realtime/admin-dashboard-refresher';
 import {
   getAdminDashboardOverview,
@@ -30,37 +31,42 @@ export default async function AdminDashboardPage() {
         />
 
         {/* 02 — Snapshot */}
-        <Section number="02" title="Snapshot" subtitle="Live counts across projects and invoices.">
+        <section className="space-y-5">
+          <SectionHead
+            number="02"
+            title="Snapshot"
+            description="Live counts across projects and invoices."
+            size="lg"
+          />
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <MetricTile
+            <StatCard
               label="This month · paid"
               value={formatUSD(o.thisMonthEarningsCents)}
-              delta={{
-                value: `${o.thisMonthEarningsCount} ${o.thisMonthEarningsCount === 1 ? 'invoice' : 'invoices'}`,
-                trend: 'flat',
-              }}
+              hint={`${o.thisMonthEarningsCount} ${o.thisMonthEarningsCount === 1 ? 'invoice' : 'invoices'}`}
+              size="lg"
             />
-            <MetricTile
+            <StatCard
               label="Active projects"
               value={String(o.activeProjectCount)}
+              size="lg"
             />
-            <MetricTile
+            <StatCard
               label="Unpaid invoices"
               value={formatUSD(o.unpaidInvoiceCents)}
-              delta={{
-                value: `${o.unpaidInvoiceCount} open`,
-                trend: 'flat',
-              }}
+              hint={`${o.unpaidInvoiceCount} open`}
+              size="lg"
             />
           </div>
-        </Section>
+        </section>
 
         {/* 03 — Activity */}
-        <Section
-          number="03"
-          title="Recent activity"
-          subtitle="Every admin mutation writes to the audit log. Latest 8 shown."
-        >
+        <section className="space-y-5">
+          <SectionHead
+            number="03"
+            title="Recent activity"
+            description="Every admin mutation writes to the audit log. Latest 8 shown."
+            size="lg"
+          />
           {o.recentActivity.length === 0 ? (
             <EmptyActivity />
           ) : (
@@ -74,7 +80,7 @@ export default async function AdminDashboardPage() {
               </ul>
             </div>
           )}
-        </Section>
+        </section>
       </main>
     </>
   );
@@ -220,45 +226,6 @@ function StagePill({ bucket }: { bucket: StageBucket }) {
         </span>
       </div>
     </div>
-  );
-}
-
-/* -------------------------------------------------------------------------
- * Section wrapper — numbered
- * ------------------------------------------------------------------------- */
-function Section({
-  number,
-  title,
-  subtitle,
-  children,
-}: {
-  number: string;
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-xl font-semibold tabular-nums text-copper">
-              {number}
-            </span>
-            <span aria-hidden className="h-4 w-px bg-copper/40" />
-            <h2 className="font-display text-xl font-medium tracking-tight text-ink">
-              {title}
-            </h2>
-          </div>
-          {subtitle ? (
-            <p className="mt-1.5 max-w-xl font-sans text-sm text-ink-muted">
-              {subtitle}
-            </p>
-          ) : null}
-        </div>
-      </div>
-      {children}
-    </section>
   );
 }
 

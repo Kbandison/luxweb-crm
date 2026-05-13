@@ -6,6 +6,8 @@ import {
   type ClientInvoice,
 } from '@/lib/queries/client';
 import { reconcileInvoicePaid } from '@/lib/reconcile-invoice';
+import { StatCard } from '@/components/ui/stat-card';
+import { SectionHead } from '@/components/ui/section-head';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import {
   INVOICE_STATUS_LABEL,
@@ -47,28 +49,22 @@ export default async function ClientProjectInvoicesPage({
   return (
     <main className="space-y-8 px-6 py-10 md:px-10">
       {/* Page heading */}
-      <header className="flex items-baseline gap-3">
-        <span className="font-mono text-lg font-semibold tabular-nums text-copper">
-          01
-        </span>
-        <span aria-hidden className="h-3.5 w-px bg-copper/40" />
-        <h2 className="font-display text-lg font-medium tracking-tight text-ink">
-          Invoices
-        </h2>
-      </header>
+      <SectionHead number="01" title="Invoices" />
 
       {/* Summary */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Stat
+        <StatCard
           label="Currently due"
           value={formatUSD(openCents)}
           hint={`${open.length} ${open.length === 1 ? 'invoice' : 'invoices'}`}
-          accent={open.length > 0}
+          size="md"
+          className={open.length > 0 ? 'border-copper/30' : undefined}
         />
-        <Stat
+        <StatCard
           label="Paid to date"
           value={formatUSD(paidCents)}
           hint={`${paid.length} ${paid.length === 1 ? 'invoice' : 'invoices'}`}
+          size="md"
         />
       </div>
 
@@ -217,33 +213,3 @@ function InvoiceSection({
   );
 }
 
-function Stat({
-  label,
-  value,
-  hint,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  accent?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-xl border bg-surface p-5',
-        accent ? 'border-copper/30' : 'border-border',
-      )}
-    >
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </p>
-      <p className="mt-3 font-mono text-2xl font-medium tabular-nums tracking-tight text-ink">
-        {value}
-      </p>
-      {hint ? (
-        <p className="mt-1 font-sans text-xs text-ink-muted">{hint}</p>
-      ) : null}
-    </div>
-  );
-}

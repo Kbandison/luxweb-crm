@@ -5,6 +5,7 @@ import {
   PROJECT_STATUS_DOT,
   PROJECT_STATUS_LABEL,
 } from '@/components/admin/projects/status-meta';
+import { Card } from '@/components/ui/card';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -110,8 +111,8 @@ export function ProjectsSection({
 
 function Empty({ label }: { label: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-border bg-surface/60 p-8 text-center">
+    <Card tone="dashed" rounded="lg" padding="xl" className="text-center">
       <p className="font-sans text-sm text-ink-muted">{label}</p>
-    </div>
+    </Card>
   );
 }

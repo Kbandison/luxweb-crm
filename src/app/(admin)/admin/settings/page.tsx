@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Topbar } from '@/components/admin/topbar';
+import { PageHeader } from '@/components/ui/page-header';
 import { getSession } from '@/lib/supabase/session';
 import { getClientProfile } from '@/lib/queries/client';
 import { AdminSettingsTabs } from '@/components/admin/settings/settings-tabs';
@@ -21,19 +22,12 @@ export default async function AdminSettingsPage({
       <Topbar title="Settings" />
 
       <main className="mx-auto w-full max-w-4xl px-6 pb-16 pt-10 md:px-10">
-        <header className="mb-8 space-y-2">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-copper">
-            Workspace
-          </p>
-          <h1 className="font-display text-3xl font-medium tracking-tight text-ink md:text-4xl">
-            Settings
-          </h1>
-          <p className="font-sans text-sm text-ink-muted">
-            Your admin profile, notification preferences, and integration
-            status.
-          </p>
-          <div className="copper-rule mt-5 h-px w-24" />
-        </header>
+        <PageHeader
+          eyebrow="Workspace"
+          title="Settings"
+          description="Your admin profile, notification preferences, and integration status."
+          className="mb-8"
+        />
 
         <AdminSettingsTabs
           initialTab={tab === 'notifications' || tab === 'integrations' ? tab : 'profile'}

@@ -17,6 +17,9 @@ import {
   MILESTONE_STATUS_TONE,
 } from '@/components/admin/projects/status-meta';
 import { HourlyRateForm } from '@/components/admin/projects/hourly-rate-form';
+import { StatCard } from '@/components/ui/stat-card';
+import { SectionHead } from '@/components/ui/section-head';
+import { Card } from '@/components/ui/card';
 import { formatDate, formatHours, formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -71,7 +74,7 @@ export default async function ProjectOverviewPage({
       <section>
         <SectionHead number="01" title="At a glance" />
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
-          <Stat
+          <StatCard
             label="Milestones"
             value={`${doneCount}/${milestones.length}`}
             hint={
@@ -79,16 +82,19 @@ export default async function ProjectOverviewPage({
                 ? 'None set'
                 : `${Math.round((doneCount / milestones.length) * 100)}% done`
             }
+            size="lg"
           />
-          <Stat
+          <StatCard
             label="Hours logged"
             value={`${formatHours(totalHours, 1)}h`}
             hint={`${timeLogs.length} ${timeLogs.length === 1 ? 'entry' : 'entries'}`}
+            size="lg"
           />
-          <Stat
+          <StatCard
             label="Days running"
             value={String(daysSince(project.createdAt))}
             hint={`Since ${formatDate(project.createdAt)}`}
+            size="lg"
           />
         </div>
       </section>
@@ -101,7 +107,7 @@ export default async function ProjectOverviewPage({
           right={<HourlyRateForm projectId={project.id} initialRateCents={project.hourlyRateCents} />}
         />
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat
+          <StatCard
             label="Budget"
             value={
               project.budgetCents != null
@@ -109,8 +115,9 @@ export default async function ProjectOverviewPage({
                 : '—'
             }
             hint={burnPct != null ? `${burnPct}% spent` : 'No rate or budget set'}
+            size="lg"
           />
-          <Stat
+          <StatCard
             label="Time cost"
             value={costCents != null ? formatUSD(costCents) : '—'}
             hint={
@@ -118,8 +125,9 @@ export default async function ProjectOverviewPage({
                 ? `${formatHours(totalHours, 1)}h × ${formatUSD(project.hourlyRateCents)}/h`
                 : 'Set rate above'
             }
+            size="lg"
           />
-          <Stat
+          <StatCard
             label="Paid"
             value={formatUSD(paidCents)}
             hint={
@@ -129,8 +137,9 @@ export default async function ProjectOverviewPage({
                   ? 'All invoices paid'
                   : 'Nothing invoiced'
             }
+            size="lg"
           />
-          <Stat
+          <StatCard
             label="Profit"
             value={profitCents != null ? formatUSD(profitCents) : '—'}
             hint={
@@ -151,11 +160,12 @@ export default async function ProjectOverviewPage({
                     : 'default'
                 : 'default'
             }
+            size="lg"
           />
         </div>
         {/* Burn bar — only when both budget and cost are known */}
         {project.budgetCents != null && costCents != null && project.budgetCents > 0 ? (
-          <div className="mt-5 rounded-xl border border-border bg-surface p-5">
+          <Card rounded="lg" padding="md" className="mt-5">
             <div className="flex items-baseline justify-between gap-3">
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
                 Budget burn
@@ -187,7 +197,7 @@ export default async function ProjectOverviewPage({
                 style={{ width: `${Math.min(burnPct ?? 0, 100)}%` }}
               />
             </div>
-          </div>
+          </Card>
         ) : null}
       </section>
 
@@ -333,73 +343,6 @@ export default async function ProjectOverviewPage({
         )}
       </section>
     </main>
-  );
-}
-
-function SectionHead({
-  number,
-  title,
-  right,
-}: {
-  number: string;
-  title: string;
-  right?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-end justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <span className="font-mono text-lg font-semibold tabular-nums text-copper">
-          {number}
-        </span>
-        <span aria-hidden className="h-3.5 w-px bg-copper/40" />
-        <h3 className="font-display text-lg font-medium tracking-tight text-ink">
-          {title}
-        </h3>
-      </div>
-      {right}
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  hint,
-  tone = 'default',
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: 'default' | 'success' | 'danger';
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-xl border bg-surface p-5',
-        tone === 'success' && 'border-success/30',
-        tone === 'danger' && 'border-danger/30',
-        tone === 'default' && 'border-border',
-      )}
-    >
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </p>
-      <p
-        className={cn(
-          'mt-3 font-mono text-3xl font-medium tabular-nums tracking-tight',
-          tone === 'success'
-            ? 'text-success'
-            : tone === 'danger'
-              ? 'text-danger'
-              : 'text-ink',
-        )}
-      >
-        {value}
-      </p>
-      {hint ? (
-        <p className="mt-1.5 font-sans text-xs text-ink-muted">{hint}</p>
-      ) : null}
-    </div>
   );
 }
 

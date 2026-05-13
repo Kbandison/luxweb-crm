@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Topbar } from '@/components/admin/topbar';
 import { getAllCarePlans } from '@/lib/queries/admin';
+import { StatCard } from '@/components/ui/stat-card';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 import {
   CARE_PLAN_STATUS_LABEL,
@@ -36,9 +37,9 @@ export default async function AdminCarePlansPage() {
         </header>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <Stat label="Active subs" value={String(activeCount)} />
-          <Stat label="Monthly recurring" value={formatUSD(mrrCents)} />
-          <Stat label="Total subs" value={String(plans.length)} />
+          <StatCard label="Active subs" value={String(activeCount)} size="lg" />
+          <StatCard label="Monthly recurring" value={formatUSD(mrrCents)} size="lg" />
+          <StatCard label="Total subs" value={String(plans.length)} size="lg" />
         </div>
 
         {plans.length === 0 ? (
@@ -109,15 +110,3 @@ export default async function AdminCarePlansPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-surface p-5">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </p>
-      <p className="mt-3 font-mono text-3xl font-medium tabular-nums tracking-tight text-ink">
-        {value}
-      </p>
-    </div>
-  );
-}

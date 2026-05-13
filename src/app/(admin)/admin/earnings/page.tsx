@@ -1,5 +1,9 @@
 import Link from 'next/link';
 import { Topbar } from '@/components/admin/topbar';
+import { PageHeader } from '@/components/ui/page-header';
+import { SectionHead } from '@/components/ui/section-head';
+import { StatCard } from '@/components/ui/stat-card';
+import { Card } from '@/components/ui/card';
 import { getEarningsOverview } from '@/lib/queries/admin';
 import { formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -19,28 +23,19 @@ export default async function AdminEarningsPage() {
       <Topbar title="Earnings" />
 
       <main className="mx-auto w-full max-w-6xl space-y-12 px-6 pb-16 pt-10 md:px-10">
-        <header className="space-y-2">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-copper">
-            Workspace
-          </p>
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <h1 className="font-display text-3xl font-medium tracking-tight text-ink md:text-4xl">
-              Earnings
-            </h1>
+        <PageHeader
+          eyebrow="Workspace"
+          title="Earnings"
+          description="Revenue from paid invoices, outstanding balance, and per-project profitability based on logged time and the project's hourly rate."
+          actions={
             <a
               href="/api/admin/earnings/export.csv"
               className="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-4 font-sans text-xs font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2"
             >
               Export CSV
             </a>
-          </div>
-          <p className="font-sans text-sm text-ink-muted">
-            Revenue from paid invoices, outstanding balance, and per-project
-            profitability based on logged time and the project&apos;s hourly
-            rate.
-          </p>
-          <div className="copper-rule mt-5 h-px w-24" />
-        </header>
+          }
+        />
 
         {/* Hero — this-month */}
         <HeroEarnings
@@ -52,28 +47,38 @@ export default async function AdminEarningsPage() {
         />
 
         {/* Outstanding */}
-        <Section number="02" title="Outstanding" subtitle="Money you've billed but haven't been paid for.">
+        <section className="space-y-5">
+          <SectionHead
+            number="02"
+            title="Outstanding"
+            description="Money you've billed but haven't been paid for."
+            size="lg"
+          />
           <div className="grid gap-4 md:grid-cols-2">
-            <Tile
+            <StatCard
               label="Sent · awaiting payment"
               value={formatUSD(o.outstanding.sentCents)}
               hint={`${o.outstanding.sentCount} ${o.outstanding.sentCount === 1 ? 'invoice' : 'invoices'}`}
+              size="lg"
             />
-            <Tile
+            <StatCard
               label="Overdue"
               value={formatUSD(o.outstanding.overdueCents)}
               hint={`${o.outstanding.overdueCount} ${o.outstanding.overdueCount === 1 ? 'invoice' : 'invoices'}`}
               tone={o.outstanding.overdueCents > 0 ? 'danger' : 'default'}
+              size="lg"
             />
           </div>
-        </Section>
+        </section>
 
         {/* Per-project breakdown */}
-        <Section
-          number="03"
-          title="Projects by profitability"
-          subtitle="Profit = paid revenue − (logged hours × project hourly rate). Projects without a rate set show cost as —."
-        >
+        <section className="space-y-5">
+          <SectionHead
+            number="03"
+            title="Projects by profitability"
+            description="Profit = paid revenue − (logged hours × project hourly rate). Projects without a rate set show cost as —."
+            size="lg"
+          />
           {o.projects.length === 0 ? (
             <EmptyProjects />
           ) : (
@@ -141,7 +146,7 @@ export default async function AdminEarningsPage() {
               </table>
             </div>
           )}
-        </Section>
+        </section>
       </main>
     </>
   );
@@ -229,78 +234,13 @@ function HeroEarnings({
   );
 }
 
-function Section({
-  number,
-  title,
-  subtitle,
-  children,
-}: {
-  number: string;
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="space-y-5">
-      <div>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-xl font-semibold tabular-nums text-copper">
-            {number}
-          </span>
-          <span aria-hidden className="h-4 w-px bg-copper/40" />
-          <h2 className="font-display text-xl font-medium tracking-tight text-ink">
-            {title}
-          </h2>
-        </div>
-        {subtitle ? (
-          <p className="mt-1.5 max-w-2xl font-sans text-sm text-ink-muted">
-            {subtitle}
-          </p>
-        ) : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Tile({
-  label,
-  value,
-  hint,
-  tone = 'default',
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: 'default' | 'danger';
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-xl border bg-surface p-5',
-        tone === 'danger' ? 'border-danger/30' : 'border-border',
-      )}
-    >
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </p>
-      <p className="mt-3 font-mono text-3xl font-medium tabular-nums tracking-tight text-ink">
-        {value}
-      </p>
-      {hint ? (
-        <p className="mt-1 font-sans text-xs text-ink-muted">{hint}</p>
-      ) : null}
-    </div>
-  );
-}
-
 function EmptyProjects() {
   return (
-    <div className="rounded-xl border border-dashed border-border bg-surface/60 p-10 text-center">
+    <Card tone="dashed" rounded="lg" padding="xl" className="p-10 text-center">
       <p className="font-sans text-sm text-ink-muted">
         No projects with logged time yet. Open any project to set its hourly
         rate, then log hours to see profitability here.
       </p>
-    </div>
+    </Card>
   );
 }
