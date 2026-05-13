@@ -19,7 +19,7 @@ export default async function AdminSettingsPage({
 
   return (
     <>
-      <Topbar title="Settings" />
+      <Topbar />
 
       <main className="mx-auto w-full max-w-4xl px-6 pb-16 pt-10 md:px-10">
         <PageHeader

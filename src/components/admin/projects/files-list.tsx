@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { ProjectFile } from '@/lib/queries/admin';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { StatusPill } from '@/components/ui/status-pill';
@@ -318,35 +319,35 @@ export function FilesList({
                   </td>
                   <td className="py-3 pr-5 text-right">
                     <div className="inline-flex items-center gap-1">
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setPreviewId(f.id)}
-                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
                       >
                         Preview
-                      </button>
+                      </Button>
                       <a
                         href={`/api/admin/files/${f.id}/download`}
-                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+                        className={buttonVariants({ variant: 'ghost', size: 'sm' })}
                       >
                         Download
                       </a>
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => toggleVisible(f)}
                         disabled={pendingId === f.id}
-                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink disabled:opacity-50"
                       >
                         {f.isClientVisible ? 'Hide' : 'Reveal'}
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setConfirmingFile(f)}
                         disabled={pendingId === f.id}
-                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-danger/40 hover:text-danger disabled:opacity-50"
                       >
                         Delete
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>

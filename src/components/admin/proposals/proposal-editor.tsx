@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { ProposalContent, ProposalStatus } from '@/lib/types/proposal';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -640,9 +641,9 @@ function EditorForm({
           {(['phase_1', 'phase_2', 'phase_3'] as const).map((key, i) => {
             const phase = content.timeline[key];
             return (
-              <div
+              <Card
                 key={key}
-                className="rounded-xl border border-border bg-surface p-5"
+                padding="md"
               >
                 <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
                   Phase {i + 1} · {phase.name}
@@ -678,7 +679,7 @@ function EditorForm({
                     />
                   </Field>
                 </div>
-              </div>
+              </Card>
             );
           })}
           <div className="grid gap-4 sm:grid-cols-2">
@@ -1222,9 +1223,10 @@ function RepeatingList<T>({
   return (
     <div className="space-y-3">
       {items.map((item, i) => (
-        <div
+        <Card
           key={i}
-          className="flex items-start gap-3 rounded-xl border border-border bg-surface p-4"
+          padding="sm"
+          className="flex items-start gap-3"
         >
           <span className="mt-1.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-surface font-mono text-[11px] tabular-nums text-ink-subtle">
             {(i + 1).toString().padStart(2, '0')}
@@ -1254,7 +1256,7 @@ function RepeatingList<T>({
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
-        </div>
+        </Card>
       ))}
       <button
         type="button"

@@ -21,7 +21,7 @@ export default async function AdminEarningsPage() {
 
   return (
     <>
-      <Topbar title="Earnings" />
+      <Topbar />
 
       <main className="mx-auto w-full max-w-6xl space-y-12 px-6 pb-16 pt-10 md:px-10">
         <PageHeader

@@ -4,6 +4,7 @@ import { getSession } from '@/lib/supabase/session';
 import { getClientDashboard } from '@/lib/queries/client';
 import { ClientDashboardRefresher } from '@/components/realtime/client-dashboard-refresher';
 import { buttonVariants } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { StatusPill } from '@/components/ui/status-pill';
 import { cn } from '@/lib/utils';
@@ -213,7 +214,7 @@ function AgreementsTile({
   agreements: import('@/lib/queries/client').ClientDashboardAgreement[];
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface p-6">
+    <Card padding="lg" rounded="xl">
       <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         Agreements
       </p>
@@ -242,7 +243,7 @@ function AgreementsTile({
           );
         })}
       </ul>
-    </div>
+    </Card>
   );
 }
 
@@ -252,7 +253,7 @@ function ProposalsTile({
   proposals: import('@/lib/queries/client').ClientDashboardProposal[];
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface p-6">
+    <Card padding="lg" rounded="xl">
       <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         Proposals
       </p>
@@ -293,7 +294,7 @@ function ProposalsTile({
           </li>
         ))}
       </ul>
-    </div>
+    </Card>
   );
 }
 

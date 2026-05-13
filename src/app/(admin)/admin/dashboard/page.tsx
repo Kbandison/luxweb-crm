@@ -18,7 +18,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <>
-      <Topbar title="Dashboard" />
+      <Topbar />
       <AdminDashboardRefresher />
 
       <main className="mx-auto w-full max-w-6xl space-y-12 px-6 pb-16 pt-10 md:px-10">

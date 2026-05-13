@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { ClientFile } from '@/lib/queries/client';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/components/ui/toast';
@@ -277,30 +278,30 @@ export function ClientFilesList({
                       {f.uploadedByMe ? ' · By you' : null}
                     </p>
                   </button>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setPreviewId(f.id)}
-                    className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
                   >
                     Preview
-                  </button>
+                  </Button>
                   {f.previewUrl ? (
                     <a
                       href={f.previewUrl}
                       download
-                      className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+                      className={buttonVariants({ variant: 'ghost', size: 'sm' })}
                     >
                       Download
                     </a>
                   ) : null}
                   {f.uploadedByMe ? (
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setConfirming(f)}
-                      className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-danger/40 hover:text-danger"
                     >
                       Delete
-                    </button>
+                    </Button>
                   ) : null}
                 </li>
               ))}

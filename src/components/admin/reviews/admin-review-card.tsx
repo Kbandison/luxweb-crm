@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 import { StarInput, StarDisplay } from '@/components/reviews/star-input';
@@ -45,7 +46,7 @@ function ClientReviewBlock({ review }: { review: AdminReviewCardProps['review'] 
     );
   }
   return (
-    <div className="rounded-2xl border border-border bg-surface p-5">
+    <Card padding="md" rounded="xl">
       <div className="flex items-center justify-between gap-3">
         <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
           Client review
@@ -75,7 +76,7 @@ function ClientReviewBlock({ review }: { review: AdminReviewCardProps['review'] 
           </span>
         )}
       </p>
-    </div>
+    </Card>
   );
 }
 

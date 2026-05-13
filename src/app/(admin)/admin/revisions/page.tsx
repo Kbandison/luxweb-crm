@@ -15,7 +15,7 @@ export default async function AdminRevisionsQueuePage() {
 
   return (
     <>
-      <Topbar title="Revisions" />
+      <Topbar />
       <main className="mx-auto w-full max-w-6xl space-y-6 px-8 py-8">
         <PageHeader
           eyebrow="Workspace"

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TimeLog } from '@/lib/queries/admin';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -250,14 +251,14 @@ export function TimeLogsList({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
+    <Card padding="sm">
       <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         {label}
       </p>
       <p className="mt-2 font-mono text-2xl font-medium tabular-nums tracking-tight text-ink">
         {value}
       </p>
-    </div>
+    </Card>
   );
 }
 

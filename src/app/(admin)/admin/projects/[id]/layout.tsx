@@ -19,7 +19,7 @@ export default async function ProjectWorkspaceLayout({
 
   return (
     <>
-      <Topbar title={project.name} />
+      <Topbar />
       <ProjectHeader project={project} />
       <ProjectNav projectId={id} />
       <div className="min-h-0 flex-1 overflow-y-auto bg-bg">{children}</div>

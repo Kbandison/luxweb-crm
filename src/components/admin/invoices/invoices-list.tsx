@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { InvoiceRow } from '@/lib/queries/admin';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -222,7 +223,7 @@ function Stat({
   hint?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
+    <Card padding="md">
       <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         {label}
       </p>
@@ -232,7 +233,7 @@ function Stat({
       {hint ? (
         <p className="mt-1 font-sans text-xs text-ink-muted">{hint}</p>
       ) : null}
-    </div>
+    </Card>
   );
 }
 

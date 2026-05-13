@@ -31,7 +31,7 @@ export default async function AdminProposalPage({
 
   return (
     <>
-      <Topbar title={proposal.title} />
+      <Topbar />
       <main className="mx-auto w-full max-w-5xl px-8 py-8">
         <ProposalEditor
           proposalId={proposal.id}

@@ -31,7 +31,7 @@ export default async function AuditLogPage({
 
   return (
     <>
-      <Topbar title="Audit log" />
+      <Topbar />
 
       <main className="mx-auto w-full max-w-6xl space-y-6 px-6 py-8 md:px-10">
         <PageHeader

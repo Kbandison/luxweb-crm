@@ -21,6 +21,7 @@ import {
 import { SuccessModal } from '@/components/ui/success-modal';
 import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 export function InvoicePayment({
   clientSecret,
@@ -176,9 +177,10 @@ function PaymentForm({
           combination actually supports. On localhost, Google Pay works in
           Chrome; Apple Pay needs Safari + a verified domain in the Stripe
           dashboard (Settings → Payment methods → Apple Pay → Add domain). */}
-      <div
+      <Card
+        padding="sm"
         className={cn(
-          'rounded-xl border border-border bg-surface p-4 transition-opacity',
+          'transition-opacity',
           walletReady ? 'opacity-100' : 'pointer-events-none opacity-0',
         )}
         aria-hidden={!walletReady}
@@ -199,7 +201,7 @@ function PaymentForm({
             buttonType: { applePay: 'plain', googlePay: 'plain' },
           }}
         />
-      </div>
+      </Card>
 
       {walletReady ? (
         <div className="flex items-center gap-3">
@@ -211,7 +213,7 @@ function PaymentForm({
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-border bg-surface p-6">
+      <Card padding="lg">
         <div className="space-y-5">
           <Field label="Name on card">
             <input
@@ -249,7 +251,7 @@ function PaymentForm({
             </Field>
           </div>
         </div>
-      </div>
+      </Card>
 
       {error ? (
         <p

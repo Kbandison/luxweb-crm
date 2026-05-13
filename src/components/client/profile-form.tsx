@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
@@ -69,7 +70,7 @@ export function ClientProfileForm({
             Identity
           </h2>
         </div>
-        <div className="grid gap-4 rounded-xl border border-border bg-surface p-6 sm:grid-cols-2">
+        <Card padding="lg" className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="full_name">Full name</Label>
             <Input
@@ -87,7 +88,7 @@ export function ClientProfileForm({
               Contact the team to change your login email.
             </p>
           </div>
-        </div>
+        </Card>
       </section>
 
       {/* Notifications */}

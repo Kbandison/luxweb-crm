@@ -58,7 +58,7 @@ export default async function ClientDetailPage({
 
   return (
     <>
-      <Topbar title={client.fullName} />
+      <Topbar />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Sub-header / breadcrumb */}

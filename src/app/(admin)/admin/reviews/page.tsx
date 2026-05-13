@@ -23,7 +23,7 @@ export default async function AdminReviewsPage() {
 
   return (
     <>
-      <Topbar title="Reviews" />
+      <Topbar />
       <main className="mx-auto w-full max-w-6xl space-y-6 px-8 py-8">
         <PageHeader
           eyebrow="Workspace"

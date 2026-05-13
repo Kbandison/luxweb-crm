@@ -1,4 +1,5 @@
 import type { ProposalContent } from '@/lib/types/proposal';
+import { Card } from '@/components/ui/card';
 import { formatDateLong, formatDateTimeLongTz, formatUSD } from '@/lib/formatters';
 
 export type ProposalSignatureBlock = {
@@ -155,9 +156,9 @@ export function ProposalPreview({
           {(['phase_1', 'phase_2', 'phase_3'] as const).map((key, i) => {
             const phase = content.timeline[key];
             return (
-              <div
+              <Card
                 key={key}
-                className="rounded-xl border border-border bg-surface p-5"
+                padding="md"
               >
                 <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
                   Phase {i + 1}
@@ -175,7 +176,7 @@ export function ProposalPreview({
                     ))}
                   </ul>
                 ) : null}
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -189,7 +190,7 @@ export function ProposalPreview({
 
       {/* Investment */}
       <Section number="06" title="Investment">
-        <div className="rounded-2xl border border-border bg-surface p-8 print-avoid-break">
+        <Card padding="xl" rounded="xl" className="print-avoid-break">
           <div className="text-center">
             <p className="font-mono text-[10px] uppercase tracking-meta-hero text-copper">
               Total
@@ -236,7 +237,7 @@ export function ProposalPreview({
             Net {content.investment.net_days} · Late fee{' '}
             {content.investment.late_fee}
           </p>
-        </div>
+        </Card>
       </Section>
 
       {/* Assumptions */}
