@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { encryptSecret } from '@/lib/credentials/crypto';
 import { CREDENTIAL_KINDS } from '@/lib/types/credential';
+import { isSafeHttpUrl } from '@/lib/validation/url';
 
 export const runtime = 'nodejs';
 
@@ -13,7 +14,12 @@ const Schema = z
     kind: z.enum(CREDENTIAL_KINDS),
     label: z.string().min(1).max(200),
     username: z.string().max(500).nullable().optional(),
-    url: z.string().max(2000).nullable().optional(),
+    url: z
+      .string()
+      .max(2000)
+      .refine(isSafeHttpUrl, { message: 'URL must use http or https' })
+      .nullable()
+      .optional(),
     // Optional at the schema level — URL-kind credentials don't have one.
     secret: z.string().max(20000).optional(),
     notes: z.string().max(5000).nullable().optional(),
