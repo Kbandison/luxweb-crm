@@ -144,7 +144,7 @@ export default async function ClientProjectOverviewPage({
 
       {/* Milestones */}
       <section>
-        <SectionHead number="01" title="Milestones" />
+        <SectionHead title="Milestones" />
 
         {project.milestones.length === 0 ? (
           <div className="mt-5 rounded-xl border border-dashed border-border bg-surface/60 p-8 text-center">
@@ -182,7 +182,7 @@ export default async function ClientProjectOverviewPage({
                       </span>
                     </div>
                     {m.description ? (
-                      <p className="mt-1 whitespace-pre-wrap font-sans text-xs leading-relaxed text-ink-muted">
+                      <p className="mt-1 whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink-muted">
                         {m.description}
                       </p>
                     ) : null}

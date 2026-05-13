@@ -106,7 +106,7 @@ export default async function InvoicePayPage({
           <p className="font-mono text-[10px] uppercase tracking-meta-hero text-copper">
             Invoice
           </p>
-          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
+          <h1 className="font-display text-2xl font-medium tracking-tight text-ink md:text-3xl">
             {invoice.description ?? 'Invoice'}
           </h1>
           <p className="font-sans text-sm text-ink-muted">
@@ -141,7 +141,7 @@ function PaymentUnavailable({ reason }: { reason: string }) {
         <p className="font-mono text-[10px] uppercase tracking-meta-hero text-copper">
           Invoice
         </p>
-        <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
+        <h1 className="font-display text-2xl font-medium tracking-tight text-ink md:text-3xl">
           Payment not available
         </h1>
         <p className="font-sans text-sm text-ink-muted">{reason}</p>

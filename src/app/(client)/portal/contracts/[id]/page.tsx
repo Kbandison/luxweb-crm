@@ -7,6 +7,7 @@ import {
   ClientContractActions,
   PrintBar,
 } from '@/components/client/contract-actions';
+import { SectionHead } from '@/components/ui/section-head';
 
 export default async function ClientContractPage({
   params,
@@ -35,10 +36,8 @@ export default async function ClientContractPage({
         <ContractBody body={contract.bodyMd} />
       </article>
 
-      <section className="space-y-3">
-        <h2 className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-muted">
-          Signatures
-        </h2>
+      <section className="space-y-4">
+        <SectionHead title="Signatures" />
         <SignaturePair
           adminSignerName={contract.adminSignedName}
           adminSignedAt={contract.adminSignedAt}

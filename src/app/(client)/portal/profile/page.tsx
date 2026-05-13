@@ -12,9 +12,8 @@ export default async function ClientProfilePage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-10 md:px-10 md:py-14">
       <PageHeader
-        eyebrow="Your account"
         title="Profile"
-        description="Manage your name and which events notify you by email."
+        description="Manage your account details and email preferences."
         className="mb-10"
       />
 

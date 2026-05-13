@@ -8,6 +8,7 @@ import {
 import { reconcileInvoicePaid } from '@/lib/reconcile-invoice';
 import { StatCard } from '@/components/ui/stat-card';
 import { SectionHead } from '@/components/ui/section-head';
+import { buttonVariants } from '@/components/ui/button';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import {
   INVOICE_STATUS_LABEL,
@@ -49,7 +50,7 @@ export default async function ClientProjectInvoicesPage({
   return (
     <main className="space-y-8 px-6 py-10 md:px-10">
       {/* Page heading */}
-      <SectionHead number="01" title="Invoices" />
+      <SectionHead title="Invoices" />
 
       {/* Summary */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -176,22 +177,9 @@ function InvoiceSection({
                   {inv.status === 'sent' || inv.status === 'overdue' ? (
                     <Link
                       href={`/portal/project/${projectId}/invoices/${inv.id}/pay`}
-                      className="inline-flex items-center gap-1 rounded-md bg-copper px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta text-copper-foreground transition-colors hover:bg-copper/90"
+                      className={buttonVariants({ variant: 'primary', size: 'sm' })}
                     >
-                      Pay
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="h-3 w-3"
-                        aria-hidden
-                      >
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                        <polyline points="12 5 19 12 12 19" />
-                      </svg>
+                      Pay →
                     </Link>
                   ) : inv.status === 'paid' && inv.hostedInvoiceUrl ? (
                     <a

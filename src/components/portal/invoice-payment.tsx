@@ -20,6 +20,7 @@ import {
 } from '@stripe/react-stripe-js';
 import { SuccessModal } from '@/components/ui/success-modal';
 import { useToast } from '@/components/ui/toast';
+import { Button } from '@/components/ui/button';
 
 export function InvoicePayment({
   clientSecret,
@@ -266,13 +267,14 @@ function PaymentForm({
         >
           ← Cancel
         </Link>
-        <button
+        <Button
           type="submit"
+          variant="primary"
+          size="lg"
           disabled={!stripe || submitting}
-          className="inline-flex items-center gap-2 rounded-md bg-copper px-5 py-2.5 font-mono text-[11px] uppercase tracking-meta text-copper-foreground transition-colors hover:bg-copper/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Processing…' : 'Pay invoice'}
-        </button>
+        </Button>
       </div>
 
       <p className="text-center font-mono text-[10px] uppercase tracking-meta text-ink-subtle">

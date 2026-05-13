@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/supabase/session';
 import { getClientDashboard } from '@/lib/queries/client';
 import { ClientDashboardRefresher } from '@/components/realtime/client-dashboard-refresher';
+import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 import {
@@ -173,7 +174,7 @@ function PendingProposalsFocus({
         <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
           {awaiting.length > 0 ? 'Awaiting your review' : 'Proposals'}
         </p>
-        <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-ink md:text-5xl">
+        <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-ink md:text-4xl">
           {primary.title}
         </h2>
         {primary.totalCents != null ? (
@@ -448,7 +449,7 @@ function UnpaidInvoices({
     <section className="rounded-2xl border border-border bg-surface p-6">
       <div className="flex items-baseline justify-between">
         <div>
-          <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-copper">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
             Currently due
           </p>
           <p className="mt-2 font-mono text-3xl font-medium tabular-nums tracking-tight text-ink">
@@ -494,22 +495,9 @@ function UnpaidInvoices({
                 {inv.projectId ? (
                   <Link
                     href={`/portal/project/${inv.projectId}/invoices/${inv.id}/pay`}
-                    className="inline-flex items-center gap-1 rounded-md bg-copper px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta text-copper-foreground transition-colors hover:bg-copper/90"
+                    className={buttonVariants({ variant: 'primary', size: 'sm' })}
                   >
-                    Pay
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-3 w-3"
-                      aria-hidden
-                    >
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
+                    Pay →
                   </Link>
                 ) : null}
               </div>
@@ -544,7 +532,7 @@ function OtherProjects({
       </p>
       {projects.length === 0 ? (
         <p className="mt-3 font-sans text-sm text-ink-muted">
-          No other projects — the one above is your current engagement.
+          Past projects will appear here when you have more.
         </p>
       ) : (
         <ul className="mt-3 space-y-2">

@@ -54,7 +54,7 @@ export default async function ClientProjectAgreementPage({
   return (
     <main className="space-y-10 px-6 py-10 md:px-10">
       <section>
-        <SectionHead number="01" title={`Proposals · ${proposals.length}`} />
+        <SectionHead number="01" title="Proposals" />
         {proposals.length === 0 ? (
           <Empty
             label="No proposal shared with you yet."
@@ -108,7 +108,7 @@ export default async function ClientProjectAgreementPage({
       </section>
 
       <section>
-        <SectionHead number="02" title={`Contract · ${contracts.length}`} />
+        <SectionHead number="02" title="Contract" />
         {contracts.length === 0 ? (
           <Empty
             label="Your development agreement will appear here once the proposal is accepted."
