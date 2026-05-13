@@ -30,6 +30,20 @@ type ProjectHit = {
   contact_name: string;
 };
 
+type ProposalHit = {
+  id: string;
+  title: string;
+  project_id: string | null;
+  contact_name: string;
+};
+
+type DealHit = {
+  id: string;
+  name: string;
+  stage: string;
+  contact_name: string;
+};
+
 function sanitize(input: string): string {
   // Same shape as the helper in lib/queries/admin.ts — mirrored here so this
   // route doesn't import server-side query helpers that pull in larger trees.
@@ -56,28 +70,46 @@ export async function GET(req: Request) {
     // those are CLIENTS, anything else with a match is a LEAD.
     // We over-fetch contacts (LIMIT * 2) so we still have ~5 of each bucket
     // even when the matches are heavily skewed.
-    const [contactsRes, projectsRes, signedDealsRes, anyProjectsRes] =
-      await Promise.all([
-        sb
-          .from('contacts')
-          .select('id, full_name, company')
-          .or(
-            `full_name.ilike.%${term}%,email.ilike.%${term}%,company.ilike.%${term}%`,
-          )
-          .order('created_at', { ascending: false })
-          .limit(LIMIT * 4),
-        sb
-          .from('projects')
-          .select('id, name, contacts!inner(full_name)')
-          .ilike('name', `%${term}%`)
-          .order('created_at', { ascending: false })
-          .limit(LIMIT),
-        sb
-          .from('deals')
-          .select('contact_id')
-          .in('stage', ['active', 'completed', 'retainer']),
-        sb.from('projects').select('contact_id'),
-      ]);
+    const [
+      contactsRes,
+      projectsRes,
+      proposalsRes,
+      dealsRes,
+      signedDealsRes,
+      anyProjectsRes,
+    ] = await Promise.all([
+      sb
+        .from('contacts')
+        .select('id, full_name, company')
+        .or(
+          `full_name.ilike.%${term}%,email.ilike.%${term}%,company.ilike.%${term}%`,
+        )
+        .order('created_at', { ascending: false })
+        .limit(LIMIT * 4),
+      sb
+        .from('projects')
+        .select('id, name, contacts!inner(full_name)')
+        .ilike('name', `%${term}%`)
+        .order('created_at', { ascending: false })
+        .limit(LIMIT),
+      sb
+        .from('proposals')
+        .select('id, title, project_id, contacts!inner(full_name)')
+        .ilike('title', `%${term}%`)
+        .order('created_at', { ascending: false })
+        .limit(LIMIT),
+      sb
+        .from('deals')
+        .select('id, name, stage, contacts!inner(full_name)')
+        .ilike('name', `%${term}%`)
+        .order('created_at', { ascending: false })
+        .limit(LIMIT),
+      sb
+        .from('deals')
+        .select('contact_id')
+        .in('stage', ['active', 'completed', 'retainer']),
+      sb.from('projects').select('contact_id'),
+    ]);
 
     const signedIds = new Set<string>([
       ...((signedDealsRes.data ?? []) as { contact_id: string }[]).map(
@@ -127,11 +159,51 @@ export async function GET(req: Request) {
       };
     });
 
-    return Response.json({ clients, leads, projects });
+    type ProposalRow = {
+      id: string;
+      title: string;
+      project_id: string | null;
+      contacts:
+        | { full_name: string }
+        | { full_name: string }[]
+        | null;
+    };
+    const proposalRows = (proposalsRes.data ?? []) as unknown as ProposalRow[];
+    const proposals: ProposalHit[] = proposalRows.map((r) => {
+      const c = flattenJoin(r.contacts);
+      return {
+        id: r.id,
+        title: r.title,
+        project_id: r.project_id,
+        contact_name: c?.full_name ?? '—',
+      };
+    });
+
+    type DealRow = {
+      id: string;
+      name: string;
+      stage: string;
+      contacts:
+        | { full_name: string }
+        | { full_name: string }[]
+        | null;
+    };
+    const dealRows = (dealsRes.data ?? []) as unknown as DealRow[];
+    const deals: DealHit[] = dealRows.map((r) => {
+      const c = flattenJoin(r.contacts);
+      return {
+        id: r.id,
+        name: r.name,
+        stage: r.stage,
+        contact_name: c?.full_name ?? '—',
+      };
+    });
+
+    return Response.json({ clients, leads, projects, proposals, deals });
   } catch (err) {
     if (err instanceof Response) return err;
     return Response.json(
-      { clients: [], leads: [], projects: [], error: 'Unexpected error' },
+      { clients: [], leads: [], projects: [], proposals: [], deals: [], error: 'Unexpected error' },
       { status: 500 },
     );
   }

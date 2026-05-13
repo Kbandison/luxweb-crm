@@ -4,6 +4,47 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ACTIONS, ENTITY_TYPES } from '@/lib/audit-meta';
+import { cn } from '@/lib/utils';
+
+function isoDateDaysAgo(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+type Preset = {
+  key: string;
+  label: string;
+  params: () => Record<string, string>;
+};
+
+const PRESETS: readonly Preset[] = [
+  {
+    key: 'today',
+    label: 'Today',
+    params: () => ({ from: new Date().toISOString().slice(0, 10) }),
+  },
+  {
+    key: 'week',
+    label: 'Last 7 days',
+    params: () => ({ from: isoDateDaysAgo(7) }),
+  },
+  {
+    key: 'month',
+    label: 'Last 30 days',
+    params: () => ({ from: isoDateDaysAgo(30) }),
+  },
+  {
+    key: 'deletes',
+    label: 'Deletions',
+    params: () => ({ action: 'delete' }),
+  },
+  {
+    key: 'sends',
+    label: 'Outbound (sent/accept)',
+    params: () => ({ action: 'send' }),
+  },
+];
 
 export function AuditFilters() {
   const router = useRouter();
@@ -16,6 +57,19 @@ export function AuditFilters() {
     from: sp.get('from') ?? '',
     to: sp.get('to') ?? '',
   };
+
+  function applyPreset(p: Preset) {
+    const next = new URLSearchParams(p.params());
+    router.push(next.toString() ? `/admin/audit?${next.toString()}` : '/admin/audit');
+  }
+
+  // A preset is "active" when its target params exactly match current state.
+  function isPresetActive(p: Preset): boolean {
+    const target = p.params();
+    return Object.entries(target).every(
+      ([k, v]) => (sp.get(k) ?? '') === v,
+    );
+  }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,6 +95,32 @@ export function AuditFilters() {
   const hasFilters = Object.values(current).some((v) => v !== '');
 
   return (
+    <div className="space-y-3">
+      {/* Quick preset chips */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+          Quick filter:
+        </span>
+        {PRESETS.map((p) => {
+          const active = isPresetActive(p);
+          return (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => applyPreset(p)}
+              className={cn(
+                'rounded-full border px-3 py-1 font-mono text-[10px] uppercase tracking-meta transition-colors',
+                active
+                  ? 'border-copper bg-copper-soft/60 text-copper'
+                  : 'border-border bg-surface text-ink-muted hover:border-border-strong hover:text-ink',
+              )}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+
     <form
       onSubmit={onSubmit}
       className="grid gap-4 rounded-xl border border-border bg-surface p-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
@@ -110,5 +190,6 @@ export function AuditFilters() {
         ) : null}
       </div>
     </form>
+    </div>
   );
 }

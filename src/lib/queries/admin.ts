@@ -894,6 +894,7 @@ export type ProjectDetail = {
   contactCompany: string | null;
   dealId: string | null;
   createdAt: string;
+  archivedAt: string | null;
 };
 
 export type Milestone = {
@@ -1019,7 +1020,7 @@ export async function getProjectDetail(
     const { data } = await supabaseAdmin()
       .from('projects')
       .select(
-        'id, name, status, start_date, end_date, budget_cents, profitability_cents, contact_id, deal_id, created_at, contacts!inner(full_name, company)',
+        'id, name, status, start_date, end_date, budget_cents, profitability_cents, contact_id, deal_id, created_at, archived_at, contacts!inner(full_name, company)',
       )
       .eq('id', id)
       .single();
@@ -1036,6 +1037,7 @@ export async function getProjectDetail(
       contact_id: string;
       deal_id: string | null;
       created_at: string;
+      archived_at: string | null;
       contacts:
         | { full_name: string; company: string | null }
         | { full_name: string; company: string | null }[];
@@ -1056,6 +1058,7 @@ export async function getProjectDetail(
       contactCompany: c?.company ?? null,
       dealId: r.deal_id,
       createdAt: r.created_at,
+      archivedAt: r.archived_at ?? null,
     };
   } catch {
     return null;
@@ -1481,6 +1484,32 @@ export async function getContactActivity(
   contactId: string,
 ): Promise<ClientActivity[]> {
   return fetchActivityForContact(contactId);
+}
+
+export type TagUsage = {
+  tag: string;
+  count: number;
+};
+
+/** Aggregate distinct tags + usage counts across all contacts. */
+export async function getAllTags(): Promise<TagUsage[]> {
+  try {
+    const { data } = await supabaseAdmin().from('contacts').select('tags');
+    type Row = { tags: string[] | null };
+    const rows = (data ?? []) as Row[];
+    const counts = new Map<string, number>();
+    for (const r of rows) {
+      for (const t of r.tags ?? []) {
+        if (!t) continue;
+        counts.set(t, (counts.get(t) ?? 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+  } catch {
+    return [];
+  }
 }
 
 async function fetchActivityForContact(

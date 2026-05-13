@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ProjectDetail } from '@/lib/queries/admin';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import { ProjectStatusEditor } from './project-status-editor';
+import { ArchiveProjectButton } from './archive-project-button';
 
 export function ProjectHeader({ project }: { project: ProjectDetail }) {
   const budgetLabel =
@@ -62,7 +63,20 @@ export function ProjectHeader({ project }: { project: ProjectDetail }) {
                 {formatDate(project.endDate)}
               </span>
             ) : null}
+            {project.archivedAt ? (
+              <span className="rounded-full border border-ink-subtle/30 bg-ink-subtle/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+                Archived
+              </span>
+            ) : null}
           </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {project.status === 'completed' || project.archivedAt ? (
+            <ArchiveProjectButton
+              projectId={project.id}
+              archived={!!project.archivedAt}
+            />
+          ) : null}
         </div>
       </div>
     </header>

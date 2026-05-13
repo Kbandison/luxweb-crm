@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
  * Types
  * ------------------------------------------------------------------------- */
 
-type CommandType = 'nav' | 'action' | 'client' | 'lead' | 'project';
+type CommandType = 'nav' | 'action' | 'client' | 'lead' | 'project' | 'proposal' | 'deal';
 
 type CommandItem = {
   id: string;
@@ -22,6 +22,13 @@ type SearchResponse = {
   clients: { id: string; full_name: string; company: string | null }[];
   leads: { id: string; full_name: string; company: string | null }[];
   projects: { id: string; name: string; contact_name: string }[];
+  proposals?: {
+    id: string;
+    title: string;
+    project_id: string | null;
+    contact_name: string;
+  }[];
+  deals?: { id: string; name: string; stage: string; contact_name: string }[];
 };
 
 /* -------------------------------------------------------------------------
@@ -68,6 +75,10 @@ function groupLabel(type: CommandType): string {
       return 'Lead';
     case 'project':
       return 'Project';
+    case 'proposal':
+      return 'Proposal';
+    case 'deal':
+      return 'Deal';
   }
 }
 
@@ -82,8 +93,12 @@ function groupOrder(type: CommandType): number {
       return 2;
     case 'project':
       return 3;
-    case 'lead':
+    case 'proposal':
       return 4;
+    case 'deal':
+      return 5;
+    case 'lead':
+      return 6;
   }
 }
 
@@ -99,6 +114,10 @@ function groupHeading(type: CommandType): string {
       return 'Leads';
     case 'project':
       return 'Projects';
+    case 'proposal':
+      return 'Proposals';
+    case 'deal':
+      return 'Deals';
   }
 }
 
@@ -149,6 +168,23 @@ function ItemIcon({ type }: { type: CommandType }) {
         <svg {...common}>
           <rect x="2" y="7" width="20" height="14" rx="2" />
           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+        </svg>
+      );
+    case 'proposal':
+      return (
+        <svg {...common}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="9" y1="13" x2="15" y2="13" />
+          <line x1="9" y1="17" x2="15" y2="17" />
+        </svg>
+      );
+    case 'deal':
+      return (
+        <svg {...common}>
+          <path d="M6 5v11" />
+          <path d="M12 5v6" />
+          <path d="M18 5v14" />
         </svg>
       );
   }
@@ -312,6 +348,26 @@ export function CommandPalette() {
           label: p.name,
           hint: p.contact_name,
           href: `/admin/projects/${p.id}`,
+        });
+      }
+      for (const pr of results.proposals ?? []) {
+        searchItems.push({
+          id: `proposal-${pr.id}`,
+          type: 'proposal',
+          label: pr.title,
+          hint: pr.contact_name,
+          href: pr.project_id
+            ? `/admin/projects/${pr.project_id}/proposals/${pr.id}`
+            : `/admin/proposals/${pr.id}`,
+        });
+      }
+      for (const d of results.deals ?? []) {
+        searchItems.push({
+          id: `deal-${d.id}`,
+          type: 'deal',
+          label: d.name,
+          hint: `${d.contact_name} · ${d.stage}`,
+          href: `/admin/pipeline?deal=${d.id}`,
         });
       }
     }
