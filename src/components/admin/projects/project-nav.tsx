@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
+const ACTIVE_TAB_ATTR = 'data-active';
+
 type Tab = {
   slug: string;
   label: string;
@@ -66,9 +68,29 @@ export function ProjectNav({ projectId }: { projectId: string }) {
     setOpen(false);
   }, [pathname]);
 
+  // Scroll the active tab into view if the nav has horizontal overflow.
+  // Without this, the active tab can be off-screen when the route changes
+  // and the user sees a row that looks like nothing is selected.
+  const scrollerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const active = scroller.querySelector<HTMLElement>(`[${ACTIVE_TAB_ATTR}]`);
+    if (active) {
+      active.scrollIntoView({
+        behavior: 'instant',
+        block: 'nearest',
+        inline: 'center',
+      });
+    }
+  }, [pathname]);
+
   return (
     <div className="relative border-b border-border bg-surface print:hidden">
-      <nav className="flex items-end gap-1 overflow-x-auto px-8">
+      <nav
+        ref={scrollerRef}
+        className="flex items-end gap-1 overflow-x-auto px-8"
+      >
         {primaryTabs.map((t) => {
           const href = t.slug ? `${base}/${t.slug}` : base;
           const isActive = t.slug
@@ -78,6 +100,7 @@ export function ProjectNav({ projectId }: { projectId: string }) {
             <Link
               key={t.slug || 'overview'}
               href={href}
+              {...(isActive ? { [ACTIVE_TAB_ATTR]: 'true' } : {})}
               className={cn(
                 '-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 font-sans text-sm font-medium transition-colors',
                 isActive

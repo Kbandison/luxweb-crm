@@ -166,7 +166,14 @@ function HeroEarnings({
         </div>
 
         <div className="mt-6 flex items-baseline gap-4">
-          <span className="font-mono text-7xl font-medium leading-none tracking-tight tabular-nums text-ink md:text-8xl">
+          <span
+            className={cn(
+              'font-mono font-medium leading-none tracking-tight tabular-nums text-ink',
+              thisMonthCents === 0
+                ? 'text-4xl md:text-5xl text-ink-muted'
+                : 'text-7xl md:text-8xl',
+            )}
+          >
             {formatUSD(thisMonthCents)}
           </span>
           {deltaPct != null ? (

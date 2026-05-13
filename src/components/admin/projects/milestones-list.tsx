@@ -184,13 +184,10 @@ export function MilestonesList({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header — title comes from the page; only the meta + actions live here */}
       <div className="flex items-baseline justify-between gap-3">
         <div>
-          <h3 className="font-display text-lg font-medium tracking-tight text-ink">
-            Milestones
-          </h3>
-          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted">
+          <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
             {done}/{total} done
           </p>
         </div>
