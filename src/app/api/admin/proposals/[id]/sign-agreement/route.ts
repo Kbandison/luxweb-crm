@@ -81,10 +81,15 @@ export async function POST(
       );
     }
 
+    // Block re-signing only when an ACTIVE contract already exists.
+    // Voided contracts stay in the DB for audit history but don't
+    // count as live — admin can generate a fresh contract after a void.
     const { data: existing } = await sb
       .from('contracts')
       .select('id, status')
       .eq('proposal_id', id)
+      .neq('status', 'void')
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (existing) {
