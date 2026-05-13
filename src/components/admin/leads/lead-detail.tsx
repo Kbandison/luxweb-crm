@@ -58,10 +58,20 @@ export function LeadDetail({
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <LeadScore score={lead.leadScore} size="md" />
               {lead.userId ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-success">
-                  <span className="h-1 w-1 rounded-full bg-success" aria-hidden />
-                  Portal access
-                </span>
+                <>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-success">
+                    <span className="h-1 w-1 rounded-full bg-success" aria-hidden />
+                    Portal access
+                  </span>
+                  {/* The pill says "has access" but the auth user may still
+                      be pending acceptance. Resend handles that case. */}
+                  <InviteToPortalButton
+                    contactId={lead.id}
+                    contactEmail={lead.email}
+                    contactName={lead.fullName}
+                    mode="resend"
+                  />
+                </>
               ) : (
                 <InviteToPortalButton
                   contactId={lead.id}

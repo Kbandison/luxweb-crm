@@ -42,11 +42,32 @@ export async function POST(
         { status: 400 },
       );
     }
+
+    const sb = supabaseAdmin();
+
+    // If contact.user_id is already set, decide whether to treat this as
+    // a re-send of a pending invite (auth user provisioned but never
+    // accepted) or a 409 (active user with portal access). Without this
+    // branch the route locks the admin out of resending a botched first
+    // attempt — e.g., the React-render email failure from earlier.
+    let isResend = false;
     if (contact.user_id) {
-      return Response.json(
-        { error: 'This contact already has portal access.' },
-        { status: 409 },
+      const { data: authData } = await sb.auth.admin.getUserById(
+        contact.user_id as string,
       );
+      const authUser = authData?.user as
+        | { email_confirmed_at?: string | null; last_sign_in_at?: string | null }
+        | undefined;
+      const accepted = Boolean(
+        authUser?.email_confirmed_at || authUser?.last_sign_in_at,
+      );
+      if (accepted) {
+        return Response.json(
+          { error: 'This contact already has portal access.' },
+          { status: 409 },
+        );
+      }
+      isResend = true;
     }
 
     // Build the redirect URL. Falls back to localhost when dev.
@@ -55,12 +76,13 @@ export async function POST(
       process.env.NEXT_PUBLIC_APP_URL ??
       'http://localhost:3000';
 
-    // generateLink({type:'invite'}) provisions the auth user (firing the
-    // handle_new_user trigger that backfills crm.users + links the
-    // contact) and returns the action_link without sending Supabase's
-    // default email. We then send the branded email ourselves.
-    const { data, error } = await supabaseAdmin().auth.admin.generateLink({
-      type: 'invite',
+    // For first-time invites we use generateLink({type:'invite'}) so the
+    // handle_new_user trigger fires and links the contact. For a resend
+    // (auth user already exists) generateLink('invite') would 422 with
+    // "user already exists" — switch to magiclink, which any auth user
+    // can consume to set up their session.
+    const { data, error } = await sb.auth.admin.generateLink({
+      type: isResend ? 'magiclink' : 'invite',
       email: contact.email as string,
       options: {
         data: { full_name: contact.full_name ?? '' },
@@ -95,10 +117,11 @@ export async function POST(
       diff: {
         email: contact.email,
         new_user_id: newUserId,
+        resend: isResend,
       },
     });
 
-    return Response.json({ ok: true, user_id: newUserId });
+    return Response.json({ ok: true, user_id: newUserId, resend: isResend });
   } catch (err) {
     if (err instanceof Response) return err;
     return safeError('admin/contacts/[id]/invite', err);
