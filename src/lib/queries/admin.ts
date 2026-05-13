@@ -1863,9 +1863,13 @@ export async function getProjectContracts(
 }
 
 /**
- * Look up the contract row that was generated from this proposal, if any.
- * Used by the proposal editor to decide whether to show "Sign agreement"
- * (no contract yet) or "View agreement" (already counter-signed).
+ * Look up the ACTIVE (non-void) contract row that was generated from this
+ * proposal, if any. Used by the proposal editor to decide whether to show
+ * "Sign agreement" (no active contract yet — or the last one was voided)
+ * or "View agreement" (already counter-signed and live).
+ *
+ * Void contracts are preserved in the DB for audit history but are
+ * intentionally ignored here so admin can regenerate after a void.
  */
 export async function getContractByProposalId(
   proposalId: string,
@@ -1875,6 +1879,8 @@ export async function getContractByProposalId(
       .from('contracts')
       .select('id, project_id, status')
       .eq('proposal_id', proposalId)
+      .neq('status', 'void')
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (!data) return null;
