@@ -1,6 +1,7 @@
 'use client';
-import { useEffect } from 'react';
+import { useId } from 'react';
 import type { ProjectFile } from '@/lib/queries/admin';
+import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 type Kind = 'image' | 'pdf' | 'video' | 'audio' | 'text' | 'other';
@@ -12,18 +13,7 @@ export function FilePreview({
   file: ProjectFile;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
-    };
-  }, [onClose]);
-
+  const headingId = useId();
   const kind = kindFor(file.contentType, file.fileName);
   // Prefer the pre-signed URL generated at page load (direct to Supabase —
   // no redirect). Fall back to our API if signing failed server-side.
@@ -32,13 +22,17 @@ export function FilePreview({
   const downloadSrc = `/api/admin/files/${file.id}/download`;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 backdrop-blur-sm p-4 md:p-8"
-      onClick={onClose}
+    <Dialog
+      open
+      onClose={onClose}
+      labelledBy={headingId}
+      closeOnBackdropClick
+      closeOnEscape
+      className="bg-ink/60 backdrop-blur-sm md:p-8"
+      panelClassName="w-full max-w-5xl"
     >
       <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_32px_80px_-20px_rgba(0,0,0,0.4)]"
+        className="relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_32px_80px_-20px_rgba(0,0,0,0.4)]"
       >
         {/* Header */}
         <header className="relative isolate flex items-center justify-between gap-3 overflow-hidden border-b border-border px-6 py-4">
@@ -50,7 +44,10 @@ export function FilePreview({
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
               Preview
             </p>
-            <h2 className="mt-0.5 truncate font-display text-lg font-medium tracking-tight text-ink">
+            <h2
+              id={headingId}
+              className="mt-0.5 truncate font-display text-lg font-medium tracking-tight text-ink"
+            >
               {file.fileName}
             </h2>
             <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
@@ -173,7 +170,7 @@ export function FilePreview({
           ) : null}
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 

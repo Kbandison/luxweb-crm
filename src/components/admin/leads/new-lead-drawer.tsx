@@ -1,7 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Drawer } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
@@ -9,6 +10,8 @@ import { useToast } from '@/components/ui/toast';
 export function NewLeadDrawer() {
   const router = useRouter();
   const toast = useToast();
+  const headingId = useId();
+  const firstFieldRef = useRef<HTMLInputElement | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,13 +24,12 @@ export function NewLeadDrawer() {
   const [tagsInput, setTagsInput] = useState('');
   const [leadScore, setLeadScore] = useState<string>('0');
 
+  // Override Dialog's default autofocus (close button is first focusable
+  // in DOM) so the form's first field gets focus instead.
   useEffect(() => {
     if (!open) return;
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('keydown', onEsc);
-    return () => document.removeEventListener('keydown', onEsc);
+    const id = window.setTimeout(() => firstFieldRef.current?.focus(), 0);
+    return () => window.clearTimeout(id);
   }, [open]);
 
   function reset() {
@@ -113,21 +115,12 @@ export function NewLeadDrawer() {
         New lead
       </Button>
 
-      {/* Backdrop */}
-      {open ? (
-        <div
-          className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-sm transition-opacity"
-          onClick={() => setOpen(false)}
-          aria-hidden
-        />
-      ) : null}
-
-      {/* Drawer */}
-      <aside
-        aria-hidden={!open}
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md transform flex-col border-l border-border bg-surface shadow-2xl transition-transform duration-300 ease-out ${
-          open ? 'translate-x-0' : 'translate-x-full'
-        }`}
+      <Drawer
+        open={open}
+        onClose={() => setOpen(false)}
+        side="right"
+        width="md"
+        labelledBy={headingId}
       >
         <header className="relative isolate overflow-hidden border-b border-border px-6 pb-5 pt-6">
           <div
@@ -143,7 +136,10 @@ export function NewLeadDrawer() {
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
                 New lead
               </p>
-              <h2 className="mt-1 font-display text-2xl font-medium tracking-tight text-ink">
+              <h2
+                id={headingId}
+                className="mt-1 font-display text-2xl font-medium tracking-tight text-ink"
+              >
                 Add a contact
               </h2>
             </div>
@@ -178,6 +174,7 @@ export function NewLeadDrawer() {
             <div className="space-y-1.5">
               <Label htmlFor="full_name">Full name</Label>
               <Input
+                ref={firstFieldRef}
                 id="full_name"
                 required
                 maxLength={200}
@@ -276,7 +273,7 @@ export function NewLeadDrawer() {
             </Button>
           </footer>
         </form>
-      </aside>
+      </Drawer>
     </>
   );
 }

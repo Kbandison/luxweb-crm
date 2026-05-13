@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { InvoiceRow } from '@/lib/queries/admin';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -180,7 +181,7 @@ export function InvoicesList({
         </div>
       )}
 
-      <NewInvoiceDrawer
+      <NewInvoiceDialog
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         projectId={projectId}
@@ -236,9 +237,9 @@ function Stat({
 }
 
 /* -------------------------------------------------------------------------
- * New invoice drawer
+ * New invoice dialog
  * ------------------------------------------------------------------------- */
-function NewInvoiceDrawer({
+function NewInvoiceDialog({
   open,
   onClose,
   projectId,
@@ -249,6 +250,8 @@ function NewInvoiceDrawer({
 }) {
   const router = useRouter();
   const toast = useToast();
+  const headingId = useId();
+  const firstFieldRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -256,14 +259,13 @@ function NewInvoiceDrawer({
   const [amountDollars, setAmountDollars] = useState('');
   const [daysUntilDue, setDaysUntilDue] = useState('14');
 
+  // Override Dialog's default autofocus (close button is first focusable
+  // in DOM) so the form's first field gets focus instead.
   useEffect(() => {
     if (!open) return;
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !busy) onClose();
-    }
-    document.addEventListener('keydown', onEsc);
-    return () => document.removeEventListener('keydown', onEsc);
-  }, [open, busy, onClose]);
+    const id = window.setTimeout(() => firstFieldRef.current?.focus(), 0);
+    return () => window.clearTimeout(id);
+  }, [open]);
 
   function reset() {
     setDescription('');
@@ -309,22 +311,16 @@ function NewInvoiceDrawer({
   }
 
   return (
-    <>
-      {open ? (
-        <div
-          className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-sm"
-          onClick={!busy ? onClose : undefined}
-          aria-hidden
-        />
-      ) : null}
-
-      <aside
-        aria-hidden={!open}
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md transform flex-col border-l border-border bg-surface shadow-2xl transition-transform duration-300 ease-out ${
-          open ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        <header className="relative isolate overflow-hidden border-b border-border px-6 pb-5 pt-6">
+    <Dialog
+      open={open}
+      onClose={busy ? () => {} : onClose}
+      labelledBy={headingId}
+      closeOnBackdropClick={!busy}
+      closeOnEscape={!busy}
+      panelClassName="w-full max-w-lg"
+    >
+      <div className="relative flex max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_32px_80px_-20px_rgba(0,0,0,0.4)]">
+        <header className="relative isolate shrink-0 overflow-hidden border-b border-border px-6 pb-5 pt-6">
           <div
             aria-hidden
             className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-gradient-to-br from-copper/20 via-gold/10 to-transparent blur-2xl"
@@ -338,7 +334,10 @@ function NewInvoiceDrawer({
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
                 New invoice
               </p>
-              <h2 className="mt-1 font-display text-2xl font-medium tracking-tight text-ink">
+              <h2
+                id={headingId}
+                className="mt-1 font-display text-2xl font-medium tracking-tight text-ink"
+              >
                 Bill the client
               </h2>
             </div>
@@ -370,6 +369,7 @@ function NewInvoiceDrawer({
             <div className="space-y-1.5">
               <Label htmlFor="inv_description">Description</Label>
               <Input
+                ref={firstFieldRef}
                 id="inv_description"
                 required
                 maxLength={500}
@@ -447,7 +447,7 @@ function NewInvoiceDrawer({
             </Button>
           </footer>
         </form>
-      </aside>
-    </>
+      </div>
+    </Dialog>
   );
 }

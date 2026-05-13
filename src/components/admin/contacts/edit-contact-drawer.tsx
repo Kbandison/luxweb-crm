@@ -1,7 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Drawer } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
@@ -28,6 +29,8 @@ export function EditContactDrawer({
 }) {
   const router = useRouter();
   const toast = useToast();
+  const headingId = useId();
+  const firstFieldRef = useRef<HTMLInputElement | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,15 +54,15 @@ export function EditContactDrawer({
     setTagsInput(initial.tags.join(', '));
     setLeadScore(String(initial.leadScore));
     setError(null);
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !busy) setOpen(false);
-    }
-    document.addEventListener('keydown', onEsc);
-    return () => document.removeEventListener('keydown', onEsc);
-    // We intentionally only re-run on open/initial change — busy is
-    // captured in the listener at registration and re-registers next render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
+
+  // Override Dialog's default autofocus (close button is first focusable
+  // in DOM) so the form's first field gets focus instead.
+  useEffect(() => {
+    if (!open) return;
+    const id = window.setTimeout(() => firstFieldRef.current?.focus(), 0);
+    return () => window.clearTimeout(id);
+  }, [open]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -118,19 +121,14 @@ export function EditContactDrawer({
         Edit
       </button>
 
-      {open ? (
-        <div
-          className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
-          aria-hidden
-        />
-      ) : null}
-
-      <aside
-        aria-hidden={!open}
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md transform flex-col border-l border-border bg-surface shadow-2xl transition-transform duration-300 ease-out ${
-          open ? 'translate-x-0' : 'translate-x-full'
-        }`}
+      <Drawer
+        open={open}
+        onClose={() => (busy ? undefined : setOpen(false))}
+        side="right"
+        width="md"
+        labelledBy={headingId}
+        closeOnBackdropClick={!busy}
+        closeOnEscape={!busy}
       >
         <header className="relative isolate overflow-hidden border-b border-border px-6 pb-5 pt-6">
           <div
@@ -146,7 +144,10 @@ export function EditContactDrawer({
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
                 Edit contact
               </p>
-              <h2 className="mt-1 font-display text-2xl font-medium tracking-tight text-ink">
+              <h2
+                id={headingId}
+                className="mt-1 font-display text-2xl font-medium tracking-tight text-ink"
+              >
                 Update contact details
               </h2>
               <p className="mt-1 font-sans text-xs text-ink-muted">
@@ -185,6 +186,7 @@ export function EditContactDrawer({
             <div className="space-y-1.5">
               <Label htmlFor="edit_full_name">Full legal name</Label>
               <Input
+                ref={firstFieldRef}
                 id="edit_full_name"
                 required
                 maxLength={200}
@@ -285,7 +287,7 @@ export function EditContactDrawer({
             </Button>
           </footer>
         </form>
-      </aside>
+      </Drawer>
     </>
   );
 }
