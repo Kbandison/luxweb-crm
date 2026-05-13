@@ -150,7 +150,7 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
   }
 
   await writeAudit({
-    actor_id: null as unknown as string,
+    actor_id: null,
     action: 'update',
     entity_type: 'invoice',
     entity_id: crmInvoiceId,
@@ -289,7 +289,7 @@ async function handleInvoiceOverdue(inv: Stripe.Invoice) {
   }
 
   await writeAudit({
-    actor_id: null as unknown as string,
+    actor_id: null,
     action: 'update',
     entity_type: 'invoice',
     entity_id: crmInvoiceId,
@@ -365,7 +365,7 @@ async function logWebhookIssue(args: {
 }) {
   try {
     await writeAudit({
-      actor_id: null as unknown as string,
+      actor_id: null,
       action: 'stripe_webhook_failure',
       entity_type: 'invoice',
       entity_id: args.crmInvoiceId,
@@ -440,7 +440,7 @@ async function handleSubscriptionActive(sub: Stripe.Subscription) {
     typeof sub.metadata?.project_id === 'string' ? sub.metadata.project_id : null;
 
   await writeAudit({
-    actor_id: null as unknown as string,
+    actor_id: null,
     action: 'update',
     entity_type: 'care_plan_subscription',
     entity_id: sub.id,
@@ -511,7 +511,7 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
   await syncSubscriptionRow(sub);
 
   await writeAudit({
-    actor_id: null as unknown as string,
+    actor_id: null,
     action: 'delete',
     entity_type: 'care_plan_subscription',
     entity_id: sub.id,

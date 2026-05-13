@@ -58,7 +58,7 @@ export async function GET(req: Request) {
   for (const id of ids) {
     await writeAudit({
       // Cron has no actor; AuditEntry.actor_id type is fixed in batch R-H.
-      actor_id: null as unknown as string,
+      actor_id: null,
       action: 'update',
       entity_type: 'proposal',
       entity_id: id,

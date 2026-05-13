@@ -6,9 +6,19 @@ import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
+const EmailPrefsSchema = z
+  .object({
+    message: z.boolean().optional(),
+    invoice_sent: z.boolean().optional(),
+    invoice_paid: z.boolean().optional(),
+    proposal_sent: z.boolean().optional(),
+    milestone_updated: z.boolean().optional(),
+  })
+  .strict();
+
 const UpdateSchema = z.object({
   full_name: z.string().min(1).max(200).optional(),
-  email_prefs: z.record(z.string(), z.boolean()).optional(),
+  email_prefs: EmailPrefsSchema.optional(),
 });
 
 export async function PATCH(req: Request) {

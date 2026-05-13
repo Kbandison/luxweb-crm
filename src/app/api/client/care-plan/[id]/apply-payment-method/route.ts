@@ -48,14 +48,17 @@ export async function POST(
     const s = stripe();
     const pmId = parsed.data.payment_method_id;
 
-    // Attach (idempotent — Stripe returns InvalidRequestError if already
-    // attached to a different customer, but for our flow it's the same one).
+    // Attach (idempotent — Stripe returns "already attached" when the PM is
+    // already on this customer; we treat that as success rather than throwing.
     try {
       await s.paymentMethods.attach(pmId, { customer: owned.stripeCustomerId });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '';
-      // Already attached to this customer is fine.
-      if (!msg.includes('already been attached')) throw err;
+      // Stripe.StripeError exposes a stable `code` we can match on, instead of
+      // grepping the human-readable English message string.
+      const code = (err as { code?: string } | null)?.code;
+      // "resource_already_exists" is what Stripe returns when a PM is already
+      // attached to *this* customer. Anything else is a real failure.
+      if (code !== 'resource_already_exists') throw err;
     }
 
     await s.customers.update(owned.stripeCustomerId, {

@@ -552,23 +552,6 @@ function renderTemplate(
  * @deprecated For notification fan-out, prefer {@link getAdminUserIds} so
  * every admin receives the event. This helper remains for callers that
  * genuinely need a single id (e.g. "the admin" of a scoped concept) and
- * for backwards compatibility — it returns the first admin to preserve
- * the previous single-admin behavior.
- */
-export async function getAdminUserId(): Promise<string | null> {
-  try {
-    const { data } = await supabaseAdmin()
-      .from('users')
-      .select('id')
-      .eq('role', 'admin')
-      .limit(1)
-      .single();
-    return (data?.id as string | undefined) ?? null;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Resolve every admin user id. Returns `[]` if the lookup fails or no
  * admin exists. Use this for notification fan-out so multi-admin setups

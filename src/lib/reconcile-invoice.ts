@@ -74,7 +74,7 @@ export async function reconcileInvoicePaid(
   if (error) return false;
 
   await writeAudit({
-    actor_id: null as unknown as string,
+    actor_id: null,
     action: 'update',
     entity_type: 'invoice',
     entity_id: invoiceId,

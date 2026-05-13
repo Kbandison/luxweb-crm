@@ -138,7 +138,7 @@ export async function POST(req: Request) {
       company = (created.company as string | null) ?? null;
 
       await writeAudit({
-        actor_id: null as unknown as string, // system event
+        actor_id: null, // system event
         action: 'create',
         entity_type: 'contact',
         entity_id: contactId,
@@ -156,7 +156,7 @@ export async function POST(req: Request) {
         .single();
       if (deal) {
         await writeAudit({
-          actor_id: null as unknown as string,
+          actor_id: null,
           action: 'create',
           entity_type: 'deal',
           entity_id: (deal as { id: string }).id,

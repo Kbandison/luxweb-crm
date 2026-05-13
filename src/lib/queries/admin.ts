@@ -441,25 +441,6 @@ async function getClientContactIds(): Promise<Set<string>> {
 }
 
 /** Leads = contacts that have NOT yet become clients. */
-export async function getLeads(q?: string): Promise<ContactRow[]> {
-  const [contacts, clientIds] = await Promise.all([
-    getContacts(q),
-    getClientContactIds(),
-  ]);
-  return contacts.filter((c) => !clientIds.has(c.id));
-}
-
-/** Clients = contacts WITH a signed deal or any project. */
-export async function getClientsList(): Promise<ClientRow[]> {
-  const [contacts, clientIds] = await Promise.all([
-    getContacts(),
-    getClientContactIds(),
-  ]);
-  const clients = contacts.filter((c) => clientIds.has(c.id));
-  if (clients.length === 0) return [];
-  return enrichClientRows(clients);
-}
-
 /* -------------------------------------------------------------------------
  * Paginated leads/clients
  *
@@ -914,22 +895,9 @@ export type Milestone = {
   openRevisionId: string | null;
 };
 
-export async function getProjects(): Promise<ProjectListRow[]> {
-  // Legacy: returns all projects, no pagination. Kept for callers that don't
-  // page (none today after the Backlog 3 update, but exported for future use).
-  const result = await getProjectsPaginated({
-    page: 1,
-    pageSize: 1000,
-    sort: 'created_at',
-    dir: 'desc',
-    q: null,
-  });
-  return result.rows;
-}
-
 /**
- * Paginated + sortable projects list. Aggregates milestone + hours totals
- * for the rows on the current page only (keeps the query cheap regardless of
+ * Paginated + sortable projects list. Aggregates milestone counts for the
+ * rows on the current page only (keeps the query cheap regardless of
  * total project count).
  */
 export async function getProjectsPaginated(
@@ -2487,6 +2455,26 @@ export async function linkOrphanProposalsToProject(
 ): Promise<void> {
   try {
     const sb = supabaseAdmin();
+
+    // Fast-path short-circuit: if the project already has a proposal AND a
+    // contract linked, nothing orphan to grab. Skip the rest so we don't
+    // execute three more queries (and two UPDATEs) on every render.
+    const [{ count: proposalCount }, { count: contractCount }] = await Promise.all([
+      sb
+        .from('proposals')
+        .select('id', { count: 'exact', head: true })
+        .eq('project_id', projectId)
+        .limit(1),
+      sb
+        .from('contracts')
+        .select('id', { count: 'exact', head: true })
+        .eq('project_id', projectId)
+        .limit(1),
+    ]);
+    if ((proposalCount ?? 0) > 0 && (contractCount ?? 0) > 0) {
+      return;
+    }
+
     const { data: project } = await sb
       .from('projects')
       .select('contact_id')
