@@ -5,12 +5,20 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ContactRow } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
 import { Input } from '@/components/ui/input';
-import { SortableHeader } from '@/components/ui/sortable-header';
 import { cn } from '@/lib/utils';
 import { useUrlSearchInput } from '@/lib/hooks/use-url-search';
 import { LeadScore } from './lead-score';
 import { TagPill } from './tag-pill';
 import { Monogram } from './monogram';
+
+const SORT_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'created_at:desc', label: 'Newest first' },
+  { value: 'created_at:asc', label: 'Oldest first' },
+  { value: 'full_name:asc', label: 'Name A → Z' },
+  { value: 'full_name:desc', label: 'Name Z → A' },
+  { value: 'lead_score:desc', label: 'Score high → low' },
+  { value: 'lead_score:asc', label: 'Score low → high' },
+];
 
 export function LeadsList({
   initial,
@@ -74,6 +82,20 @@ export function LeadsList({
     });
   }
 
+  const currentSortValue = `${currentSort}:${currentDir}`;
+  function onSortChange(value: string) {
+    const [field, dir] = value.split(':');
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.set('sort', field);
+    sp.set('dir', dir);
+    sp.delete('page');
+    startTransition(() => {
+      router.push(`${pathname}?${sp.toString()}`);
+    });
+  }
+  // Silence the unused-import lint when SortableHeader was previously imported.
+  void spProps;
+
   return (
     <div className="flex h-full flex-col">
       {/* Search */}
@@ -111,46 +133,43 @@ export function LeadsList({
         </div>
       </div>
 
-      {/* Sort bar */}
-      <div className="flex items-center gap-4 border-b border-border bg-surface px-4 py-2">
-        {selectable ? (
-          <input
-            type="checkbox"
-            aria-label={
-              allSelected ? 'Deselect all leads' : 'Select all leads'
-            }
-            checked={allSelected}
-            ref={(el) => {
-              if (el) el.indeterminate = someSelected;
-            }}
-            onChange={() => onToggleAll!(filtered)}
-            className="h-4 w-4 cursor-pointer accent-copper"
-          />
-        ) : null}
-        <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
-          Sort
-        </span>
-        <SortableHeader
-          field="full_name"
-          label="Name"
-          currentSort={currentSort}
-          currentDir={currentDir}
-          searchParams={spProps}
-        />
-        <SortableHeader
-          field="lead_score"
-          label="Score"
-          currentSort={currentSort}
-          currentDir={currentDir}
-          searchParams={spProps}
-        />
-        <SortableHeader
-          field="created_at"
-          label="Added"
-          currentSort={currentSort}
-          currentDir={currentDir}
-          searchParams={spProps}
-        />
+      {/* Selection + sort row — single compact strip, no per-column chips. */}
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2">
+        <div className="flex items-center gap-3">
+          {selectable ? (
+            <input
+              type="checkbox"
+              aria-label={
+                allSelected ? 'Deselect all leads' : 'Select all leads'
+              }
+              checked={allSelected}
+              ref={(el) => {
+                if (el) el.indeterminate = someSelected;
+              }}
+              onChange={() => onToggleAll!(filtered)}
+              className="h-4 w-4 cursor-pointer accent-copper"
+            />
+          ) : null}
+          <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+            {selectable && selectedCount > 0
+              ? `${selectedCount} selected`
+              : `${filtered.length} ${filtered.length === 1 ? 'lead' : 'leads'}`}
+          </span>
+        </div>
+        <label className="flex items-center gap-2">
+          <span className="sr-only">Sort leads</span>
+          <select
+            value={currentSortValue}
+            onChange={(e) => onSortChange(e.target.value)}
+            className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:border-border-strong focus:border-copper focus:outline-none"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {/* List */}

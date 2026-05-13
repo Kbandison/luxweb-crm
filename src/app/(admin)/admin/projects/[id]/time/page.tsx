@@ -18,8 +18,9 @@ export default async function ProjectTimeLogsPage({
     getRunningTimerForUser(session.userId),
   ]);
 
+  // Tool tab — no max-width per workspace rule (files/milestones/time/messages/invoices).
   return (
-    <main className="mx-auto w-full max-w-5xl space-y-6 px-8 py-8">
+    <main className="w-full space-y-6 px-8 py-8">
       <TimerStrip projectId={id} running={running} />
       <TimeLogsList projectId={id} initial={logs} />
     </main>

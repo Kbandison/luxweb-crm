@@ -9,8 +9,9 @@ export default async function ProjectMilestonesPage({
   const { id } = await params;
   const milestones = await getProjectMilestones(id);
 
+  // Tool tab — no max-width per workspace rule (files/milestones/time/messages/invoices).
   return (
-    <main className="mx-auto w-full max-w-5xl px-8 py-8">
+    <main className="w-full px-8 py-8">
       <MilestonesList projectId={id} initial={milestones} />
     </main>
   );

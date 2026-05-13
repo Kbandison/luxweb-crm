@@ -35,24 +35,9 @@ export default async function LeadsPage({
 
   return (
     <>
-      <Topbar title="Leads" />
+      <Topbar />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-6 py-4">
-          <div className="flex items-center gap-3">
-            <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-meta-hero text-ink-subtle">
-              <span>Admin</span>
-              <span className="text-copper">/</span>
-              <span className="text-ink">Leads</span>
-            </nav>
-            <span aria-hidden className="h-3 w-px bg-border" />
-            <p className="font-mono text-[10px] tabular-nums uppercase tracking-meta text-ink-muted">
-              {result.totalCount} total
-            </p>
-          </div>
-          <NewLeadDrawer />
-        </div>
-
         <div className="grid min-h-0 flex-1 lg:grid-cols-[380px_1fr]">
           <div
             className={`${selected ? 'hidden lg:block' : ''} flex min-h-0 flex-col border-r border-border bg-surface`}
@@ -63,6 +48,8 @@ export default async function LeadsPage({
               currentSort={params.sort}
               currentDir={params.dir}
               searchParams={sp}
+              totalCount={result.totalCount}
+              newLeadSlot={<NewLeadDrawer />}
             />
             <PaginationFooter
               page={params.page}

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Topbar } from '@/components/admin/topbar';
 import { StatCard } from '@/components/ui/stat-card';
 import { SectionHead } from '@/components/ui/section-head';
@@ -8,11 +9,10 @@ import {
   type StageBucket,
 } from '@/lib/queries/admin';
 import { cn } from '@/lib/utils';
-import { formatUSD, formatRelative, formatDateTimeCompactTz } from '@/lib/formatters';
+import { formatUSD, formatRelative } from '@/lib/formatters';
 
 export default async function AdminDashboardPage() {
   const o = await getAdminDashboardOverview();
-  const now = new Date();
 
   return (
     <>
@@ -20,7 +20,7 @@ export default async function AdminDashboardPage() {
       <AdminDashboardRefresher />
 
       <main className="mx-auto w-full max-w-6xl space-y-12 px-6 pb-16 pt-10 md:px-10">
-        <PageMeta timestamp={now} />
+        <PageMeta />
 
         {/* 01 — Hero. The page's decorative copper moment, dialed up. */}
         <HeroPipeline
@@ -66,6 +66,14 @@ export default async function AdminDashboardPage() {
             title="Recent activity"
             description="Every admin mutation writes to the audit log. Latest 8 shown."
             size="lg"
+            right={
+              <Link
+                href="/admin/audit"
+                className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
+              >
+                View all →
+              </Link>
+            }
           />
           {o.recentActivity.length === 0 ? (
             <EmptyActivity />
@@ -87,10 +95,11 @@ export default async function AdminDashboardPage() {
 }
 
 /* -------------------------------------------------------------------------
- * Page meta — breadcrumb + live pill + last-updated
+ * Page meta — breadcrumb only. Freshness is already handled by the realtime
+ * refresher; a server-render timestamp here would mislead users into thinking
+ * it's a "last updated" indicator.
  * ------------------------------------------------------------------------- */
-function PageMeta({ timestamp }: { timestamp: Date }) {
-  const stamp = formatDateTimeCompactTz(timestamp);
+function PageMeta() {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-meta-hero text-ink-subtle">
@@ -98,12 +107,6 @@ function PageMeta({ timestamp }: { timestamp: Date }) {
         <span className="text-copper">/</span>
         <span className="text-ink">Overview</span>
       </nav>
-      <time
-        dateTime={timestamp.toISOString()}
-        className="font-mono text-[10px] uppercase tracking-meta tabular-nums text-ink-subtle"
-      >
-        {stamp}
-      </time>
     </div>
   );
 }
@@ -201,7 +204,7 @@ function StagePill({ bucket }: { bucket: StageBucket }) {
   return (
     <div
       className={cn(
-        'group rounded-lg border border-border bg-surface/80 p-3 transition-colors',
+        'group min-w-[120px] rounded-lg border border-border bg-surface/80 p-3 transition-colors',
         isOpen ? 'hover:border-copper/40' : 'opacity-75',
       )}
     >

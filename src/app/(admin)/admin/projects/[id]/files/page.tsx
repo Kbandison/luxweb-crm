@@ -9,8 +9,13 @@ export default async function ProjectFilesPage({
   const { id } = await params;
   const files = await getProjectFiles(id);
 
+  // Workspace tab max-w rule:
+  //   - Content-heavy tabs (overview, proposals, contracts, revisions,
+  //     credentials, agreement) clamp to `max-w-5xl` for legibility.
+  //   - Tool tabs (files, milestones, time, messages, invoices) take the
+  //     full available width — they're tables/grids that benefit from room.
   return (
-    <main className="mx-auto w-full max-w-7xl px-8 py-8">
+    <main className="w-full px-8 py-8">
       <FilesList projectId={id} initial={files} />
     </main>
   );

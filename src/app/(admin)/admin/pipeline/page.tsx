@@ -2,14 +2,7 @@ import { Topbar } from '@/components/admin/topbar';
 import { getContacts, getDealsForKanban } from '@/lib/queries/admin';
 import { KanbanBoard } from '@/components/admin/pipeline/kanban-board';
 import { NewDealDrawer } from '@/components/admin/pipeline/new-deal-drawer';
-import { formatUSD } from '@/lib/formatters';
-
-const OPEN_STAGES: ReadonlyArray<string> = [
-  'lead',
-  'discovery',
-  'proposal',
-  'active',
-];
+import { PageHeader } from '@/components/ui/page-header';
 
 export default async function PipelinePage() {
   const [deals, contacts] = await Promise.all([
@@ -17,38 +10,18 @@ export default async function PipelinePage() {
     getContacts(),
   ]);
 
-  const openValueCents = deals
-    .filter((d) => OPEN_STAGES.includes(d.stage))
-    .reduce((s, d) => s + d.valueCents, 0);
-
   return (
     <>
-      <Topbar title="Pipeline" />
+      <Topbar />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Sub-header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-6 py-4">
-          <div className="flex items-center gap-4">
-            <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-meta-hero text-ink-subtle">
-              <span>Admin</span>
-              <span className="text-copper">/</span>
-              <span className="text-ink">Pipeline</span>
-            </nav>
-            <span aria-hidden className="h-3 w-px bg-border" />
-            <div className="flex items-baseline gap-1.5">
-              <span className="font-mono text-base font-medium tabular-nums tracking-tight text-ink">
-                {formatUSD(openValueCents)}
-              </span>
-              <span className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
-                open
-              </span>
-            </div>
-            <span aria-hidden className="h-3 w-px bg-border" />
-            <p className="font-mono text-[10px] tabular-nums uppercase tracking-meta text-ink-muted">
-              {deals.length} {deals.length === 1 ? 'deal' : 'deals'} total
-            </p>
-          </div>
-          <NewDealDrawer contacts={contacts} />
+        {/* Single header — per-stage totals already live in each kanban column. */}
+        <div className="border-b border-border bg-surface px-6 pb-4 pt-6">
+          <PageHeader
+            title="Pipeline"
+            description={`${deals.length} ${deals.length === 1 ? 'deal' : 'deals'} total`}
+            actions={<NewDealDrawer contacts={contacts} />}
+          />
         </div>
 
         {/* Board */}

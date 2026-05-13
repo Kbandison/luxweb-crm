@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { ClientRow } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { useToast } from '@/components/ui/toast';
 import { BulkActionBar } from '@/components/admin/bulk-action-bar';
 import { TagModal } from '@/components/admin/tag-modal';
@@ -20,11 +21,13 @@ export function ClientsListWithSelection({
   currentSort,
   currentDir,
   searchParams,
+  totalCount,
 }: {
   rows: ClientRow[];
   currentSort: string;
   currentDir: SortDir;
   searchParams: Record<string, string | string[] | undefined>;
+  totalCount: number;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -101,13 +104,19 @@ export function ClientsListWithSelection({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-end gap-2 border-b border-border bg-surface px-6 py-2">
-        <a
-          href={exportAllHref}
-          className="inline-flex items-center font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
-        >
-          Export CSV
-        </a>
+      <div className="border-b border-border bg-surface px-6 pb-4 pt-6">
+        <PageHeader
+          title="Clients"
+          description={`${totalCount} total`}
+          actions={
+            <a
+              href={exportAllHref}
+              className="inline-flex items-center font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
+            >
+              Export CSV
+            </a>
+          }
+        />
       </div>
 
       <BulkActionBar

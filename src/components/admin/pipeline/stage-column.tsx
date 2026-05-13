@@ -20,7 +20,7 @@ export function StageColumn({
     <section
       ref={setNodeRef}
       className={cn(
-        'flex w-72 shrink-0 flex-col rounded-xl border bg-surface-2/40 transition-colors',
+        'flex w-64 shrink-0 flex-col rounded-xl border bg-surface-2/40 transition-colors',
         isOver
           ? 'border-copper/60 bg-copper-soft/15'
           : 'border-border',

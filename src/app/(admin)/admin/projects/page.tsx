@@ -6,6 +6,7 @@ import {
 } from '@/lib/queries/admin';
 import { ProjectsTable } from '@/components/admin/projects/projects-table';
 import { NewProjectDrawer } from '@/components/admin/projects/new-project-drawer';
+import { PageHeader } from '@/components/ui/page-header';
 import { PaginationFooter } from '@/components/ui/pagination-footer';
 import { parseListParams } from '@/lib/list-params';
 
@@ -27,22 +28,15 @@ export default async function ProjectsPage({
 
   return (
     <>
-      <Topbar title="Projects" />
+      <Topbar />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-6 py-4">
-          <div className="flex items-center gap-3">
-            <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-meta-hero text-ink-subtle">
-              <span>Admin</span>
-              <span className="text-copper">/</span>
-              <span className="text-ink">Projects</span>
-            </nav>
-            <span aria-hidden className="h-3 w-px bg-border" />
-            <p className="font-mono text-[10px] tabular-nums uppercase tracking-meta text-ink-muted">
-              {result.totalCount} total
-            </p>
-          </div>
-          <NewProjectDrawer contacts={contacts} />
+        <div className="border-b border-border bg-surface px-6 pb-4 pt-6">
+          <PageHeader
+            title="Projects"
+            description={`${result.totalCount} total`}
+            actions={<NewProjectDrawer contacts={contacts} />}
+          />
         </div>
 
         <div className="min-h-0 flex-1 bg-bg">

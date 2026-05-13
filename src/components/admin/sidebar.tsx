@@ -49,7 +49,7 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
   }, [router]);
 
   return (
-    <aside className="relative isolate hidden md:flex md:h-dvh md:w-72 md:flex-col md:self-start md:border-r md:border-border md:bg-gradient-to-b md:from-surface md:via-surface md:to-surface-2 md:sticky md:top-0">
+    <aside className="relative isolate hidden md:flex md:h-dvh md:w-64 md:flex-col md:self-start md:border-r md:border-border md:bg-gradient-to-b md:from-surface md:via-surface md:to-surface-2 md:sticky md:top-0">
       {/* Left-edge copper hairline */}
       <span
         aria-hidden
@@ -197,11 +197,6 @@ function UserCard({ userEmail, userName }: SidebarProps) {
       ref={rootRef}
       className="relative isolate border-t border-border px-4 py-4"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-8 left-1/2 h-28 w-56 -translate-x-1/2 rounded-full bg-gradient-to-t from-copper/10 via-transparent to-transparent blur-2xl"
-      />
-
       {/* Menu — absolute above the card */}
       {open ? (
         <div
@@ -284,15 +279,17 @@ function UserCard({ userEmail, userName }: SidebarProps) {
         />
       </button>
 
-      <div className="relative mt-4 flex items-center justify-between px-1">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted">
-          <span className="h-1 w-1 rounded-full bg-copper" aria-hidden />
-          dev
-        </span>
-        <span className="font-mono text-[10px] tabular-nums text-ink-subtle">
-          v0.1.0
-        </span>
-      </div>
+      {process.env.NODE_ENV !== 'production' ? (
+        <div className="relative mt-4 flex items-center justify-between px-1">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted">
+            <span className="h-1 w-1 rounded-full bg-copper" aria-hidden />
+            dev
+          </span>
+          <span className="font-mono text-[10px] tabular-nums text-ink-subtle">
+            v0.1.0
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

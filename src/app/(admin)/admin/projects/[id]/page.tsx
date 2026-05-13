@@ -68,280 +68,318 @@ export default async function ProjectOverviewPage({
     )
     .slice(0, 3);
 
-  return (
-    <main className="mx-auto w-full max-w-5xl space-y-12 px-8 py-8">
-      {/* Stats */}
-      <section>
-        <SectionHead number="01" title="At a glance" />
-        <div className="mt-5 grid gap-4 sm:grid-cols-3">
-          <StatCard
-            label="Milestones"
-            value={`${doneCount}/${milestones.length}`}
-            hint={
-              milestones.length === 0
-                ? 'None set'
-                : `${Math.round((doneCount / milestones.length) * 100)}% done`
-            }
-            size="lg"
-          />
-          <StatCard
-            label="Hours logged"
-            value={`${formatHours(totalHours, 1)}h`}
-            hint={`${timeLogs.length} ${timeLogs.length === 1 ? 'entry' : 'entries'}`}
-            size="lg"
-          />
-          <StatCard
-            label="Days running"
-            value={String(daysSince(project.createdAt))}
-            hint={`Since ${formatDate(project.createdAt)}`}
-            size="lg"
-          />
-        </div>
-      </section>
+  // Build sections with a visibility flag so the on-screen "01", "02" numbering
+  // stays contiguous even when Care Plan or Review are hidden for projects that
+  // haven't reached those lifecycle stages yet.
+  const showCarePlan = carePlan != null;
+  const showReview = review != null || project.status === 'completed';
 
-      {/* Budget & profitability — admin-only */}
-      <section>
-        <SectionHead
-          number="02"
-          title="Budget & profitability"
-          right={<HourlyRateForm projectId={project.id} initialRateCents={project.hourlyRateCents} />}
-        />
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Budget"
-            value={
-              project.budgetCents != null
-                ? formatUSD(project.budgetCents)
-                : '—'
-            }
-            hint={burnPct != null ? `${burnPct}% spent` : 'No rate or budget set'}
-            size="lg"
-          />
-          <StatCard
-            label="Time cost"
-            value={costCents != null ? formatUSD(costCents) : '—'}
-            hint={
-              project.hourlyRateCents != null
-                ? `${formatHours(totalHours, 1)}h × ${formatUSD(project.hourlyRateCents)}/h`
-                : 'Set rate above'
-            }
-            size="lg"
-          />
-          <StatCard
-            label="Paid"
-            value={formatUSD(paidCents)}
-            hint={
-              invoicedCents > paidCents
-                ? `${formatUSD(invoicedCents - paidCents)} pending`
-                : invoicedCents > 0
-                  ? 'All invoices paid'
-                  : 'Nothing invoiced'
-            }
-            size="lg"
-          />
-          <StatCard
-            label="Profit"
-            value={profitCents != null ? formatUSD(profitCents) : '—'}
-            hint={
-              profitCents == null
-                ? 'Set hourly rate to compute'
-                : profitCents > 0
-                  ? 'In the black'
-                  : profitCents < 0
-                    ? 'Underwater — review rate'
-                    : 'Break-even'
-            }
-            tone={
-              profitCents != null
-                ? profitCents > 0
-                  ? 'success'
-                  : profitCents < 0
-                    ? 'danger'
-                    : 'default'
-                : 'default'
-            }
-            size="lg"
-          />
-        </div>
-        {/* Burn bar — only when both budget and cost are known */}
-        {project.budgetCents != null && costCents != null && project.budgetCents > 0 ? (
-          <Card rounded="lg" padding="md" className="mt-5">
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
-                Budget burn
-              </p>
-              <p
-                className={cn(
-                  'font-mono text-xs tabular-nums',
-                  (burnPct ?? 0) > 100
-                    ? 'text-danger'
-                    : (burnPct ?? 0) > 80
-                      ? 'text-warning'
-                      : 'text-ink-muted',
-                )}
-              >
-                {formatUSD(costCents)} of {formatUSD(project.budgetCents)} ·{' '}
-                {burnPct}%
-              </p>
-            </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-border">
-              <div
-                className={cn(
-                  'h-full rounded-full transition-all duration-500',
-                  (burnPct ?? 0) > 100
-                    ? 'bg-danger'
-                    : (burnPct ?? 0) > 80
-                      ? 'bg-warning'
-                      : 'bg-copper',
-                )}
-                style={{ width: `${Math.min(burnPct ?? 0, 100)}%` }}
-              />
-            </div>
-          </Card>
-        ) : null}
-      </section>
-
-      {/* Upcoming milestones */}
-      <section>
-        <SectionHead
-          number="03"
-          title="Upcoming milestones"
-          right={
-            <Link
-              href={`/admin/projects/${project.id}/milestones`}
-              className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
-            >
-              View all →
-            </Link>
-          }
-        />
-        {upcoming.length === 0 ? (
-          <div className="mt-5 rounded-xl border border-dashed border-border bg-surface/60 p-8 text-center">
-            <p className="font-sans text-sm text-ink-muted">
-              {milestones.length === 0
-                ? 'No milestones — add the first one in the Milestones tab.'
-                : 'Nothing coming up. All known milestones are done or have no due date.'}
-            </p>
+  const sections: ReadonlyArray<{ visible: boolean; key: string; render: (n: string) => React.ReactNode }> = [
+    {
+      visible: true,
+      key: 'glance',
+      render: (n) => (
+        <section key="glance">
+          <SectionHead number={n} title="At a glance" />
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <StatCard
+              label="Milestones"
+              value={`${doneCount}/${milestones.length}`}
+              hint={
+                milestones.length === 0
+                  ? 'None set'
+                  : `${Math.round((doneCount / milestones.length) * 100)}% done`
+              }
+              size="lg"
+            />
+            <StatCard
+              label="Hours logged"
+              value={`${formatHours(totalHours, 1)}h`}
+              hint={`${timeLogs.length} ${timeLogs.length === 1 ? 'entry' : 'entries'}`}
+              size="lg"
+            />
+            <StatCard
+              label="Days running"
+              value={String(daysSince(project.createdAt))}
+              hint={`Since ${formatDate(project.createdAt)}`}
+              size="lg"
+            />
           </div>
-        ) : (
-          <ul className="mt-5 space-y-2">
-            {upcoming.map((m) => (
-              <li
-                key={m.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-sans text-sm font-medium text-ink">
-                    {m.title}
-                  </p>
-                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
-                    Due {formatDate(m.dueDate!)}
-                  </p>
-                </div>
-                <span
+        </section>
+      ),
+    },
+    {
+      visible: true,
+      key: 'budget',
+      render: (n) => (
+        <section key="budget">
+          <SectionHead
+            number={n}
+            title="Budget & profitability"
+            right={<HourlyRateForm projectId={project.id} initialRateCents={project.hourlyRateCents} />}
+          />
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Budget"
+              value={
+                project.budgetCents != null
+                  ? formatUSD(project.budgetCents)
+                  : '—'
+              }
+              hint={burnPct != null ? `${burnPct}% spent` : 'No rate or budget set'}
+              size="lg"
+            />
+            <StatCard
+              label="Time cost"
+              value={costCents != null ? formatUSD(costCents) : '—'}
+              hint={
+                project.hourlyRateCents != null
+                  ? `${formatHours(totalHours, 1)}h × ${formatUSD(project.hourlyRateCents)}/h`
+                  : 'Set rate above'
+              }
+              size="lg"
+            />
+            <StatCard
+              label="Paid"
+              value={formatUSD(paidCents)}
+              hint={
+                invoicedCents > paidCents
+                  ? `${formatUSD(invoicedCents - paidCents)} pending`
+                  : invoicedCents > 0
+                    ? 'All invoices paid'
+                    : 'Nothing invoiced'
+              }
+              size="lg"
+            />
+            <StatCard
+              label="Profit"
+              value={profitCents != null ? formatUSD(profitCents) : '—'}
+              hint={
+                profitCents == null
+                  ? 'Set hourly rate to compute'
+                  : profitCents > 0
+                    ? 'In the black'
+                    : profitCents < 0
+                      ? 'Underwater — review rate'
+                      : 'Break-even'
+              }
+              tone={
+                profitCents != null
+                  ? profitCents > 0
+                    ? 'success'
+                    : profitCents < 0
+                      ? 'danger'
+                      : 'default'
+                  : 'default'
+              }
+              size="lg"
+            />
+          </div>
+          {project.budgetCents != null && costCents != null && project.budgetCents > 0 ? (
+            <Card rounded="lg" padding="md" className="mt-5">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
+                  Budget burn
+                </p>
+                <p
                   className={cn(
-                    'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
-                    MILESTONE_STATUS_TONE[m.status],
+                    'font-mono text-xs tabular-nums',
+                    (burnPct ?? 0) > 100
+                      ? 'text-danger'
+                      : (burnPct ?? 0) > 80
+                        ? 'text-warning'
+                        : 'text-ink-muted',
                   )}
                 >
-                  {MILESTONE_STATUS_LABEL[m.status]}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Care Plan */}
-      <section>
-        <SectionHead number="04" title="Care Plan" />
-        <div className="mt-5">
-          <AdminCarePlanSection
-            projectId={project.id}
-            plan={
-              carePlan
-                ? {
-                    id: carePlan.id,
-                    amountCents: carePlan.amountCents,
-                    interval: carePlan.interval,
-                    status: carePlan.status,
-                    currentPeriodEnd: carePlan.currentPeriodEnd,
-                    cancelAtPeriodEnd: carePlan.cancelAtPeriodEnd,
-                    paymentMethodBrand: carePlan.paymentMethodBrand,
-                    paymentMethodLast4: carePlan.paymentMethodLast4,
-                  }
-                : null
+                  {formatUSD(costCents)} of {formatUSD(project.budgetCents)} ·{' '}
+                  {burnPct}%
+                </p>
+              </div>
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-border">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all duration-500',
+                    (burnPct ?? 0) > 100
+                      ? 'bg-danger'
+                      : (burnPct ?? 0) > 80
+                        ? 'bg-warning'
+                        : 'bg-copper',
+                  )}
+                  style={{ width: `${Math.min(burnPct ?? 0, 100)}%` }}
+                />
+              </div>
+            </Card>
+          ) : null}
+        </section>
+      ),
+    },
+    {
+      visible: true,
+      key: 'milestones',
+      render: (n) => (
+        <section key="milestones">
+          <SectionHead
+            number={n}
+            title="Upcoming milestones"
+            right={
+              <Link
+                href={`/admin/projects/${project.id}/milestones`}
+                className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
+              >
+                View all →
+              </Link>
             }
           />
-          {carePlan ? (
-            <div className="mt-4 space-y-2">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
-                Billing history
+          {upcoming.length === 0 ? (
+            <div className="mt-5 rounded-xl border border-dashed border-border bg-surface/60 p-8 text-center">
+              <p className="font-sans text-sm text-ink-muted">
+                {milestones.length === 0
+                  ? 'No milestones — add the first one in the Milestones tab.'
+                  : 'Nothing coming up. All known milestones are done or have no due date.'}
               </p>
-              <CarePlanBillingHistory invoices={billingHistory} />
             </div>
-          ) : null}
-        </div>
-      </section>
-
-      {/* Project review */}
-      <section>
-        <SectionHead number="05" title="Review" />
-        <div className="mt-5">
-          <AdminReviewCard projectId={project.id} review={review} />
-        </div>
-      </section>
-
-      {/* Recent time */}
-      <section>
-        <SectionHead
-          number="06"
-          title="Recent time"
-          right={
-            <Link
-              href={`/admin/projects/${project.id}/time`}
-              className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
-            >
-              View all →
-            </Link>
-          }
-        />
-        {timeLogs.length === 0 ? (
-          <div className="mt-5 rounded-xl border border-dashed border-border bg-surface/60 p-8 text-center">
-            <p className="font-sans text-sm text-ink-muted">
-              No time logged. Use the Time tab to log hours.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-5 overflow-hidden rounded-xl border border-border bg-surface">
-            <ul className="divide-y divide-border">
-              {timeLogs.slice(0, 5).map((t) => (
+          ) : (
+            <ul className="mt-5 space-y-2">
+              {upcoming.map((m) => (
                 <li
-                  key={t.id}
-                  className="flex items-center justify-between gap-3 px-5 py-3"
+                  key={m.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3"
                 >
-                  <div className="flex items-baseline gap-3">
-                    <span className="font-mono text-base font-medium tabular-nums text-ink">
-                      {formatHours(t.hours)}h
-                    </span>
-                    <span className="font-mono text-xs tabular-nums text-ink-muted">
-                      {formatDate(t.logDate)}
-                    </span>
-                    {t.note ? (
-                      <span className="font-sans text-sm text-ink-muted">
-                        — {t.note}
-                      </span>
-                    ) : null}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-sans text-sm font-medium text-ink">
+                      {m.title}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+                      Due {formatDate(m.dueDate!)}
+                    </p>
                   </div>
-                  <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
-                    {t.createdByEmail ?? 'system'}
+                  <span
+                    className={cn(
+                      'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
+                      MILESTONE_STATUS_TONE[m.status],
+                    )}
+                  >
+                    {MILESTONE_STATUS_LABEL[m.status]}
                   </span>
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+      ),
+    },
+    {
+      visible: showCarePlan,
+      key: 'care',
+      render: (n) => (
+        <section key="care">
+          <SectionHead number={n} title="Care Plan" />
+          <div className="mt-5">
+            <AdminCarePlanSection
+              projectId={project.id}
+              plan={
+                carePlan
+                  ? {
+                      id: carePlan.id,
+                      amountCents: carePlan.amountCents,
+                      interval: carePlan.interval,
+                      status: carePlan.status,
+                      currentPeriodEnd: carePlan.currentPeriodEnd,
+                      cancelAtPeriodEnd: carePlan.cancelAtPeriodEnd,
+                      paymentMethodBrand: carePlan.paymentMethodBrand,
+                      paymentMethodLast4: carePlan.paymentMethodLast4,
+                    }
+                  : null
+              }
+            />
+            {carePlan ? (
+              <div className="mt-4 space-y-2">
+                <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
+                  Billing history
+                </p>
+                <CarePlanBillingHistory invoices={billingHistory} />
+              </div>
+            ) : null}
           </div>
-        )}
-      </section>
+        </section>
+      ),
+    },
+    {
+      visible: showReview,
+      key: 'review',
+      render: (n) => (
+        <section key="review">
+          <SectionHead number={n} title="Review" />
+          <div className="mt-5">
+            <AdminReviewCard projectId={project.id} review={review} />
+          </div>
+        </section>
+      ),
+    },
+    {
+      visible: true,
+      key: 'time',
+      render: (n) => (
+        <section key="time">
+          <SectionHead
+            number={n}
+            title="Recent time"
+            right={
+              <Link
+                href={`/admin/projects/${project.id}/time`}
+                className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
+              >
+                View all →
+              </Link>
+            }
+          />
+          {timeLogs.length === 0 ? (
+            <div className="mt-5 rounded-xl border border-dashed border-border bg-surface/60 p-8 text-center">
+              <p className="font-sans text-sm text-ink-muted">
+                No time logged. Use the Time tab to log hours.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-5 overflow-hidden rounded-xl border border-border bg-surface">
+              <ul className="divide-y divide-border">
+                {timeLogs.slice(0, 5).map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex items-center justify-between gap-3 px-5 py-3"
+                  >
+                    <div className="flex items-baseline gap-3">
+                      <span className="font-mono text-base font-medium tabular-nums text-ink">
+                        {formatHours(t.hours)}h
+                      </span>
+                      <span className="font-mono text-xs tabular-nums text-ink-muted">
+                        {formatDate(t.logDate)}
+                      </span>
+                      {t.note ? (
+                        <span className="font-sans text-sm text-ink-muted">
+                          — {t.note}
+                        </span>
+                      ) : null}
+                    </div>
+                    <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+                      {t.createdByEmail ?? 'system'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      ),
+    },
+  ];
+
+  const visibleSections = sections.filter((s) => s.visible);
+
+  return (
+    <main className="mx-auto w-full max-w-5xl space-y-12 px-8 py-8">
+      {visibleSections.map((s, i) =>
+        s.render(String(i + 1).padStart(2, '0')),
+      )}
     </main>
   );
 }
