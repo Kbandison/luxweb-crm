@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +27,8 @@ const CreateSchema = z.object({
 export async function POST(req: Request) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/deals:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const raw = await req.json().catch(() => ({}));
     const parsed = CreateSchema.safeParse(raw);
     if (!parsed.success) {

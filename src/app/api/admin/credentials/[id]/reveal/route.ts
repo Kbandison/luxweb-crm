@@ -3,6 +3,7 @@ import { writeAudit } from '@/lib/audit';
 import { decryptSecret } from '@/lib/credentials/crypto';
 import { getCredentialSecret } from '@/lib/queries/admin';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { safeError } from '@/lib/safe-error';
 
 export const runtime = 'nodejs';
 
@@ -59,7 +60,6 @@ export async function POST(
     return Response.json({ secret });
   } catch (err) {
     if (err instanceof Response) return err;
-    const msg = err instanceof Error ? err.message : 'Unexpected error';
-    return Response.json({ error: msg }, { status: 500 });
+    return safeError('admin/credentials/[id]/reveal', err);
   }
 }

@@ -4,6 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify } from '@/lib/notifications';
 import { REVISION_STATUSES, REVISION_STATUS_LABEL } from '@/lib/types/revision';
+import { safeError } from '@/lib/safe-error';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -17,6 +19,8 @@ export async function PATCH(
 ) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/revisions/[id]:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
     const raw = await req.json().catch(() => ({}));
     const parsed = PatchSchema.safeParse(raw);
@@ -103,7 +107,6 @@ export async function PATCH(
     return Response.json({ ok: true });
   } catch (err) {
     if (err instanceof Response) return err;
-    const msg = err instanceof Error ? err.message : 'Unexpected error';
-    return Response.json({ error: msg }, { status: 500 });
+    return safeError('admin/revisions/[id]', err);
   }
 }

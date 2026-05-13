@@ -7,6 +7,7 @@ import { notify, getAdminUserIds } from '@/lib/notifications';
 import { createAndSendInvoice } from '@/lib/invoices/create';
 import { namesMatch } from '@/lib/signatures/match';
 import type { ProposalContent } from '@/lib/types/proposal';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -29,6 +30,8 @@ export async function POST(
 ) {
   try {
     const session = await requireClient();
+    const limit = limitByKey(`client/contracts/[id]/sign:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
     const raw = await req.json().catch(() => ({}));
     const parsed = Schema.safeParse(raw);

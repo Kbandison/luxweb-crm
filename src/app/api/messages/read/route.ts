@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { getSession } from '@/lib/supabase/session';
 import { markThreadRead, threadBelongsToUser } from '@/lib/queries/messages';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 

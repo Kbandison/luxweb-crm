@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { safeError } from '@/lib/safe-error';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +18,8 @@ export async function POST(
 ) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/projects/[id]/review:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id: projectId } = await params;
     const raw = await req.json().catch(() => ({}));
     const parsed = Schema.safeParse(raw);
@@ -56,7 +60,6 @@ export async function POST(
     return Response.json({ ok: true });
   } catch (err) {
     if (err instanceof Response) return err;
-    const msg = err instanceof Error ? err.message : 'Unexpected error';
-    return Response.json({ error: msg }, { status: 500 });
+    return safeError('admin/projects/[id]/review', err);
   }
 }

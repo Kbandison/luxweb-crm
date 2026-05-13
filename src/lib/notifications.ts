@@ -289,7 +289,7 @@ export async function notify(event: NotifyEvent): Promise<void> {
   const prefKey = event.type;
   if (event.type !== 'invite' && user.email_prefs[prefKey] === false) {
     console.warn(
-      `[notify] ${event.type} email opt-out for ${user.email}; skipped`,
+      `[notify] ${event.type} email opt-out for user=${event.userId}; skipped`,
     );
     return;
   }
@@ -316,7 +316,7 @@ export async function notify(event: NotifyEvent): Promise<void> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(
-      `[notify] failed to send ${event.type} email to ${user.email}: ${msg}`,
+      `[notify] failed to send ${event.type} email (user=${event.userId}): ${msg}`,
     );
   }
 }

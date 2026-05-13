@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 const BUCKET = 'project-files';
@@ -16,6 +17,8 @@ export async function PATCH(
 ) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/files/[id]:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
     const raw = await req.json().catch(() => ({}));
     const parsed = PatchSchema.safeParse(raw);
@@ -54,6 +57,8 @@ export async function DELETE(
 ) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/files/[id]:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
 
     // Look up the storage path first so we can clean up Supabase Storage.

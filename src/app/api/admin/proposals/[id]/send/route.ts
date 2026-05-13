@@ -3,6 +3,7 @@ import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -17,6 +18,8 @@ export async function POST(
 ) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/proposals/[id]/send:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
 
     const { data: before } = await supabaseAdmin()

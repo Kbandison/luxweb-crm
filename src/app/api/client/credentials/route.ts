@@ -5,6 +5,8 @@ import { writeAudit } from '@/lib/audit';
 import { encryptSecret } from '@/lib/credentials/crypto';
 import { CREDENTIAL_KINDS } from '@/lib/types/credential';
 import { isSafeHttpUrl } from '@/lib/validation/url';
+import { safeError } from '@/lib/safe-error';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -32,6 +34,8 @@ const Schema = z
 export async function POST(req: Request) {
   try {
     const session = await requireClient();
+    const limit = limitByKey(`client/credentials:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const raw = await req.json().catch(() => ({}));
     const parsed = Schema.safeParse(raw);
     if (!parsed.success) {
@@ -112,7 +116,6 @@ export async function POST(req: Request) {
     return Response.json({ ok: true, id: data.id });
   } catch (err) {
     if (err instanceof Response) return err;
-    const msg = err instanceof Error ? err.message : 'Unexpected error';
-    return Response.json({ error: msg }, { status: 500 });
+    return safeError('client/credentials', err);
   }
 }

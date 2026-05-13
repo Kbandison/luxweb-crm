@@ -2,6 +2,7 @@ import { requireAdmin } from '@/lib/auth/guards';
 import { getContactsForExport } from '@/lib/queries/admin';
 import { toCsv, csvFilename, csvResponse } from '@/lib/csv';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { safeError } from '@/lib/safe-error';
 
 export const runtime = 'nodejs';
 
@@ -67,7 +68,6 @@ export async function GET(req: Request) {
     return csvResponse(csv, filename);
   } catch (err) {
     if (err instanceof Response) return err;
-    const msg = err instanceof Error ? err.message : 'Unexpected error';
-    return Response.json({ error: msg }, { status: 500 });
+    return safeError('admin/clients/export.csv', err);
   }
 }

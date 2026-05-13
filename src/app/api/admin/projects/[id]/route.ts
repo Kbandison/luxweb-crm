@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -30,6 +31,8 @@ export async function PATCH(
 ) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/projects/[id]:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
     const raw = await req.json().catch(() => ({}));
     const parsed = UpdateSchema.safeParse(raw);
@@ -104,6 +107,8 @@ export async function DELETE(
 ) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/projects/[id]:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
     const sb = supabaseAdmin();
 

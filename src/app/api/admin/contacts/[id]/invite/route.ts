@@ -2,6 +2,8 @@ import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify } from '@/lib/notifications';
+import { safeError } from '@/lib/safe-error';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -21,6 +23,8 @@ export async function POST(
 ) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/contacts/[id]/invite:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
 
     const { data: contact } = await supabaseAdmin()
@@ -97,7 +101,6 @@ export async function POST(
     return Response.json({ ok: true, user_id: newUserId });
   } catch (err) {
     if (err instanceof Response) return err;
-    const message = err instanceof Error ? err.message : 'Unexpected error';
-    return Response.json({ error: message }, { status: 500 });
+    return safeError('admin/contacts/[id]/invite', err);
   }
 }

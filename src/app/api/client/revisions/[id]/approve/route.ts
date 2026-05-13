@@ -4,6 +4,8 @@ import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserIds } from '@/lib/notifications';
 import { createAndSendInvoice } from '@/lib/invoices/create';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
+import { safeError } from '@/lib/safe-error';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -27,6 +29,8 @@ export async function POST(
 ) {
   try {
     const session = await requireClient();
+    const limit = limitByKey(`client/revisions/[id]/approve:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
     const sb = supabaseAdmin();
 
@@ -186,7 +190,6 @@ export async function POST(
     });
   } catch (err) {
     if (err instanceof Response) return err;
-    const msg = err instanceof Error ? err.message : 'Unexpected error';
-    return Response.json({ error: msg }, { status: 500 });
+    return safeError('client/revisions/[id]/approve', err);
   }
 }

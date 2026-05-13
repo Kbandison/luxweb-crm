@@ -1,6 +1,7 @@
 import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 const BUCKET = 'project-files';
@@ -15,6 +16,8 @@ export async function DELETE(
 ) {
   try {
     const session = await requireClient();
+    const limit = limitByKey(`client/files/[id]:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
     const sb = supabaseAdmin();
 

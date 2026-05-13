@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { getSession } from '@/lib/supabase/session';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 

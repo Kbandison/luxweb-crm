@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -13,6 +14,8 @@ const UpdateSchema = z.object({
 export async function PATCH(req: Request) {
   try {
     const session = await requireClient();
+    const limit = limitByKey(`client/profile:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const raw = await req.json().catch(() => ({}));
     const parsed = UpdateSchema.safeParse(raw);
     if (!parsed.success || Object.keys(parsed.data).length === 0) {

@@ -5,6 +5,8 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
+import { safeError } from '@/lib/safe-error';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -18,6 +20,8 @@ const CreateSchema = z.object({
 export async function POST(req: Request) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/invoices:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const raw = await req.json().catch(() => ({}));
     const parsed = CreateSchema.safeParse(raw);
     if (!parsed.success) {
@@ -196,7 +200,6 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     if (err instanceof Response) return err;
-    const message = err instanceof Error ? err.message : 'Unexpected error';
-    return Response.json({ error: message }, { status: 500 });
+    return safeError('admin/invoices', err);
   }
 }

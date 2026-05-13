@@ -2,6 +2,7 @@ import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { writeAudit } from '@/lib/audit';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +17,8 @@ export async function POST(
 ) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/invoices/[id]/void:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
 
     const { data: row } = await supabaseAdmin()

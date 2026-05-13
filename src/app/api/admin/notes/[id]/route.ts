@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +17,8 @@ export async function PATCH(
 ) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/notes/[id]:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
     const raw = await req.json().catch(() => ({}));
     const parsed = UpdateSchema.safeParse(raw);
@@ -55,6 +58,8 @@ export async function DELETE(
 ) {
   try {
     const session = await requireAdmin();
+    const limit = limitByKey(`admin/notes/[id]:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
+    if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;
     const { error } = await supabaseAdmin().from('notes').delete().eq('id', id);
     if (error) return Response.json({ error: error.message }, { status: 500 });
