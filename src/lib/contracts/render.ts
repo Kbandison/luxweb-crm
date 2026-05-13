@@ -23,26 +23,22 @@ export function deriveContractVariables(
   const phase1 = byLabel('phase 1') ?? byLabel('design');
   const launch = byLabel('launch');
 
-  // Scope fields come straight from the proposal so the Agreement
-  // section 1.1 mirrors exactly what the client agreed to. Empty strings
-  // collapse to em-dash so the contract never renders a stray blank
-  // bullet ("- " on a line by itself). Multi-line values are flattened
-  // to a single sentence-joined line so a blank line in the proposal
-  // text doesn't break the markdown list (a blank line ends a bullet).
-  const designLine = flattenScopeLine(content.scope.design);
-  const migrationLine = flattenScopeLine(content.scope.content_migration);
-  const securityLine = flattenScopeLine(content.scope.security);
-  const performanceLine = flattenScopeLine(content.scope.performance);
-  const integrations = (content.scope.integrations || []).filter((s) =>
-    Boolean(s?.trim()),
-  );
+  // Every user-editable text value goes through flattenLine() so a
+  // multi-paragraph proposal field (e.g., scope.design with a blank
+  // line in it) doesn't break the markdown list it's substituted into.
+  // Empty values collapse to em-dash so a bullet never renders blank.
+  // Integrations are filtered + each entry is flattened individually
+  // before being joined with commas.
+  const integrations = (content.scope.integrations || [])
+    .map((s) => flattenLine(s))
+    .filter((s) => s !== '—');
   const integrationsLine = integrations.length > 0 ? integrations.join(', ') : '—';
 
   return {
     effective_date: formatDateLong(opts.effectiveDate),
     proposal_date: formatDateLong(content.prepared_date),
-    client_name: content.client.name || '—',
-    client_email: content.client.contact_email || '—',
+    client_name: flattenLine(content.client.name),
+    client_email: flattenLine(content.client.contact_email),
     pages_count: String(content.scope.pages_count || 0),
     total_weeks: String(content.timeline.total_weeks || 0),
     target_launch: content.timeline.target_launch
@@ -52,12 +48,12 @@ export function deriveContractVariables(
     milestones_table: renderMilestonesTable(milestones),
     support_months: String(content.scope.post_launch_support_months || 0),
     net_days: String(content.investment.net_days || 0),
-    late_fee: content.investment.late_fee || '—',
-    design: designLine,
-    content_migration: migrationLine,
+    late_fee: flattenLine(content.investment.late_fee),
+    design: flattenLine(content.scope.design),
+    content_migration: flattenLine(content.scope.content_migration),
     integrations_list: integrationsLine,
-    security: securityLine,
-    performance: performanceLine,
+    security: flattenLine(content.scope.security),
+    performance: flattenLine(content.scope.performance),
     deposit_amount: deposit ? formatUSD(deposit.amount_cents) : '—',
     phase1_amount: phase1 ? formatUSD(phase1.amount_cents) : '—',
     launch_amount: launch ? formatUSD(launch.amount_cents) : '—',
@@ -65,20 +61,24 @@ export function deriveContractVariables(
 }
 
 /**
- * Flatten a proposal scope text field into a single line suitable for a
- * markdown bullet. Splits on blank lines so paragraph breaks become
- * sentence breaks; trims, joins lines within each paragraph with a
- * space, and joins paragraphs with ". " (adding a period if the prior
- * paragraph didn't end with sentence-ending punctuation).
+ * Flatten a user-editable proposal text field into a single line suitable
+ * for substitution inside a markdown bullet, table cell, or inline span.
  *
- * Without this, multi-line proposal scope values escape their bullet —
- * the second paragraph renders as a stray line in the middle of the
- * deliverables list.
+ * - Splits on blank lines (paragraph breaks) and joins paragraphs with
+ *   ". " — or just a space if the previous paragraph already ends with
+ *   sentence-ending punctuation.
+ * - Collapses any remaining intra-paragraph whitespace (single newlines,
+ *   double spaces, tabs) to a single space.
+ * - Returns an em-dash for null / undefined / empty / whitespace-only
+ *   input so the surrounding markdown bullet never renders blank.
+ *
+ * Without this, multi-paragraph proposal text escapes its container —
+ * a blank line in proposal.scope.design pushed the second paragraph out
+ * of the deliverables bullet entirely.
  */
-function flattenScopeLine(input: string | null | undefined): string {
+function flattenLine(input: string | null | undefined): string {
   const raw = (input ?? '').trim();
   if (!raw) return '—';
-  // Split on blank lines (\n\n or more).
   const paragraphs = raw
     .split(/\n{2,}/g)
     .map((p) => p.replace(/\s+/g, ' ').trim())
@@ -86,8 +86,6 @@ function flattenScopeLine(input: string | null | undefined): string {
   if (paragraphs.length === 0) return '—';
   return paragraphs.reduce((acc, p, i) => {
     if (i === 0) return p;
-    // If the previous chunk ends with sentence-ending punctuation, just
-    // append a space; otherwise insert a period.
     const sep = /[.!?]$/.test(acc) ? ' ' : '. ';
     return acc + sep + p;
   }, '');
