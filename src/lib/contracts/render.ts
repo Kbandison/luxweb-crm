@@ -26,11 +26,13 @@ export function deriveContractVariables(
   // Scope fields come straight from the proposal so the Agreement
   // section 1.1 mirrors exactly what the client agreed to. Empty strings
   // collapse to em-dash so the contract never renders a stray blank
-  // bullet ("- " on a line by itself).
-  const designLine = (content.scope.design || '').trim() || '—';
-  const migrationLine = (content.scope.content_migration || '').trim() || '—';
-  const securityLine = (content.scope.security || '').trim() || '—';
-  const performanceLine = (content.scope.performance || '').trim() || '—';
+  // bullet ("- " on a line by itself). Multi-line values are flattened
+  // to a single sentence-joined line so a blank line in the proposal
+  // text doesn't break the markdown list (a blank line ends a bullet).
+  const designLine = flattenScopeLine(content.scope.design);
+  const migrationLine = flattenScopeLine(content.scope.content_migration);
+  const securityLine = flattenScopeLine(content.scope.security);
+  const performanceLine = flattenScopeLine(content.scope.performance);
   const integrations = (content.scope.integrations || []).filter((s) =>
     Boolean(s?.trim()),
   );
@@ -60,6 +62,35 @@ export function deriveContractVariables(
     phase1_amount: phase1 ? formatUSD(phase1.amount_cents) : '—',
     launch_amount: launch ? formatUSD(launch.amount_cents) : '—',
   };
+}
+
+/**
+ * Flatten a proposal scope text field into a single line suitable for a
+ * markdown bullet. Splits on blank lines so paragraph breaks become
+ * sentence breaks; trims, joins lines within each paragraph with a
+ * space, and joins paragraphs with ". " (adding a period if the prior
+ * paragraph didn't end with sentence-ending punctuation).
+ *
+ * Without this, multi-line proposal scope values escape their bullet —
+ * the second paragraph renders as a stray line in the middle of the
+ * deliverables list.
+ */
+function flattenScopeLine(input: string | null | undefined): string {
+  const raw = (input ?? '').trim();
+  if (!raw) return '—';
+  // Split on blank lines (\n\n or more).
+  const paragraphs = raw
+    .split(/\n{2,}/g)
+    .map((p) => p.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  if (paragraphs.length === 0) return '—';
+  return paragraphs.reduce((acc, p, i) => {
+    if (i === 0) return p;
+    // If the previous chunk ends with sentence-ending punctuation, just
+    // append a space; otherwise insert a period.
+    const sep = /[.!?]$/.test(acc) ? ' ' : '. ';
+    return acc + sep + p;
+  }, '');
 }
 
 /**
