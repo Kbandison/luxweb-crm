@@ -3,6 +3,7 @@ import { getSession } from '@/lib/supabase/session';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { Sidebar } from '@/components/admin/sidebar';
 import { MobileNav } from '@/components/admin/mobile-nav';
+import { CommandPalette } from '@/components/admin/command-palette';
 import { ToastProvider } from '@/components/ui/toast';
 
 // Defense in depth — proxy.ts already gates, but the layout re-checks
@@ -38,6 +39,7 @@ export default async function AdminLayout({
           {children}
         </div>
       </div>
+      <CommandPalette />
     </ToastProvider>
   );
 }
