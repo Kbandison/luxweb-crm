@@ -4,6 +4,7 @@ import { getContract } from '@/lib/queries/admin';
 import { ContractBody } from '@/components/contract/contract-body';
 import { PrintButton } from '@/components/contract/print-button';
 import { SignaturePair } from '@/components/contract/signature-block';
+import { VoidContractButton } from '@/components/admin/contracts/void-contract-button';
 import { StatusPill } from '@/components/ui/status-pill';
 import {
   CONTRACT_STATUS_LABEL,
@@ -45,7 +46,12 @@ export default async function AdminStandaloneContractPage({
             tone={CONTRACT_STATUS_TONE[contract.status] ?? 'bg-ink/5 text-ink-muted'}
           />
         </div>
-        <PrintButton />
+        <div className="flex items-center gap-2">
+          {contract.status !== 'void' ? (
+            <VoidContractButton contractId={contract.id} />
+          ) : null}
+          <PrintButton />
+        </div>
       </div>
 
       <article className="rounded-2xl border border-border bg-surface p-8 md:p-10 print-plain">

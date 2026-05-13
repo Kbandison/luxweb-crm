@@ -1772,12 +1772,31 @@ export async function getProjectContracts(
   projectId: string,
 ): Promise<ContractRow[]> {
   try {
-    const { data } = await supabaseAdmin()
+    const sb = supabaseAdmin();
+
+    // Primary match: contracts already linked to this project_id.
+    // Secondary match: orphan contracts that point to a proposal whose
+    // project_id is this one — picks up contracts where linkOrphan hasn't
+    // run yet or where the sign-time project_id was null. Without this
+    // the Agreement page can hide a signed contract until the page is
+    // visited (which is what triggers linkOrphan).
+    const { data: project } = await sb
+      .from('projects')
+      .select('contact_id')
+      .eq('id', projectId)
+      .maybeSingle();
+    const contactId = (project as { contact_id?: string } | null)?.contact_id ?? null;
+
+    const filter = contactId
+      ? `project_id.eq.${projectId},and(project_id.is.null,contact_id.eq.${contactId})`
+      : `project_id.eq.${projectId}`;
+
+    const { data } = await sb
       .from('contracts')
       .select(
         'id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name',
       )
-      .eq('project_id', projectId)
+      .or(filter)
       .order('created_at', { ascending: false });
     return ((data ?? []) as ContractSelectRow[]).map(toContractRow);
   } catch {
