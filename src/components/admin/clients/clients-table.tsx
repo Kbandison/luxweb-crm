@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import type { ClientRow } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
@@ -8,6 +8,7 @@ import { SortableHeader } from '@/components/ui/sortable-header';
 import { Monogram } from '@/components/admin/leads/monogram';
 import { TagPill } from '@/components/admin/leads/tag-pill';
 import { formatUSD } from '@/lib/formatters';
+import { useUrlSearchInput } from '@/lib/hooks/use-url-search';
 
 export function ClientsTable({
   initial,
@@ -28,8 +29,12 @@ export function ClientsTable({
   /** Called with the currently-visible (filtered) rows. */
   onToggleAll?: (rows: ClientRow[]) => void;
 }) {
-  const [q, setQ] = useState('');
+  const { q, setQ } = useUrlSearchInput();
 
+  // Local fast-path filter: the server already applies `q` on the next
+  // request, but until the URL commits (debounce) we filter what we have so
+  // typing feels instant. Once the commit lands, `initial` is the server's
+  // already-filtered rows so this becomes a no-op.
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return initial;

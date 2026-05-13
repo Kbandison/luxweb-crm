@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ContactRow } from '@/lib/queries/admin';
@@ -7,6 +7,7 @@ import type { SortDir } from '@/lib/list-params';
 import { Input } from '@/components/ui/input';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import { cn } from '@/lib/utils';
+import { useUrlSearchInput } from '@/lib/hooks/use-url-search';
 import { LeadScore } from './lead-score';
 import { TagPill } from './tag-pill';
 import { Monogram } from './monogram';
@@ -31,12 +32,14 @@ export function LeadsList({
   onToggleRow?: (id: string) => void;
   onToggleAll?: (rows: ContactRow[]) => void;
 }) {
-  const [query, setQuery] = useState('');
+  const { q: query, setQ: setQuery } = useUrlSearchInput();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
 
+  // Local fast-path filter so typing is snappy; server returns the filtered
+  // rows once the URL-debounced commit fires.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return initial;

@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import type { ProjectListRow } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import { formatHours, formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { useUrlSearchInput } from '@/lib/hooks/use-url-search';
 import { PROJECT_STATUS_DOT, PROJECT_STATUS_LABEL } from './status-meta';
 
 export function ProjectsTable({
@@ -20,8 +21,10 @@ export function ProjectsTable({
   currentDir: SortDir;
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const [q, setQ] = useState('');
+  const { q, setQ } = useUrlSearchInput();
 
+  // Local fast-path filter (snappy typing); server returns filtered rows
+  // once the debounced URL commit lands.
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return initial;
