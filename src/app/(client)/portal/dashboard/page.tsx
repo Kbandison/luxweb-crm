@@ -63,6 +63,8 @@ export default async function ClientDashboardPage() {
         <FocusProject project={focus} />
       ) : awaitingProposals.length > 0 ? (
         <PendingProposalsFocus proposals={awaitingProposals} />
+      ) : dash.projects.length === 0 && dash.pendingProposals.length === 0 ? (
+        <OnboardingCard />
       ) : (
         <EmptyState
           className="rounded-2xl bg-surface p-12 md:p-12"
@@ -572,4 +574,46 @@ function greetingFor(): string {
   if (hour < 12) return 'Good morning';
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
+}
+
+function OnboardingCard() {
+  return (
+    <section className="relative isolate overflow-hidden rounded-2xl border border-border bg-surface p-8 md:p-12">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-gradient-to-br from-copper/22 via-gold/10 to-transparent blur-3xl"
+      />
+      <div className="relative max-w-2xl">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
+          Welcome to your portal
+        </p>
+        <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-ink md:text-4xl">
+          Heres how things will land here.
+        </h2>
+        <ul className="mt-6 space-y-3 font-sans text-sm leading-relaxed text-ink-muted">
+          <li>
+            <span className="font-medium text-ink">Proposals</span> show up as
+            cards you can review and accept. Acceptance unlocks the agreement.
+          </li>
+          <li>
+            <span className="font-medium text-ink">Projects</span> appear once
+            the work kicks off &mdash; with milestones, invoices, and a
+            messages thread for the whole team.
+          </li>
+          <li>
+            <span className="font-medium text-ink">Invoices</span> arrive in
+            your portal and via email. Pay them from the project page.
+          </li>
+        </ul>
+        <div className="mt-8 flex flex-wrap gap-2">
+          <Link
+            href="/portal/profile"
+            className={buttonVariants({ variant: "secondary", size: "sm" })}
+          >
+            Set up your profile
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
 }

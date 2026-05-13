@@ -22,6 +22,23 @@ export default async function ClientProfilePage() {
         email={profile?.email ?? session.email}
         initialPrefs={profile?.emailPrefs ?? {}}
       />
+
+      <section className="mt-12 space-y-3">
+        <h2 className="font-display text-lg font-medium text-ink">
+          Your data
+        </h2>
+        <p className="font-sans text-sm text-ink-muted">
+          Download a JSON file containing your profile, projects, invoices,
+          proposals, contracts, milestones, and visible files. Limited to 5
+          exports per hour.
+        </p>
+        <a
+          href="/api/client/export"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+        >
+          Download my data
+        </a>
+      </section>
     </main>
   );
 }

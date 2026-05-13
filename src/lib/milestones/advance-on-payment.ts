@@ -29,7 +29,17 @@ export async function checkProjectCompletion(
     // Only flip if not already completed — guards against double-firing
     // the project_completed notification when both webhook + reconcile
     // close out the final milestone.
-    const today = new Date().toISOString().slice(0, 10);
+    //
+    // Stamp end_date in America/New_York (project owner's locale) rather
+    // than the server's UTC slice — otherwise a project that completes at
+    // 8 PM ET on Mar 5 gets stamped Mar 6 in the UI (because UTC has
+    // already rolled). en-CA gives YYYY-MM-DD output natively.
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
     const { data: updated } = await sb
       .from('projects')
       .update({ status: 'completed', end_date: today })
