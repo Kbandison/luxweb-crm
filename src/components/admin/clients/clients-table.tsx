@@ -146,17 +146,24 @@ export function ClientsTable({
                 <th className="px-3 py-3 text-right font-medium">Open value</th>
                 <th className="px-3 py-3 text-right font-medium">Deals</th>
                 <th className="px-3 py-3 text-right font-medium">Projects</th>
-                <th className="w-12 py-3 font-medium" />
               </tr>
             </thead>
             <tbody>
               {filtered.map((c) => (
                 <tr
                   key={c.id}
-                  className="border-b border-border bg-surface transition-colors hover:bg-copper-soft/15"
+                  onClick={(e) => {
+                    // Don't navigate when the user clicks the row checkbox
+                    // (the checkbox stops propagation itself, but defend in
+                    // depth so a stray label click doesn't navigate either).
+                    const target = e.target as HTMLElement;
+                    if (target.closest('input,label,a,button')) return;
+                    window.location.href = `/admin/clients/${c.id}`;
+                  }}
+                  className="cursor-pointer border-b border-border bg-surface transition-colors hover:bg-copper-soft/15"
                 >
                   {selectable ? (
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         aria-label={`Select ${c.fullName}`}
@@ -209,18 +216,10 @@ export function ClientsTable({
                       {c.dealCount}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-right">
+                  <td className="px-3 py-3 pr-6 text-right">
                     <span className="font-mono text-sm tabular-nums text-ink-muted">
                       {c.projectCount}
                     </span>
-                  </td>
-                  <td className="py-3 pr-6 text-right">
-                    <Link
-                      href={`/admin/clients/${c.id}`}
-                      className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
-                    >
-                      Open →
-                    </Link>
                   </td>
                 </tr>
               ))}

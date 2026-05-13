@@ -118,14 +118,18 @@ export function ProjectsTable({
                     align="right"
                   />
                 </th>
-                <th className="w-12 py-3" />
               </tr>
             </thead>
             <tbody>
               {filtered.map((p) => (
                 <tr
                   key={p.id}
-                  className="border-b border-border bg-surface transition-colors hover:bg-copper-soft/15"
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.closest('a,button,input,label')) return;
+                    window.location.href = `/admin/projects/${p.id}`;
+                  }}
+                  className="cursor-pointer border-b border-border bg-surface transition-colors hover:bg-copper-soft/15"
                 >
                   <td className="px-6 py-3">
                     <Link
@@ -161,18 +165,10 @@ export function ProjectsTable({
                       {p.doneMilestoneCount}/{p.milestoneCount}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-right font-mono text-sm tabular-nums text-ink">
+                  <td className="px-3 py-3 pr-6 text-right font-mono text-sm tabular-nums text-ink">
                     {p.budgetCents != null
                       ? formatUSD(p.budgetCents)
                       : '—'}
-                  </td>
-                  <td className="py-3 pr-6 text-right">
-                    <Link
-                      href={`/admin/projects/${p.id}`}
-                      className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
-                    >
-                      Open →
-                    </Link>
                   </td>
                 </tr>
               ))}

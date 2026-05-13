@@ -310,27 +310,29 @@ export function MilestonesList({
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-3">
+                  <div className="flex items-center justify-between gap-3">
                     <h4
                       className={cn(
-                        'font-sans text-sm font-medium text-ink',
+                        'min-w-0 flex-1 truncate font-sans text-sm font-medium text-ink',
                         m.status === 'done' && 'line-through decoration-ink-subtle',
                       )}
                     >
                       {m.title}
                     </h4>
-                    <StatusPill
-                      label={MILESTONE_STATUS_LABEL[m.status]}
-                      tone={MILESTONE_STATUS_TONE[m.status]}
-                    />
-                    {m.source === 'proposal' ? (
+                    <div className="flex shrink-0 items-center gap-2">
+                      {m.source === 'proposal' ? (
+                        <StatusPill
+                          label="Proposal"
+                          tone="bg-copper-soft/60 text-copper"
+                          size="sm"
+                          className="font-normal"
+                        />
+                      ) : null}
                       <StatusPill
-                        label="Proposal"
-                        tone="bg-copper-soft/60 text-copper"
-                        size="sm"
-                        className="font-normal"
+                        label={MILESTONE_STATUS_LABEL[m.status]}
+                        tone={MILESTONE_STATUS_TONE[m.status]}
                       />
-                    ) : null}
+                    </div>
                   </div>
                   {m.description ? (
                     <p className="mt-1 whitespace-pre-wrap font-sans text-xs leading-relaxed text-ink-muted">

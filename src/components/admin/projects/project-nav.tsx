@@ -86,10 +86,15 @@ export function ProjectNav({ projectId }: { projectId: string }) {
   }, [pathname]);
 
   return (
-    <div className="relative border-b border-border bg-surface print:hidden">
+    // The outer wrapper must NOT have overflow-x-auto — otherwise the Docs
+    // dropdown (rendered absolute below its trigger) gets vertically clipped
+    // by the scrolling context. The primary tabs scroll in their own inner
+    // container; the Docs trigger sits as a sibling on the right so its
+    // dropdown can pop out freely.
+    <div className="relative flex items-end border-b border-border bg-surface print:hidden">
       <nav
         ref={scrollerRef}
-        className="flex items-end gap-1 overflow-x-auto px-8"
+        className="flex flex-1 items-end gap-1 overflow-x-auto px-8"
       >
         {primaryTabs.map((t) => {
           const href = t.slug ? `${base}/${t.slug}` : base;
@@ -120,73 +125,68 @@ export function ProjectNav({ projectId }: { projectId: string }) {
             </Link>
           );
         })}
-
-        <div className="relative">
-          <button
-            ref={triggerRef}
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            aria-haspopup="menu"
-            aria-expanded={open}
-            className={cn(
-              '-mb-px flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-3 font-sans text-sm font-medium transition-colors',
-              isDocsActive || open
-                ? 'border-copper text-ink'
-                : 'border-transparent text-ink-muted hover:text-ink',
-            )}
-          >
-            Docs
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={cn(
-                'h-3 w-3 transition-transform',
-                open && 'rotate-180',
-              )}
-              aria-hidden
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-
-          {open ? (
-            <div
-              ref={dropdownRef}
-              role="menu"
-              className="absolute left-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-md border border-border bg-surface shadow-[0_8px_24px_-12px_rgba(0,0,0,0.18)]"
-            >
-              {docsTabs.map((t) => {
-                const href = `${base}/${t.slug}`;
-                const isActive = pathname?.startsWith(href);
-                return (
-                  <Link
-                    key={t.slug}
-                    href={href}
-                    role="menuitem"
-                    className={cn(
-                      'flex w-full items-center gap-2 px-3 py-2 text-left font-sans text-sm transition-colors',
-                      isActive
-                        ? 'bg-copper-soft/50 text-ink'
-                        : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
-                    )}
-                  >
-                    {t.label}
-                  </Link>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
       </nav>
-      {/* Right-edge fade hints at off-screen tabs when the nav scrolls. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface to-transparent"
-      />
+
+      <div className="relative shrink-0 pr-4">
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className={cn(
+            '-mb-px flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-3 font-sans text-sm font-medium transition-colors',
+            isDocsActive || open
+              ? 'border-copper text-ink'
+              : 'border-transparent text-ink-muted hover:text-ink',
+          )}
+        >
+          Docs
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={cn(
+              'h-3 w-3 transition-transform',
+              open && 'rotate-180',
+            )}
+            aria-hidden
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+
+        {open ? (
+          <div
+            ref={dropdownRef}
+            role="menu"
+            className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-md border border-border bg-surface shadow-[0_8px_24px_-12px_rgba(0,0,0,0.18)]"
+          >
+            {docsTabs.map((t) => {
+              const href = `${base}/${t.slug}`;
+              const isActive = pathname?.startsWith(href);
+              return (
+                <Link
+                  key={t.slug}
+                  href={href}
+                  role="menuitem"
+                  className={cn(
+                    'flex w-full items-center gap-2 px-3 py-2 text-left font-sans text-sm transition-colors',
+                    isActive
+                      ? 'bg-copper-soft/50 text-ink'
+                      : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
+                  )}
+                >
+                  {t.label}
+                </Link>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
