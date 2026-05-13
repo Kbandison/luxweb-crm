@@ -63,7 +63,7 @@ export function InvoicesList({
           <h3 className="font-display text-lg font-medium tracking-tight text-ink">
             Invoices
           </h3>
-          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted">
             {initial.length} total · {openCount} open
           </p>
         </div>
@@ -111,7 +111,7 @@ export function InvoicesList({
         <div className="overflow-x-auto rounded-xl border border-border bg-surface">
           <table className="w-full min-w-[720px]">
             <thead className="border-b border-border bg-surface text-left">
-              <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              <tr className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
                 <th className="px-5 py-3 font-medium">Description</th>
                 <th className="px-3 py-3 font-medium">Status</th>
                 <th className="px-3 py-3 text-right font-medium">Amount</th>
@@ -158,7 +158,7 @@ export function InvoicesList({
                           href={inv.hostedInvoiceUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+                          className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
                         >
                           Open ↗
                         </a>
@@ -167,7 +167,7 @@ export function InvoicesList({
                         <button
                           type="button"
                           onClick={() => setVoiding(inv)}
-                          className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-danger/40 hover:text-danger"
+                          className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-danger/40 hover:text-danger"
                         >
                           Void
                         </button>
@@ -223,7 +223,7 @@ function Stat({
 }) {
   return (
     <div className="rounded-xl border border-border bg-surface p-5">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         {label}
       </p>
       <p className="mt-3 font-mono text-2xl font-medium tabular-nums tracking-tight text-ink">
@@ -331,7 +331,7 @@ function NewInvoiceDialog({
           />
           <div className="relative flex items-center justify-between gap-3">
             <div>
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
                 New invoice
               </p>
               <h2
@@ -410,7 +410,7 @@ function NewInvoiceDialog({
             </div>
 
             <div className="rounded-lg border border-copper/20 bg-copper-soft/30 p-4">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-copper">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-copper">
                 What happens on submit
               </p>
               <ul className="mt-2 space-y-1 font-sans text-xs leading-relaxed text-ink">

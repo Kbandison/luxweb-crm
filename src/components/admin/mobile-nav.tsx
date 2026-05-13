@@ -106,7 +106,7 @@ export function MobileNav({ userEmail, userName }: MobileNavProps) {
                   <IconClose className="h-4 w-4" />
                 </button>
               </div>
-              <p className="mt-2 font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-ink-subtle">
+              <p className="mt-2 font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-subtle">
                 Portal <span className="text-copper">·</span> CRM
               </p>
             </div>
@@ -120,7 +120,7 @@ export function MobileNav({ userEmail, userName }: MobileNavProps) {
                   <div key={group}>
                     <div className="flex items-center gap-2 px-3 pb-2.5 pt-4">
                       <span aria-hidden className="h-2 w-0.5 rounded-full bg-copper" />
-                      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-ink-muted">
+                      <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-muted">
                         {group}
                       </p>
                     </div>
@@ -167,7 +167,7 @@ export function MobileNav({ userEmail, userName }: MobileNavProps) {
 
               <div className="flex items-center gap-2 px-3 pb-2.5 pt-6">
                 <span aria-hidden className="h-2 w-0.5 rounded-full bg-copper" />
-                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-ink-muted">
+                <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-muted">
                   Workspace
                 </p>
               </div>
@@ -211,7 +211,7 @@ export function MobileNav({ userEmail, userName }: MobileNavProps) {
                   <p className="truncate font-sans text-sm font-medium text-ink">
                     {displayName}
                   </p>
-                  <p className="truncate font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                  <p className="truncate font-mono text-[10px] uppercase tracking-meta text-ink-muted">
                     {userEmail}
                   </p>
                 </div>

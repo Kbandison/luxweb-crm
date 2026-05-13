@@ -56,7 +56,7 @@ export function LeadProposalsSection({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
           {proposals.length} {proposals.length === 1 ? 'proposal' : 'proposals'}
         </p>
         {!adding ? (
@@ -147,7 +147,7 @@ export function LeadProposalsSection({
                   <p className="truncate font-sans text-sm font-medium text-ink">
                     {p.title}
                   </p>
-                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle">
+                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle">
                     {p.sentAt
                       ? `Sent ${formatDate(p.sentAt)}`
                       : `Created ${formatDate(p.createdAt)}`}

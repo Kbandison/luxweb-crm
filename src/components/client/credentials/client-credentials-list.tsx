@@ -230,7 +230,7 @@ function Row({ item }: { item: ClientCredentialItem }) {
             <p className="truncate font-sans text-sm font-medium text-ink">
               {item.label}
             </p>
-            <span className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
+            <span className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-meta-tight text-ink-muted">
               {CREDENTIAL_KIND_LABEL[item.kind]}
             </span>
           </div>
@@ -280,7 +280,7 @@ function Row({ item }: { item: ClientCredentialItem }) {
         </div>
       ) : null}
       {error ? (
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+        <p className="font-mono text-[10px] uppercase tracking-meta-tight text-danger">
           {error}
         </p>
       ) : null}
@@ -464,7 +464,7 @@ function AddCredentialDialog({
         })()}
 
         {error ? (
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+          <p className="font-mono text-[10px] uppercase tracking-meta-tight text-danger">
             {error}
           </p>
         ) : null}

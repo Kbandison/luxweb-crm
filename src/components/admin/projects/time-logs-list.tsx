@@ -104,7 +104,7 @@ export function TimeLogsList({
       {/* Admin-only banner */}
       <div className="flex items-center gap-2 rounded-lg border border-copper/25 bg-copper-soft/40 px-3 py-2">
         <span aria-hidden className="text-copper">🔒</span>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-copper">
+        <p className="font-mono text-[11px] uppercase tracking-meta text-copper">
           Admin only — never sent to the client portal
         </p>
       </div>
@@ -177,7 +177,7 @@ export function TimeLogsList({
         <div className="overflow-x-auto rounded-xl border border-border bg-surface">
           <table className="w-full min-w-[640px]">
             <thead className="border-b border-border bg-surface text-left">
-              <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              <tr className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
                 <th className="px-5 py-3 font-medium">Date</th>
                 <th className="px-3 py-3 text-right font-medium">Hours</th>
                 <th className="px-3 py-3 font-medium">Note</th>
@@ -212,7 +212,7 @@ export function TimeLogsList({
                       type="button"
                       onClick={() => setConfirming(t)}
                       disabled={pendingId === t.id}
-                      className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-danger disabled:opacity-50"
+                      className="font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:text-danger disabled:opacity-50"
                     >
                       Delete
                     </button>
@@ -251,7 +251,7 @@ export function TimeLogsList({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         {label}
       </p>
       <p className="mt-2 font-mono text-2xl font-medium tabular-nums tracking-tight text-ink">

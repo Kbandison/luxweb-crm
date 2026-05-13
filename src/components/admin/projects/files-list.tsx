@@ -204,7 +204,7 @@ export function FilesList({
             browse
           </button>
         </p>
-        <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-subtle">
+        <p className="mt-1 font-mono text-[11px] uppercase tracking-meta text-ink-subtle">
           Up to 50MB per file · Stored in project-files
         </p>
 
@@ -230,7 +230,7 @@ export function FilesList({
                 <p className="truncate font-sans text-sm font-medium text-ink">
                   {u.fileName}
                 </p>
-                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-copper">
+                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-copper">
                   {u.progress === 'signing' ? 'Preparing upload…' : null}
                   {u.progress === 'uploading'
                     ? `Uploading · ${formatBytes(u.sizeBytes)}`
@@ -259,7 +259,7 @@ export function FilesList({
         <div className="overflow-x-auto rounded-xl border border-border bg-surface">
           <table className="w-full min-w-[640px]">
             <thead className="border-b border-border bg-surface text-left">
-              <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              <tr className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
                 <th className="px-5 py-3 font-medium">Name</th>
                 <th className="px-3 py-3 text-right font-medium">Size</th>
                 <th className="px-3 py-3 font-medium">Visibility</th>
@@ -288,7 +288,7 @@ export function FilesList({
                           {f.fileName}
                         </p>
                         {f.contentType ? (
-                          <p className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle">
+                          <p className="truncate font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle">
                             {f.contentType}
                           </p>
                         ) : null}
@@ -301,7 +301,7 @@ export function FilesList({
                   <td className="px-3 py-3">
                     <span
                       className={cn(
-                        'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em]',
+                        'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-meta-tight',
                         f.isClientVisible
                           ? 'bg-success/15 text-success'
                           : 'bg-copper-soft/60 text-copper',
@@ -321,13 +321,13 @@ export function FilesList({
                       <button
                         type="button"
                         onClick={() => setPreviewId(f.id)}
-                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
                       >
                         Preview
                       </button>
                       <a
                         href={`/api/admin/files/${f.id}/download`}
-                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
                       >
                         Download
                       </a>
@@ -335,7 +335,7 @@ export function FilesList({
                         type="button"
                         onClick={() => toggleVisible(f)}
                         disabled={pendingId === f.id}
-                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-border-strong hover:text-ink disabled:opacity-50"
+                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink disabled:opacity-50"
                       >
                         {f.isClientVisible ? 'Hide' : 'Reveal'}
                       </button>
@@ -343,7 +343,7 @@ export function FilesList({
                         type="button"
                         onClick={() => setConfirmingFile(f)}
                         disabled={pendingId === f.id}
-                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-danger/40 hover:text-danger disabled:opacity-50"
+                        className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-danger/40 hover:text-danger disabled:opacity-50"
                       >
                         Delete
                       </button>

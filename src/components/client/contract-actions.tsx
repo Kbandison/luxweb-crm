@@ -50,7 +50,7 @@ export function ClientContractActions({
         />
       ) : status === 'pending_admin_signature' ? (
         <div className="rounded-2xl border border-copper/30 bg-copper-soft/25 p-6">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
             Awaiting our counter-signature
           </p>
           <p className="mt-1 font-sans text-sm text-ink-muted">
@@ -62,7 +62,7 @@ export function ClientContractActions({
         <SignedBanner signedAt={signedAt} signedName={signedName} />
       ) : (
         <div className="rounded-2xl border border-danger/30 bg-danger/5 p-6">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-danger">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-danger">
             Void
           </p>
           <p className="mt-1 font-sans text-sm text-ink-muted">
@@ -135,7 +135,7 @@ function SignBar({
         />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
               Sign your agreement
             </p>
             <p className="mt-1 font-display text-lg font-medium text-ink">
@@ -167,7 +167,7 @@ function SignBar({
             className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-gradient-to-br from-copper/18 via-gold/8 to-transparent blur-2xl"
           />
           <header className="relative px-6 pb-4 pt-6">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
               Sign agreement
             </p>
             <h2
@@ -309,7 +309,7 @@ function SignedBanner({
           </svg>
         </div>
         <div>
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-success">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-success">
             Signed
           </p>
           {signedName ? (

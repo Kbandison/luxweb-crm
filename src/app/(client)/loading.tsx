@@ -6,7 +6,7 @@ export default function ClientLoading() {
           aria-hidden
           className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-copper"
         />
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+        <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
           Loading…
         </p>
       </div>

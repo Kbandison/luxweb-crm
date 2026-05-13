@@ -41,7 +41,7 @@ export function FilePreview({
             className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-gradient-to-br from-copper/18 via-gold/8 to-transparent blur-2xl"
           />
           <div className="relative min-w-0 flex-1">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
               Preview
             </p>
             <h2
@@ -50,14 +50,14 @@ export function FilePreview({
             >
               {file.fileName}
             </h2>
-            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
               {file.contentType ?? 'unknown'} · {formatBytes(file.sizeBytes)}
             </p>
           </div>
           <div className="relative flex items-center gap-2">
             <a
               href={downloadSrc}
-              className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+              className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
             >
               Download
             </a>
@@ -162,7 +162,7 @@ export function FilePreview({
               </div>
               <a
                 href={downloadSrc}
-                className="inline-flex items-center gap-1.5 rounded-md bg-copper px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-copper-foreground transition-colors hover:bg-copper/90"
+                className="inline-flex items-center gap-1.5 rounded-md bg-copper px-3 py-1.5 font-mono text-[11px] uppercase tracking-meta text-copper-foreground transition-colors hover:bg-copper/90"
               >
                 Download
               </a>

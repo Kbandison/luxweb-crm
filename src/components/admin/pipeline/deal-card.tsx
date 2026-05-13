@@ -32,7 +32,7 @@ export function DealCard({ deal }: { deal: DealCardType }) {
         <span className="font-mono text-base font-medium tabular-nums tracking-tight text-ink">
           {formatUSD(deal.valueCents)}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+        <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
           {stageAge}
         </span>
       </div>

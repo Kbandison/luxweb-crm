@@ -36,7 +36,7 @@ export default async function ClientContractPage({
       </article>
 
       <section className="space-y-3">
-        <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-ink-muted">
+        <h2 className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-muted">
           Signatures
         </h2>
         <SignaturePair

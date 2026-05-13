@@ -52,7 +52,7 @@ export default async function ClientProjectRevisionsPage({
         <>
           {pending.length > 0 ? (
             <section className="space-y-2">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-copper">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-copper">
                 Awaiting your review · {pending.length}
               </p>
               <ul className="overflow-hidden rounded-xl border border-copper/30 bg-copper-soft/15">
@@ -69,14 +69,14 @@ export default async function ClientProjectRevisionsPage({
                         <p className="truncate font-sans text-sm font-medium text-ink">
                           {r.title}
                         </p>
-                        <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                        <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
                           {r.milestoneTitle ? `${r.milestoneTitle} · ` : ''}
                           Submitted {formatRelative(r.createdAt)}
                         </p>
                       </div>
                       <span
                         className={cn(
-                          'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                          'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                           REVISION_STATUS_TONE[r.status],
                         )}
                       >
@@ -91,7 +91,7 @@ export default async function ClientProjectRevisionsPage({
 
           {rest.length > 0 ? (
             <section className="space-y-2">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
                 Resolved · {rest.length}
               </p>
               <ul className="overflow-hidden rounded-xl border border-border bg-surface">
@@ -108,7 +108,7 @@ export default async function ClientProjectRevisionsPage({
                         <p className="truncate font-sans text-sm font-medium text-ink">
                           {r.title}
                         </p>
-                        <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                        <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
                           {r.milestoneTitle ? `${r.milestoneTitle} · ` : ''}
                           Opened {formatRelative(r.createdAt)}
                           {r.commentCount > 0
@@ -118,7 +118,7 @@ export default async function ClientProjectRevisionsPage({
                       </div>
                       <span
                         className={cn(
-                          'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                          'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                           REVISION_STATUS_TONE[r.status],
                         )}
                       >

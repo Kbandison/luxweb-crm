@@ -30,7 +30,7 @@ export function AuditTable({ entries }: { entries: AuditEntry[] }) {
     <div className="overflow-x-auto rounded-xl border border-border bg-surface">
       <table className="w-full min-w-[780px]">
         <thead className="border-b border-border bg-surface text-left">
-          <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          <tr className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
             <th className="px-4 py-3 font-medium">Action</th>
             <th className="px-3 py-3 font-medium">Entity</th>
             <th className="px-3 py-3 font-medium">Actor</th>
@@ -81,7 +81,7 @@ function ExpandableRow({
         <td className="px-4 py-3">
           <span
             className={cn(
-              'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em]',
+              'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
               tone,
             )}
           >
@@ -125,19 +125,19 @@ function ExpandableRow({
           <td colSpan={5} className="px-5 py-4">
             <dl className="grid gap-3 font-mono text-[11px] text-ink-muted sm:grid-cols-2">
               <div>
-                <dt className="uppercase tracking-[0.16em] text-ink-subtle">
+                <dt className="uppercase tracking-meta text-ink-subtle">
                   Audit ID
                 </dt>
                 <dd className="mt-1 text-ink">{e.id}</dd>
               </div>
               <div>
-                <dt className="uppercase tracking-[0.16em] text-ink-subtle">
+                <dt className="uppercase tracking-meta text-ink-subtle">
                   Entity ID
                 </dt>
                 <dd className="mt-1 text-ink">{e.entityId ?? '—'}</dd>
               </div>
               <div>
-                <dt className="uppercase tracking-[0.16em] text-ink-subtle">
+                <dt className="uppercase tracking-meta text-ink-subtle">
                   Actor
                 </dt>
                 <dd className="mt-1 text-ink">
@@ -146,14 +146,14 @@ function ExpandableRow({
                 </dd>
               </div>
               <div>
-                <dt className="uppercase tracking-[0.16em] text-ink-subtle">
+                <dt className="uppercase tracking-meta text-ink-subtle">
                   Actor ID
                 </dt>
                 <dd className="mt-1 text-ink">{e.actorId ?? 'system'}</dd>
               </div>
             </dl>
             <div className="mt-4">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
                 Diff
               </p>
               {e.diff ? (

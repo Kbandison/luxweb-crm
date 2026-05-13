@@ -215,13 +215,13 @@ export function RevisionThread({
       <header className="space-y-3 rounded-2xl border border-border bg-surface p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-copper">
+            <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
               Revision request
             </p>
             <h1 className="mt-1 font-display text-2xl font-medium text-ink">
               {revision.title}
             </h1>
-            <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+            <p className="mt-1 font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
               {revision.milestoneTitle
                 ? `Milestone · ${revision.milestoneTitle} · `
                 : ''}
@@ -233,7 +233,7 @@ export function RevisionThread({
           </div>
           <span
             className={cn(
-              'inline-flex shrink-0 items-center rounded px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em]',
+              'inline-flex shrink-0 items-center rounded px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
               REVISION_STATUS_TONE[revision.status],
             )}
           >
@@ -248,7 +248,7 @@ export function RevisionThread({
 
         {clientPendingReview ? (
           <div className="space-y-3 rounded-xl border border-copper/30 bg-copper-soft/25 p-4">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
               Your turn — review &amp; respond
             </p>
             <p className="font-sans text-sm text-ink-muted">
@@ -267,7 +267,7 @@ export function RevisionThread({
                   className="w-full rounded-md border border-border bg-bg px-3 py-2 font-sans text-sm text-ink"
                 />
                 {error ? (
-                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+                  <p className="font-mono text-[10px] uppercase tracking-meta-tight text-danger">
                     {error}
                   </p>
                 ) : null}
@@ -319,7 +319,7 @@ export function RevisionThread({
 
         {viewerRole === 'admin' && !isMilestoneReview ? (
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
-            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
+            <span className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
               Set status:
             </span>
             {REVISION_STATUSES.filter(
@@ -360,11 +360,11 @@ export function RevisionThread({
                 <div className="flex items-baseline justify-between gap-2">
                   <p className="font-sans text-sm font-medium text-ink">
                     {c.authorName}
-                    <span className="ml-2 rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
+                    <span className="ml-2 rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-meta-tight text-ink-muted">
                       {c.authorRole}
                     </span>
                   </p>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle">
+                  <p className="font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle">
                     {formatDateTime(c.createdAt)}
                   </p>
                 </div>
@@ -412,7 +412,7 @@ export function RevisionThread({
             className="w-full rounded-md border border-border bg-bg px-3 py-2 font-sans text-sm text-ink"
           />
           {error ? (
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+            <p className="font-mono text-[10px] uppercase tracking-meta-tight text-danger">
               {error}
             </p>
           ) : null}

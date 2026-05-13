@@ -77,7 +77,7 @@ export function AdminSignForm({
       className="space-y-5 rounded-2xl border border-copper/30 bg-copper-soft/25 p-6"
     >
       <div>
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
           Your turn — counter-sign
         </p>
         <p className="mt-2 font-sans text-sm text-ink-muted">

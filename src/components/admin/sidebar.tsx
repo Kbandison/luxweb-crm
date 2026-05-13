@@ -70,7 +70,7 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
           <Link href="/admin/dashboard" className="inline-block">
             <Wordmark size="md" />
           </Link>
-          <p className="mt-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.28em] text-ink-subtle">
+          <p className="mt-2.5 font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-subtle">
             Portal <span className="text-copper">·</span> CRM
           </p>
         </div>
@@ -85,7 +85,7 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
             <div key={group}>
               <div className="flex items-center gap-2 px-6 pb-2.5 pt-5">
                 <span aria-hidden className="h-2 w-0.5 rounded-full bg-copper" />
-                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-ink-muted">
+                <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-muted">
                   {group}
                 </p>
               </div>
@@ -271,7 +271,7 @@ function UserCard({ userEmail, userName }: SidebarProps) {
               <span className="absolute inset-0 animate-ping rounded-full bg-success/70" />
               <span className="relative inline-block h-1.5 w-1.5 rounded-full bg-success" />
             </span>
-            <p className="truncate font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            <p className="truncate font-mono text-[10px] uppercase tracking-meta text-ink-muted">
               Admin · active
             </p>
           </div>
@@ -285,7 +285,7 @@ function UserCard({ userEmail, userName }: SidebarProps) {
       </button>
 
       <div className="relative mt-4 flex items-center justify-between px-1">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted">
           <span className="h-1 w-1 rounded-full bg-copper" aria-hidden />
           dev
         </span>

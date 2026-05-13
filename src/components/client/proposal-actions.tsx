@@ -115,7 +115,7 @@ function AcceptBar({
         />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
               Ready for your sign-off
             </p>
             <p className="mt-1 font-display text-lg font-medium text-ink">
@@ -147,7 +147,7 @@ function AcceptBar({
             className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-gradient-to-br from-copper/18 via-gold/8 to-transparent blur-2xl"
           />
           <header className="relative px-6 pb-4 pt-6">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
               Accept proposal
             </p>
             <h2
@@ -265,7 +265,7 @@ function AcceptedBanner({ acceptedAt }: { acceptedAt: string | null }) {
           </svg>
         </div>
         <div>
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-success">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-success">
             Accepted
           </p>
           <p className="mt-0.5 font-display text-base font-medium text-ink">
@@ -300,7 +300,7 @@ function StatusBanner({
     >
       <p
         className={cn(
-          'font-mono text-[10px] font-medium uppercase tracking-[0.22em]',
+          'font-mono text-[10px] font-medium uppercase tracking-meta-hero',
           tone === 'danger' ? 'text-danger' : 'text-warning',
         )}
       >

@@ -203,7 +203,7 @@ function PaymentForm({
       {walletReady ? (
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-border" />
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+          <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
             or pay with card
           </span>
           <div className="h-px flex-1 bg-border" />
@@ -262,20 +262,20 @@ function PaymentForm({
       <div className="flex items-center justify-between gap-3">
         <Link
           href={cancelHref}
-          className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted hover:text-copper"
+          className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
         >
           ← Cancel
         </Link>
         <button
           type="submit"
           disabled={!stripe || submitting}
-          className="inline-flex items-center gap-2 rounded-md bg-copper px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-copper-foreground transition-colors hover:bg-copper/90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-md bg-copper px-5 py-2.5 font-mono text-[11px] uppercase tracking-meta text-copper-foreground transition-colors hover:bg-copper/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Processing…' : 'Pay invoice'}
         </button>
       </div>
 
-      <p className="text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+      <p className="text-center font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
         Secured by Stripe
       </p>
 
@@ -314,7 +314,7 @@ function Field({
 }) {
   return (
     <label className="block space-y-2">
-      <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+      <span className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         {label}
       </span>
       {children}

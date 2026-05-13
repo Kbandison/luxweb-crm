@@ -72,7 +72,7 @@ export default async function ClientProjectAgreementPage({
                     <p className="truncate font-sans text-sm font-medium text-ink">
                       {p.title}
                     </p>
-                    <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                    <p className="mt-0.5 font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
                       {p.sentAt
                         ? `Shared ${formatDate(p.sentAt)}`
                         : `Created ${formatDate(p.createdAt)}`}
@@ -81,7 +81,7 @@ export default async function ClientProjectAgreementPage({
                   <div className="flex shrink-0 items-center gap-3">
                     <span
                       className={cn(
-                        'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                        'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                         PROPOSAL_STATUS_TONE[p.status as ProposalStatus] ??
                           'bg-ink/5 text-ink-muted',
                       )}
@@ -95,7 +95,7 @@ export default async function ClientProjectAgreementPage({
                     ) : null}
                     <span
                       aria-hidden
-                      className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper"
+                      className="font-mono text-[10px] uppercase tracking-meta text-copper"
                     >
                       Open →
                     </span>
@@ -126,7 +126,7 @@ export default async function ClientProjectAgreementPage({
                     <p className="truncate font-sans text-sm font-medium text-ink">
                       Development Agreement {c.agreementVersion}
                     </p>
-                    <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                    <p className="mt-0.5 font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
                       {c.signedAt
                         ? `Signed ${formatDate(c.signedAt)}`
                         : `Created ${formatDate(c.createdAt)}`}
@@ -135,7 +135,7 @@ export default async function ClientProjectAgreementPage({
                   <div className="flex shrink-0 items-center gap-3">
                     <span
                       className={cn(
-                        'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                        'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                         CONTRACT_STATUS_TONE[c.status as ContractStatus] ??
                           'bg-ink/5 text-ink-muted',
                       )}
@@ -144,7 +144,7 @@ export default async function ClientProjectAgreementPage({
                     </span>
                     <span
                       aria-hidden
-                      className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper"
+                      className="font-mono text-[10px] uppercase tracking-meta text-copper"
                     >
                       Open →
                     </span>

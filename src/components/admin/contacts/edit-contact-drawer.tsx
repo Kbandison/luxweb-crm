@@ -116,7 +116,7 @@ export function EditContactDrawer({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted transition-colors hover:border-copper/40 hover:text-copper"
+        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:border-copper/40 hover:text-copper"
       >
         Edit
       </button>
@@ -141,7 +141,7 @@ export function EditContactDrawer({
           />
           <div className="relative flex items-center justify-between gap-3">
             <div>
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
                 Edit contact
               </p>
               <h2

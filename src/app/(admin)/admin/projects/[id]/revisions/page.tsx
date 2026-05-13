@@ -48,13 +48,13 @@ export default async function AdminProjectRevisionsPage({
                   <p className="truncate font-sans text-sm font-medium text-ink">
                     {r.title}
                   </p>
-                  <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                  <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
                     Opened {formatRelative(r.createdAt)}
                   </p>
                 </div>
                 <span
                   className={cn(
-                    'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                    'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                     REVISION_STATUS_TONE[r.status],
                   )}
                 >

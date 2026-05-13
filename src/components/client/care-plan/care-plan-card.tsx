@@ -105,7 +105,7 @@ export function CarePlanCard({ plan, publishableKey }: CarePlanCardProps) {
     <section className="space-y-4 rounded-2xl border border-border bg-surface p-6">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-copper">
+          <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
             Care Plan
           </p>
           <h2 className="mt-1 font-display text-2xl font-medium text-ink">
@@ -117,7 +117,7 @@ export function CarePlanCard({ plan, publishableKey }: CarePlanCardProps) {
         </div>
         <span
           className={cn(
-            'inline-flex items-center rounded px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em]',
+            'inline-flex items-center rounded px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
             CARE_PLAN_STATUS_TONE[plan.status],
           )}
         >
@@ -342,7 +342,7 @@ function ActivationForm({
         <button
           type="button"
           onClick={onClose}
-          className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-copper"
+          className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
         >
           ← Cancel
         </button>
@@ -401,13 +401,13 @@ function ActivationForm({
         <button
           type="submit"
           disabled={!stripe || submitting}
-          className="inline-flex items-center gap-2 rounded-md bg-copper px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-copper-foreground transition-colors hover:bg-copper/90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-md bg-copper px-5 py-2.5 font-mono text-[11px] uppercase tracking-meta text-copper-foreground transition-colors hover:bg-copper/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Activating…' : `Pay ${formatUSD(amountCents)}`}
         </button>
       </div>
 
-      <p className="text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+      <p className="text-center font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
         Secured by Stripe
       </p>
     </form>
@@ -527,7 +527,7 @@ function UpdatePaymentMethodForm({
         <button
           type="button"
           onClick={onClose}
-          className="mt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted hover:text-copper"
+          className="mt-3 font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
         >
           ← Back
         </button>
@@ -547,7 +547,7 @@ function UpdatePaymentMethodForm({
         <button
           type="button"
           onClick={onClose}
-          className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-copper"
+          className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
         >
           ← Cancel
         </button>
@@ -615,7 +615,7 @@ function Field({
 }) {
   return (
     <label className="block space-y-2">
-      <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+      <span className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         {label}
       </span>
       {children}

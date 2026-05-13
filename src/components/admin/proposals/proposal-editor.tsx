@@ -197,34 +197,34 @@ export function ProposalEditor({
         <div className="flex flex-wrap items-center gap-3">
           <Link
             href={backHref}
-            className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-copper"
+            className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
           >
             ← {backLabel}
           </Link>
           <span aria-hidden className="h-3 w-px bg-border" />
           <ProposalStatusPill status={status} />
           {initialSentAt ? (
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+            <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
               Sent {formatDate(initialSentAt)}
             </span>
           ) : null}
           {initialAcceptedAt ? (
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-success">
+            <span className="font-mono text-[10px] uppercase tracking-meta text-success">
               Signed {formatDate(initialAcceptedAt)}
             </span>
           ) : null}
           <span aria-hidden className="h-3 w-px bg-border" />
           {saving ? (
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper">
+            <span className="font-mono text-[10px] uppercase tracking-meta text-copper">
               Saving…
             </span>
           ) : savedAt ? (
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-success">
+            <span className="font-mono text-[10px] uppercase tracking-meta text-success">
               Saved {savedAt.toLocaleTimeString()}
             </span>
           ) : null}
           {error ? (
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-danger">
+            <span className="font-mono text-[10px] uppercase tracking-meta text-danger">
               {error}
             </span>
           ) : null}
@@ -244,7 +244,7 @@ export function ProposalEditor({
                     : undefined
               }
               className={cn(
-                'px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                'px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta transition-colors disabled:cursor-not-allowed disabled:opacity-40',
                 mode === 'edit'
                   ? 'bg-copper-soft/60 text-copper'
                   : 'bg-surface text-ink-muted hover:text-ink',
@@ -256,7 +256,7 @@ export function ProposalEditor({
               type="button"
               onClick={() => setMode('preview')}
               className={cn(
-                'border-l border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors',
+                'border-l border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta transition-colors',
                 mode === 'preview'
                   ? 'bg-copper-soft/60 text-copper'
                   : 'bg-surface text-ink-muted hover:text-ink',
@@ -320,7 +320,7 @@ export function ProposalEditor({
       {isAccepted ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-success/30 bg-success/5 px-5 py-3 print:hidden">
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-success">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-success">
               Locked — accepted by the client
             </p>
             <p className="mt-0.5 font-sans text-xs text-ink-muted">
@@ -336,7 +336,7 @@ export function ProposalEditor({
                   ? `/admin/projects/${existingContract.projectId}/contracts/${existingContract.id}`
                   : `/admin/contracts/${existingContract.id}`
               }
-              className="shrink-0 rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted transition-colors hover:border-copper/40 hover:text-copper"
+              className="shrink-0 rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:border-copper/40 hover:text-copper"
             >
               View agreement →
             </Link>
@@ -346,7 +346,7 @@ export function ProposalEditor({
         </div>
       ) : isSent ? (
         <div className="rounded-xl border border-copper/30 bg-copper-soft/25 px-5 py-3 print:hidden">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
             Sent · v{revision} — locked while client reviews
           </p>
           <p className="mt-0.5 font-sans text-xs text-ink-muted">
@@ -646,7 +646,7 @@ function EditorForm({
                 key={key}
                 className="rounded-xl border border-border bg-surface p-5"
               >
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper">
+                <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
                   Phase {i + 1} · {phase.name}
                 </p>
                 <div className="mt-4 grid gap-4 sm:grid-cols-[140px_1fr]">
@@ -1019,7 +1019,7 @@ function InvestmentSection({
       <div className="mt-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-ink-muted">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
               Payment milestones
             </p>
             <p className="mt-1 font-sans text-xs text-ink-subtle">
@@ -1090,7 +1090,7 @@ function InvestmentSection({
           {ms.length > 0 ? (
             <p
               className={cn(
-                'font-mono text-[10px] uppercase tracking-[0.16em]',
+                'font-mono text-[10px] uppercase tracking-meta',
                 drift === 0 && sumPct === 100
                   ? 'text-success'
                   : 'text-warning',
@@ -1269,7 +1269,7 @@ function RepeatingList<T>({
       <button
         type="button"
         onClick={() => onChange([...items, newItem()])}
-        className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-border bg-surface px-3 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-muted transition-colors hover:border-copper/40 hover:text-copper"
+        className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-border bg-surface px-3 py-2 font-mono text-[11px] uppercase tracking-meta text-ink-muted transition-colors hover:border-copper/40 hover:text-copper"
       >
         <svg
           viewBox="0 0 24 24"

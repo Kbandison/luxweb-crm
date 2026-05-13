@@ -33,7 +33,7 @@ function ClientReviewBlock({ review }: { review: AdminReviewCardProps['review'] 
   if (!review?.clientSubmittedAt) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-surface p-5">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
+        <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
           Client review
         </p>
         <p className="mt-2 font-sans text-sm text-ink-muted">
@@ -47,10 +47,10 @@ function ClientReviewBlock({ review }: { review: AdminReviewCardProps['review'] 
   return (
     <div className="rounded-2xl border border-border bg-surface p-5">
       <div className="flex items-center justify-between gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
+        <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
           Client review
         </p>
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle">
+        <p className="font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle">
           {formatDateLong(review.clientSubmittedAt)}
         </p>
       </div>
@@ -64,7 +64,7 @@ function ClientReviewBlock({ review }: { review: AdminReviewCardProps['review'] 
           “{review.clientReview}”
         </blockquote>
       ) : null}
-      <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em]">
+      <p className="mt-3 font-mono text-[10px] uppercase tracking-meta-tight">
         {review.clientConsentToPublish ? (
           <span className="rounded bg-success/15 px-1.5 py-0.5 text-success">
             Consent to publish
@@ -133,13 +133,13 @@ function AdminPrivateBlock({
     return (
       <div className="rounded-2xl border border-border bg-surface-2/40 p-5">
         <div className="flex items-center justify-between gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
+          <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
             Internal review (private)
           </p>
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+            className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
           >
             {hasReview ? 'Edit' : 'Add'}
           </button>
@@ -157,7 +157,7 @@ function AdminPrivateBlock({
               </p>
             ) : null}
             {review.adminSubmittedAt ? (
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle">
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle">
                 {formatDateLong(review.adminSubmittedAt)}
               </p>
             ) : null}
@@ -177,14 +177,14 @@ function AdminPrivateBlock({
       className="space-y-4 rounded-2xl border border-border bg-surface-2/40 p-5"
     >
       <div className="flex items-center justify-between">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
+        <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
           Internal review (private)
         </p>
         <button
           type="button"
           onClick={() => setEditing(false)}
           disabled={busy}
-          className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-copper"
+          className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
         >
           ← Cancel
         </button>
@@ -210,7 +210,7 @@ function AdminPrivateBlock({
       </div>
 
       {error ? (
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+        <p className="font-mono text-[10px] uppercase tracking-meta-tight text-danger">
           {error}
         </p>
       ) : null}

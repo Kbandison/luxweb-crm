@@ -57,7 +57,7 @@ export function SortableHeader({
           : 'none'
       }
       className={cn(
-        'inline-flex items-center gap-1 rounded font-mono text-[10px] uppercase tracking-[0.18em] transition-colors',
+        'inline-flex items-center gap-1 rounded font-mono text-[10px] uppercase tracking-meta transition-colors',
         isActive ? 'text-ink' : 'text-ink-muted hover:text-ink',
         align === 'right' && 'flex-row-reverse',
         className,

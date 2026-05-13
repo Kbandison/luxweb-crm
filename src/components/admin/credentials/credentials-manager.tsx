@@ -364,21 +364,21 @@ function CredentialRow({
             <p className="truncate font-sans text-sm font-medium text-ink">
               {item.label}
             </p>
-            <span className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
+            <span className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-meta-tight text-ink-muted">
               {CREDENTIAL_KIND_LABEL[item.kind]}
             </span>
             {item.visibleToClient ? (
-              <span className="rounded bg-success/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-success">
+              <span className="rounded bg-success/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-meta-tight text-success">
                 Client visible
               </span>
             ) : (
-              <span className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-subtle">
+              <span className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-meta-tight text-ink-subtle">
                 Internal
               </span>
             )}
             {item.createdByClient ? (
               <span
-                className="rounded bg-copper-soft/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-copper"
+                className="rounded bg-copper-soft/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-meta-tight text-copper"
                 title="Uploaded by the client. You can reveal and delete, but not edit."
               >
                 Client added
@@ -447,7 +447,7 @@ function CredentialRow({
         </div>
       ) : null}
       {error ? (
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+        <p className="font-mono text-[10px] uppercase tracking-meta-tight text-danger">
           {error}
         </p>
       ) : null}
@@ -655,7 +655,7 @@ function CredentialFormDialog({
         </label>
 
         {error ? (
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+          <p className="font-mono text-[10px] uppercase tracking-meta-tight text-danger">
             {error}
           </p>
         ) : null}

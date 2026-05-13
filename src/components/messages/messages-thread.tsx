@@ -213,14 +213,14 @@ export function MessagesThread({
         />
         <div className="relative flex items-baseline justify-between gap-3">
           <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
               Project conversation
             </p>
             <h2 className="mt-1 font-display text-lg font-medium tracking-tight text-ink">
               {viewerRole === 'admin' ? 'Message the client' : 'Message the team'}
             </h2>
           </div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+          <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
             {messages.length} {messages.length === 1 ? 'message' : 'messages'}
           </p>
         </div>
@@ -257,7 +257,7 @@ export function MessagesThread({
                   {showMeta ? (
                     <p
                       className={cn(
-                        'mb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle',
+                        'mb-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle',
                         mine ? 'text-right' : 'text-left',
                       )}
                     >
@@ -318,7 +318,7 @@ export function MessagesThread({
           </Button>
         </div>
         <div className="mt-1.5 flex items-center justify-between gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+          <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
             ⌘↵ to send
           </p>
           {error ? (

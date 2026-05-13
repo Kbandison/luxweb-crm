@@ -124,7 +124,7 @@ export function LoginForm() {
 
       <div className="relative flex items-center">
         <span className="h-px flex-1 bg-border" />
-        <span className="px-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+        <span className="px-3 font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
           or
         </span>
         <span className="h-px flex-1 bg-border" />

@@ -39,7 +39,7 @@ export default async function ClientProjectLayout({
           className="pointer-events-none absolute inset-x-0 bottom-0 h-px copper-rule"
         />
         <div className="relative mx-auto w-full max-w-7xl px-6 pb-8 pt-7 md:px-10">
-          <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-subtle">
+          <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-meta-hero text-ink-subtle">
             <Link href="/portal/dashboard" className="hover:text-ink">
               Dashboard
             </Link>
@@ -50,7 +50,7 @@ export default async function ClientProjectLayout({
             {project.name}
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted">
               <span
                 className={cn(
                   'h-1.5 w-1.5 rounded-full',

@@ -16,7 +16,7 @@ export function ProjectHeader({ project }: { project: ProjectDetail }) {
         className="pointer-events-none absolute inset-x-0 bottom-0 h-px copper-rule"
       />
 
-      <nav className="relative flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-subtle">
+      <nav className="relative flex items-center gap-2 font-mono text-[10px] uppercase tracking-meta-hero text-ink-subtle">
         <Link href="/admin/projects" className="hover:text-ink">
           Projects
         </Link>
@@ -84,7 +84,7 @@ function Stat({
     <div title={tooltip}>
       <dt
         className={cn(
-          'flex items-center justify-end gap-1 font-mono text-[10px] font-medium uppercase tracking-[0.18em]',
+          'flex items-center justify-end gap-1 font-mono text-[10px] font-medium uppercase tracking-meta',
           adminOnly ? 'text-copper' : 'text-ink-muted',
         )}
       >

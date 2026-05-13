@@ -111,7 +111,7 @@ export function NotesPanel({
           maxLength={8000}
         />
         <div className="flex items-center justify-between gap-3 border-t border-border bg-surface-2/40 px-3 py-2">
-          <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
+          <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-meta text-ink-muted">
             <input
               type="checkbox"
               checked={isPrivate}
@@ -154,7 +154,7 @@ export function NotesPanel({
                 <div className="flex items-center gap-2">
                   <span
                     className={cn(
-                      'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em]',
+                      'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-meta-tight',
                       note.isPrivate
                         ? 'bg-copper-soft/60 text-copper'
                         : 'bg-success/10 text-success',
@@ -177,7 +177,7 @@ export function NotesPanel({
                     type="button"
                     onClick={() => togglePrivate(note)}
                     disabled={pendingId === note.id}
-                    className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:text-copper disabled:opacity-50"
+                    className="font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:text-copper disabled:opacity-50"
                   >
                     {note.isPrivate ? 'Reveal' : 'Hide'}
                   </button>
@@ -185,7 +185,7 @@ export function NotesPanel({
                     type="button"
                     onClick={() => setConfirming(note)}
                     disabled={pendingId === note.id}
-                    className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:text-danger disabled:opacity-50"
+                    className="font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:text-danger disabled:opacity-50"
                   >
                     Delete
                   </button>

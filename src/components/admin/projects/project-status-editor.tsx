@@ -151,7 +151,7 @@ export function ProjectStatusEditor({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted transition-colors',
+          'inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors',
           'hover:border-copper/40 hover:text-ink',
           open && 'border-copper/40 text-ink',
         )}

@@ -27,13 +27,13 @@ export default async function ClientsPage({
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-6 py-4">
           <div className="flex items-center gap-3">
-            <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-subtle">
+            <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-meta-hero text-ink-subtle">
               <span>Admin</span>
               <span className="text-copper">/</span>
               <span className="text-ink">Clients</span>
             </nav>
             <span aria-hidden className="h-3 w-px bg-border" />
-            <p className="font-mono text-[10px] tabular-nums uppercase tracking-[0.18em] text-ink-muted">
+            <p className="font-mono text-[10px] tabular-nums uppercase tracking-meta text-ink-muted">
               {result.totalCount} total
             </p>
           </div>

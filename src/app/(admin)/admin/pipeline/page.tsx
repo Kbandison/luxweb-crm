@@ -29,7 +29,7 @@ export default async function PipelinePage() {
         {/* Sub-header */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-6 py-4">
           <div className="flex items-center gap-4">
-            <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-subtle">
+            <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-meta-hero text-ink-subtle">
               <span>Admin</span>
               <span className="text-copper">/</span>
               <span className="text-ink">Pipeline</span>
@@ -39,12 +39,12 @@ export default async function PipelinePage() {
               <span className="font-mono text-base font-medium tabular-nums tracking-tight text-ink">
                 {formatUSD(openValueCents)}
               </span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              <span className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
                 open
               </span>
             </div>
             <span aria-hidden className="h-3 w-px bg-border" />
-            <p className="font-mono text-[10px] tabular-nums uppercase tracking-[0.18em] text-ink-muted">
+            <p className="font-mono text-[10px] tabular-nums uppercase tracking-meta text-ink-muted">
               {deals.length} {deals.length === 1 ? 'deal' : 'deals'} total
             </p>
           </div>

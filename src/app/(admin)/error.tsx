@@ -14,7 +14,7 @@ export default function AdminError({
 
   return (
     <main className="mx-auto flex min-h-[80vh] w-full max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-danger">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-danger">
         Something broke
       </p>
       <h1 className="mt-3 font-display text-3xl font-medium tracking-tight text-ink md:text-4xl">

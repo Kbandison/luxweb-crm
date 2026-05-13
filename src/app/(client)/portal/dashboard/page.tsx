@@ -40,7 +40,7 @@ export default async function ClientDashboardPage() {
       <ClientDashboardRefresher />
       {/* Greeting */}
       <header className="mb-10 space-y-2">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-copper">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
           {greeting}
         </p>
         <h1 className="font-display text-4xl font-medium tracking-tight text-ink md:text-5xl">
@@ -122,7 +122,7 @@ function PendingContractsBanner({
   return (
     <section className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-copper/30 bg-copper-soft/25 p-6">
       <div>
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
           Sign your agreement
         </p>
         <p className="mt-1 font-display text-lg font-medium text-ink">
@@ -170,7 +170,7 @@ function PendingProposalsFocus({
         className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-gradient-to-br from-copper/22 via-gold/10 to-transparent blur-3xl"
       />
       <div className="relative">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-copper">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
           {awaiting.length > 0 ? 'Awaiting your review' : 'Proposals'}
         </p>
         <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-ink md:text-5xl">
@@ -215,7 +215,7 @@ function AgreementsTile({
 }) {
   return (
     <div className="rounded-2xl border border-border bg-surface p-6">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         Agreements
       </p>
       <ul className="mt-4 space-y-2">
@@ -233,11 +233,11 @@ function AgreementsTile({
                   <p className="truncate font-sans text-sm font-medium text-ink">
                     {a.proposalTitle}
                   </p>
-                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle">
+                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle">
                     Signed {formatDateLong(a.signedAt)}
                   </p>
                 </div>
-                <span className="inline-flex shrink-0 items-center rounded bg-success/15 px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-success">
+                <span className="inline-flex shrink-0 items-center rounded bg-success/15 px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight text-success">
                   Signed
                 </span>
               </Link>
@@ -256,7 +256,7 @@ function ProposalsTile({
 }) {
   return (
     <div className="rounded-2xl border border-border bg-surface p-6">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         Proposals
       </p>
       <ul className="mt-4 space-y-2">
@@ -270,7 +270,7 @@ function ProposalsTile({
                 <p className="truncate font-sans text-sm font-medium text-ink">
                   {p.title}
                 </p>
-                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle">
+                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle">
                   {p.sentAt
                     ? `Shared ${formatDateLong(p.sentAt)}`
                     : '—'}
@@ -279,7 +279,7 @@ function ProposalsTile({
               <div className="flex shrink-0 items-center gap-3">
                 <span
                   className={cn(
-                    'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                    'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                     PROPOSAL_STATUS_TONE[p.status as ProposalStatus] ??
                       'bg-ink/5 text-ink-muted',
                   )}
@@ -321,7 +321,7 @@ function FocusProject({
       />
 
       <div className="relative">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-copper">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
           Active project
         </p>
         <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-ink md:text-5xl">
@@ -329,7 +329,7 @@ function FocusProject({
         </h2>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted">
             <span
               className={cn(
                 'h-1.5 w-1.5 rounded-full',
@@ -350,7 +350,7 @@ function FocusProject({
 
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
               Progress
             </p>
             <div className="mt-3 flex items-baseline gap-2">
@@ -374,7 +374,7 @@ function FocusProject({
           </div>
 
           <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
               Up next
             </p>
             {project.nextMilestone ? (
@@ -448,7 +448,7 @@ function UnpaidInvoices({
     <section className="rounded-2xl border border-border bg-surface p-6">
       <div className="flex items-baseline justify-between">
         <div>
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-copper">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-copper">
             Currently due
           </p>
           <p className="mt-2 font-mono text-3xl font-medium tabular-nums tracking-tight text-ink">
@@ -478,7 +478,7 @@ function UnpaidInvoices({
                 <p className="truncate font-sans text-sm font-medium text-ink">
                   {inv.description ?? 'Invoice'}
                 </p>
-                <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                <p className="mt-0.5 font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
                   {inv.status === 'overdue' ? (
                     <span className="text-danger">Overdue</span>
                   ) : (
@@ -494,7 +494,7 @@ function UnpaidInvoices({
                 {inv.projectId ? (
                   <Link
                     href={`/portal/project/${inv.projectId}/invoices/${inv.id}/pay`}
-                    className="inline-flex items-center gap-1 rounded-md bg-copper px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-copper-foreground transition-colors hover:bg-copper/90"
+                    className="inline-flex items-center gap-1 rounded-md bg-copper px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta text-copper-foreground transition-colors hover:bg-copper/90"
                   >
                     Pay
                     <svg
@@ -522,7 +522,7 @@ function UnpaidInvoices({
         <div className="mt-5 border-t border-border pt-4">
           <Link
             href={`/portal/project/${primaryProjectId}/invoices`}
-            className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-copper"
+            className="font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:text-copper"
           >
             View all invoices →
           </Link>
@@ -539,7 +539,7 @@ function OtherProjects({
 }) {
   return (
     <section className="rounded-2xl border border-border bg-surface p-6">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         Other projects
       </p>
       {projects.length === 0 ? (
@@ -558,7 +558,7 @@ function OtherProjects({
                   <p className="truncate font-sans text-sm font-medium text-ink">
                     {p.name}
                   </p>
-                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
                     <span
                       className={cn(
                         'mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle',

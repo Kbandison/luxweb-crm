@@ -50,7 +50,7 @@ export function StatCard({
       )}
       title={tooltip}
     >
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         {adminOnly ? <span aria-hidden>🔒 </span> : null}
         {label}
       </p>

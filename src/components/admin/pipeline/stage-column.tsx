@@ -33,7 +33,7 @@ export function StageColumn({
             aria-hidden
             className={cn('h-2 w-2 rounded-full', STAGE_DOT[stage])}
           />
-          <h3 className="font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-ink">
+          <h3 className="font-mono text-[11px] font-medium uppercase tracking-meta text-ink">
             {STAGE_LABEL[stage]}
           </h3>
           <span className="ml-auto font-mono text-[11px] tabular-nums text-ink-muted">

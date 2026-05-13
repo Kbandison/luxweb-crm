@@ -127,7 +127,7 @@ export function LeadsList({
             className="h-4 w-4 cursor-pointer accent-copper"
           />
         ) : null}
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+        <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
           Sort
         </span>
         <SortableHeader
@@ -229,7 +229,7 @@ export function LeadsList({
 
       {/* Footer — count */}
       <div className="flex items-center justify-between border-t border-border px-4 py-2">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+        <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
           {filtered.length}
           {query ? ` of ${initial.length}` : ''} lead
           {filtered.length === 1 ? '' : 's'}
@@ -238,7 +238,7 @@ export function LeadsList({
           <button
             type="button"
             onClick={clearSelection}
-            className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline lg:hidden"
+            className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline lg:hidden"
           >
             Clear
           </button>

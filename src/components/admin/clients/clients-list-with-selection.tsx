@@ -104,7 +104,7 @@ export function ClientsListWithSelection({
       <div className="flex items-center justify-end gap-2 border-b border-border bg-surface px-6 py-2">
         <a
           href={exportAllHref}
-          className="inline-flex items-center font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+          className="inline-flex items-center font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
         >
           Export CSV
         </a>

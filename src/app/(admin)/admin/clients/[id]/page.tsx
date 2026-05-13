@@ -63,7 +63,7 @@ export default async function ClientDetailPage({
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Sub-header / breadcrumb */}
         <div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-8 py-3">
-          <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-subtle">
+          <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-meta-hero text-ink-subtle">
             <Link href="/admin/clients" className="hover:text-ink">
               Clients
             </Link>
@@ -121,7 +121,7 @@ export default async function ClientDetailPage({
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <LeadScore score={client.leadScore} size="md" />
                 {client.userId ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-success">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-success">
                     <span className="h-1 w-1 rounded-full bg-success" aria-hidden />
                     Portal access
                   </span>
@@ -198,7 +198,7 @@ function Stat({
 }) {
   return (
     <div>
-      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+      <dt className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
         {label}
       </dt>
       <dd
@@ -238,7 +238,7 @@ function Overview({
         right={
           <Link
             href={`/admin/clients/${client.id}?tab=engagements`}
-            className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+            className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
           >
             View all →
           </Link>
@@ -252,7 +252,7 @@ function Overview({
         right={
           <Link
             href={`/admin/clients/${client.id}?tab=activity`}
-            className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+            className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
           >
             View all →
           </Link>
@@ -295,7 +295,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <dt className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-ink-muted">
+      <dt className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         {label}
       </dt>
       <dd className={mono ? 'font-mono text-sm text-ink' : 'font-sans text-sm text-ink'}>

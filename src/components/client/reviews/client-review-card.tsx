@@ -35,10 +35,10 @@ export function ClientReviewCard({
     return (
       <section className="space-y-3 rounded-2xl border border-success/30 bg-success/5 p-6">
         <div className="flex items-center justify-between gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-success">
+          <p className="font-mono text-[10px] uppercase tracking-meta text-success">
             Review submitted
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle">
+          <p className="font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle">
             {formatDateLong(review.clientSubmittedAt)}
           </p>
         </div>
@@ -63,7 +63,7 @@ export function ClientReviewCard({
   if (!open) {
     return (
       <section className="space-y-3 rounded-2xl border border-copper/30 bg-copper-soft/30 p-6">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-copper">
+        <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
           Project complete — would you leave a review?
         </p>
         <p className="font-sans text-sm text-ink-muted">
@@ -129,7 +129,7 @@ export function ClientReviewCard({
           type="button"
           onClick={() => setOpen(false)}
           disabled={busy}
-          className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-copper"
+          className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
         >
           ← Cancel
         </button>

@@ -109,7 +109,7 @@ function Block({ block }: { block: Block }) {
             ? 'mt-9 font-display text-xl font-medium tracking-tight text-ink'
             : block.level === 3
               ? 'mt-7 font-display text-base font-medium tracking-tight text-ink'
-              : 'mt-5 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-ink-muted';
+              : 'mt-5 font-mono text-[11px] font-medium uppercase tracking-meta text-ink-muted';
       switch (block.level) {
         case 1:
           return <h1 className={headingClass}>{inline(block.text)}</h1>;
@@ -145,7 +145,7 @@ function Block({ block }: { block: Block }) {
                 {block.rows[0]?.map((cell, i) => (
                   <th
                     key={i}
-                    className="px-3 py-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted"
+                    className="px-3 py-2 font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted"
                   >
                     {inline(cell)}
                   </th>

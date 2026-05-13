@@ -35,14 +35,14 @@ export default async function AdminStandaloneContractPage({
         <div className="flex items-center gap-3">
           <Link
             href={`/admin/proposals/${contract.proposalId}`}
-            className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-copper"
+            className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
           >
             ← Proposal
           </Link>
           <span aria-hidden className="h-3 w-px bg-border" />
           <span
             className={cn(
-              'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+              'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
               CONTRACT_STATUS_TONE[contract.status] ?? 'bg-ink/5 text-ink-muted',
             )}
           >
@@ -57,7 +57,7 @@ export default async function AdminStandaloneContractPage({
       </article>
 
       <section className="space-y-3">
-        <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-ink-muted">
+        <h2 className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-muted">
           Signatures
         </h2>
         <SignaturePair

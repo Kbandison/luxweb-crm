@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Topbar } from '@/components/admin/topbar';
 import { getAllCarePlans } from '@/lib/queries/admin';
 import { StatCard } from '@/components/ui/stat-card';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 import {
   CARE_PLAN_STATUS_LABEL,
@@ -27,14 +28,11 @@ export default async function AdminCarePlansPage() {
     <>
       <Topbar title="Care Plans" />
       <main className="mx-auto w-full max-w-6xl space-y-6 px-8 py-8">
-        <header className="space-y-1">
-          <h1 className="font-display text-2xl font-medium text-ink">
-            Care Plans
-          </h1>
-          <p className="font-sans text-sm text-ink-muted">
-            All recurring subscriptions across projects.
-          </p>
-        </header>
+        <PageHeader
+          eyebrow="Workspace"
+          title="Care Plans"
+          description="All recurring subscriptions across projects."
+        />
 
         <div className="grid gap-4 sm:grid-cols-3">
           <StatCard label="Active subs" value={String(activeCount)} size="lg" />
@@ -72,7 +70,7 @@ export default async function AdminCarePlansPage() {
                         <p className="truncate font-sans text-sm font-medium text-ink">
                           {p.projectName ?? p.contactName}
                         </p>
-                        <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                        <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
                           {p.contactName}
                           {p.currentPeriodEnd
                             ? ` · ${willCancel ? 'Cancels' : 'Renews'} ${formatDateLong(p.currentPeriodEnd)}`
@@ -91,7 +89,7 @@ export default async function AdminCarePlansPage() {
                         </span>
                         <span
                           className={cn(
-                            'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                            'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                             CARE_PLAN_STATUS_TONE[p.status],
                           )}
                         >

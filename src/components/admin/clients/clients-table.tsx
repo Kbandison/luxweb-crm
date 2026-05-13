@@ -80,7 +80,7 @@ export function ClientsTable({
             className="h-9 pl-9"
           />
         </div>
-        <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+        <p className="ml-auto font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
           {filtered.length}
           {q ? ` of ${initial.length}` : ''} client
           {filtered.length === 1 ? '' : 's'}
@@ -99,7 +99,7 @@ export function ClientsTable({
         ) : (
           <table className="w-full min-w-[720px]">
             <thead className="border-b border-border bg-surface text-left">
-              <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              <tr className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
                 {selectable ? (
                   <th className="w-10 px-3 py-3 font-medium">
                     <input
@@ -209,7 +209,7 @@ export function ClientsTable({
                   <td className="py-3 pr-6 text-right">
                     <Link
                       href={`/admin/clients/${c.id}`}
-                      className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+                      className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
                     >
                       Open →
                     </Link>

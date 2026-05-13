@@ -28,7 +28,7 @@ export function ProposalPreview({
     <article className="space-y-10 font-sans text-ink">
       {/* Cover */}
       <section className="relative isolate overflow-hidden rounded-2xl border border-border bg-surface p-8 md:p-10 copper-mesh print-plain print-avoid-break">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-copper">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
           Proposal · v{content.version}
         </p>
         <h1 className="mt-3 font-display text-4xl font-medium leading-tight tracking-tight text-ink md:text-5xl">
@@ -37,7 +37,7 @@ export function ProposalPreview({
         <div className="copper-rule mt-6 h-px w-32" />
         <dl className="mt-6 grid gap-x-8 gap-y-3 font-mono text-xs tabular-nums text-ink-muted sm:grid-cols-3">
           <div>
-            <dt className="uppercase tracking-[0.18em] text-ink-subtle">
+            <dt className="uppercase tracking-meta text-ink-subtle">
               Prepared for
             </dt>
             <dd className="mt-1 text-sm text-ink">
@@ -45,7 +45,7 @@ export function ProposalPreview({
             </dd>
           </div>
           <div>
-            <dt className="uppercase tracking-[0.18em] text-ink-subtle">
+            <dt className="uppercase tracking-meta text-ink-subtle">
               Contact
             </dt>
             <dd className="mt-1 text-sm text-ink">
@@ -53,7 +53,7 @@ export function ProposalPreview({
             </dd>
           </div>
           <div>
-            <dt className="uppercase tracking-[0.18em] text-ink-subtle">
+            <dt className="uppercase tracking-meta text-ink-subtle">
               Prepared date
             </dt>
             <dd className="mt-1 text-sm text-ink">{preparedDate}</dd>
@@ -120,7 +120,7 @@ export function ProposalPreview({
           />
           {content.scope.integrations.length > 0 ? (
             <div className="sm:col-span-2">
-              <dt className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-ink-muted">
+              <dt className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
                 Integrations
               </dt>
               <dd className="mt-2 flex flex-wrap gap-1.5">
@@ -159,7 +159,7 @@ export function ProposalPreview({
                 key={key}
                 className="rounded-xl border border-border bg-surface p-5"
               >
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper">
+                <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
                   Phase {i + 1}
                 </p>
                 <h4 className="mt-1 font-display text-lg font-medium text-ink">
@@ -191,7 +191,7 @@ export function ProposalPreview({
       <Section number="06" title="Investment">
         <div className="rounded-2xl border border-border bg-surface p-8 print-avoid-break">
           <div className="text-center">
-            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-copper">
+            <p className="font-mono text-[10px] uppercase tracking-meta-hero text-copper">
               Total
             </p>
             <p className="mt-2 font-mono text-5xl font-medium leading-none tabular-nums tracking-tight text-ink md:text-6xl">
@@ -201,7 +201,7 @@ export function ProposalPreview({
 
           {content.investment.milestones.length > 0 ? (
             <div className="mt-8">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-ink-muted">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
                 Payment schedule
               </p>
               <ul className="mt-3 divide-y divide-border border-y border-border">
@@ -214,7 +214,7 @@ export function ProposalPreview({
                       <p className="font-sans text-sm font-medium text-ink">
                         {m.label}
                       </p>
-                      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+                      <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
                         {m.due}
                       </p>
                     </div>
@@ -321,7 +321,7 @@ export function ProposalPreview({
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-success">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-success">
                 Electronically signed
               </p>
               <p
@@ -334,7 +334,7 @@ export function ProposalPreview({
                 {signature.acceptedByName}
               </p>
               <dl className="mt-4 font-mono text-[11px] tabular-nums text-ink-muted">
-                <dt className="uppercase tracking-[0.16em] text-ink-subtle">
+                <dt className="uppercase tracking-meta text-ink-subtle">
                   Date
                 </dt>
                 <dd className="mt-1 text-ink">
@@ -351,7 +351,7 @@ export function ProposalPreview({
         </section>
       ) : null}
 
-      <p className="pt-4 text-center font-mono text-[10px] uppercase tracking-[0.22em] text-ink-subtle">
+      <p className="pt-4 text-center font-mono text-[10px] uppercase tracking-meta-hero text-ink-subtle">
         Agreement v{content.agreement_version}
       </p>
     </article>
@@ -396,7 +396,7 @@ function Field({
 }) {
   return (
     <div>
-      <dt className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-ink-muted">
+      <dt className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         {label}
       </dt>
       <dd

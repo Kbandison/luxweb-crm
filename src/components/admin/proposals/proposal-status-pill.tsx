@@ -9,7 +9,7 @@ export function ProposalStatusPill({ status }: { status: ProposalStatus }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em]',
+        'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
         PROPOSAL_STATUS_TONE[status],
       )}
     >

@@ -47,7 +47,7 @@ export function LeadDetail({
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <LeadScore score={lead.leadScore} size="md" />
               {lead.userId ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-success">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-success">
                   <span className="h-1 w-1 rounded-full bg-success" aria-hidden />
                   Portal access
                 </span>
@@ -83,7 +83,7 @@ export function LeadDetail({
             {/* Back-to-list on tablet */}
             <Link
               href="/admin/leads"
-              className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted transition-colors hover:border-border-strong hover:text-ink lg:hidden"
+              className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:border-border-strong hover:text-ink lg:hidden"
             >
               ← Back
             </Link>
@@ -155,7 +155,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <dt className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-ink-muted">
+      <dt className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
         {label}
       </dt>
       <dd

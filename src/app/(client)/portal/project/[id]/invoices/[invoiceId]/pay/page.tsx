@@ -103,7 +103,7 @@ export default async function InvoicePayPage({
     <main className="min-h-full px-6 py-10 md:px-10">
       <div className="mx-auto max-w-xl space-y-8">
         <header className="space-y-2">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-copper">
+          <p className="font-mono text-[10px] uppercase tracking-meta-hero text-copper">
             Invoice
           </p>
           <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
@@ -115,7 +115,7 @@ export default async function InvoicePayPage({
         </header>
 
         <div className="rounded-xl border border-copper/30 bg-surface p-6">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
             Amount due
           </p>
           <p className="mt-2 font-mono text-4xl font-medium tabular-nums tracking-tight text-ink">
@@ -138,7 +138,7 @@ function PaymentUnavailable({ reason }: { reason: string }) {
   return (
     <main className="min-h-full px-6 py-10 md:px-10">
       <div className="mx-auto max-w-xl space-y-6">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-copper">
+        <p className="font-mono text-[10px] uppercase tracking-meta-hero text-copper">
           Invoice
         </p>
         <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
@@ -147,7 +147,7 @@ function PaymentUnavailable({ reason }: { reason: string }) {
         <p className="font-sans text-sm text-ink-muted">{reason}</p>
         <Link
           href="/portal/dashboard"
-          className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+          className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
         >
           ← Back to dashboard
         </Link>

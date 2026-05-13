@@ -16,11 +16,11 @@ export default async function AdminRevisionDetailPage({
     <main className="mx-auto w-full max-w-5xl space-y-4 px-8 py-8">
       <Link
         href={`/admin/projects/${id}/revisions`}
-        className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-copper"
+        className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
       >
         ← All revisions
       </Link>
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+      <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
         {detail.revision.contactName}
       </p>
       <RevisionThread

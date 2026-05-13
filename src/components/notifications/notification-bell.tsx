@@ -275,7 +275,7 @@ export function NotificationBell() {
                 type="button"
                 onClick={markAllRead}
                 disabled={loading}
-                className="font-mono text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:underline disabled:opacity-50"
+                className="font-mono text-[10px] uppercase tracking-meta text-copper transition-colors hover:underline disabled:opacity-50"
               >
                 Mark all read
               </button>
@@ -342,7 +342,7 @@ function NotificationItem({
             {info.body}
           </p>
         ) : null}
-        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle">
+        <p className="mt-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle">
           {formatRelative(n.createdAt)}
         </p>
       </div>

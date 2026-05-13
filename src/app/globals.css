@@ -38,6 +38,14 @@
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
   --radius-2xl: 1.25rem;
+
+  /* Uppercase tracking scale — 3 steps for the uppercase-meta-label pattern.
+     - tight: small chips / status pills (text-[9px] / text-[10px])
+     - meta:  default meta labels and card eyebrows
+     - hero:  page-header eyebrow only */
+  --tracking-meta-tight: 0.14em;
+  --tracking-meta: 0.18em;
+  --tracking-meta-hero: 0.22em;
 }
 
 /* next/font CSS variables surfaced as Tailwind font utilities.

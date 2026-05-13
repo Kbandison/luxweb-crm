@@ -41,7 +41,7 @@ export function CarePlanBillingHistory({
           className="flex flex-wrap items-center justify-between gap-3 px-5 py-3"
         >
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-xs uppercase tracking-[0.14em] text-ink-subtle">
+            <p className="font-mono text-xs uppercase tracking-meta-tight text-ink-subtle">
               {inv.number ?? inv.id.slice(0, 12)}
               <span className="ml-2 normal-case tracking-normal text-ink-muted">
                 {inv.paidAt
@@ -53,7 +53,7 @@ export function CarePlanBillingHistory({
           <div className="flex shrink-0 items-center gap-3">
             <span
               className={cn(
-                'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em]',
+                'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                 STATUS_TONE[inv.status],
               )}
             >
@@ -69,7 +69,7 @@ export function CarePlanBillingHistory({
                 href={inv.hostedInvoiceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+                className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
               >
                 View →
               </a>

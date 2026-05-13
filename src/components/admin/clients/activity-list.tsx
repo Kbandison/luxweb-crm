@@ -33,7 +33,7 @@ export function ActivityList({ rows }: { rows: ClientActivity[] }) {
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <span
                 className={cn(
-                  'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                  'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                   ACTION_COLORS[r.action] ?? 'bg-ink/5 text-ink-muted',
                 )}
               >

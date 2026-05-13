@@ -167,7 +167,7 @@ export default async function ProjectOverviewPage({
         {project.budgetCents != null && costCents != null && project.budgetCents > 0 ? (
           <Card rounded="lg" padding="md" className="mt-5">
             <div className="flex items-baseline justify-between gap-3">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
                 Budget burn
               </p>
               <p
@@ -209,7 +209,7 @@ export default async function ProjectOverviewPage({
           right={
             <Link
               href={`/admin/projects/${project.id}/milestones`}
-              className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+              className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
             >
               View all →
             </Link>
@@ -234,13 +234,13 @@ export default async function ProjectOverviewPage({
                   <p className="truncate font-sans text-sm font-medium text-ink">
                     {m.title}
                   </p>
-                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
                     Due {formatDate(m.dueDate!)}
                   </p>
                 </div>
                 <span
                   className={cn(
-                    'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                    'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                     MILESTONE_STATUS_TONE[m.status],
                   )}
                 >
@@ -275,7 +275,7 @@ export default async function ProjectOverviewPage({
           />
           {carePlan ? (
             <div className="mt-4 space-y-2">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
                 Billing history
               </p>
               <CarePlanBillingHistory invoices={billingHistory} />
@@ -300,7 +300,7 @@ export default async function ProjectOverviewPage({
           right={
             <Link
               href={`/admin/projects/${project.id}/time`}
-              className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+              className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
             >
               View all →
             </Link>
@@ -333,7 +333,7 @@ export default async function ProjectOverviewPage({
                       </span>
                     ) : null}
                   </div>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+                  <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
                     {t.createdByEmail ?? 'system'}
                   </span>
                 </li>

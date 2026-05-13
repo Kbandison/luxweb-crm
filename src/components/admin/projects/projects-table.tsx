@@ -60,7 +60,7 @@ export function ProjectsTable({
             className="h-9 pl-9"
           />
         </div>
-        <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+        <p className="ml-auto font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
           {filtered.length}
           {q ? ` of ${initial.length}` : ''} project
           {filtered.length === 1 ? '' : 's'}
@@ -79,7 +79,7 @@ export function ProjectsTable({
         ) : (
           <table className="w-full min-w-[720px]">
             <thead className="border-b border-border bg-surface text-left">
-              <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              <tr className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
                 <th className="px-6 py-3 font-medium">
                   <SortableHeader
                     field="name"
@@ -129,7 +129,7 @@ export function ProjectsTable({
                     </Link>
                   </td>
                   <td className="px-3 py-3">
-                    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+                    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-meta text-ink-muted">
                       <span
                         className={cn(
                           'h-1.5 w-1.5 rounded-full',
@@ -169,7 +169,7 @@ export function ProjectsTable({
                   <td className="py-3 pr-6 text-right">
                     <Link
                       href={`/admin/projects/${p.id}`}
-                      className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+                      className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
                     >
                       Open →
                     </Link>

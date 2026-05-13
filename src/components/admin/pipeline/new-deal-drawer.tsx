@@ -125,7 +125,7 @@ export function NewDealDrawer({ contacts }: { contacts: ContactRow[] }) {
           />
           <div className="relative flex items-center justify-between gap-3">
             <div>
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
                 New deal
               </p>
               <h2

@@ -17,7 +17,7 @@ export function DealsSection({ deals }: { deals: DealSummary[] }) {
     <div className="overflow-x-auto rounded-xl border border-border bg-surface">
       <table className="w-full min-w-[720px]">
         <thead className="border-b border-border bg-surface text-left">
-          <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          <tr className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
             <th className="px-5 py-3 font-medium">Deal</th>
             <th className="px-3 py-3 font-medium">Stage</th>
             <th className="px-3 py-3 text-right font-medium">Value</th>
@@ -30,7 +30,7 @@ export function DealsSection({ deals }: { deals: DealSummary[] }) {
             <tr key={d.id} className="border-b border-border last:border-b-0">
               <td className="px-5 py-3 font-sans text-sm text-ink">{d.title}</td>
               <td className="px-3 py-3">
-                <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+                <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-meta text-ink-muted">
                   <span className={cn('h-1.5 w-1.5 rounded-full', STAGE_DOT[d.stage])} aria-hidden />
                   {STAGE_LABEL[d.stage]}
                 </span>
@@ -74,7 +74,7 @@ export function ProjectsSection({
                 <p className="truncate font-sans text-sm font-medium text-ink">
                   {p.name}
                 </p>
-                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
                   <span
                     className={cn(
                       'mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle',
@@ -96,7 +96,7 @@ export function ProjectsSection({
                 </span>
                 <span
                   aria-hidden
-                  className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper"
+                  className="font-mono text-[10px] uppercase tracking-meta text-copper"
                 >
                   Open →
                 </span>

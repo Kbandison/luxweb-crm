@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Topbar } from '@/components/admin/topbar';
 import { getAllOpenRevisions } from '@/lib/queries/admin';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   REVISION_STATUS_LABEL,
   REVISION_STATUS_TONE,
@@ -15,15 +16,11 @@ export default async function AdminRevisionsQueuePage() {
     <>
       <Topbar title="Revisions" />
       <main className="mx-auto w-full max-w-6xl space-y-6 px-8 py-8">
-        <header className="space-y-1">
-          <h1 className="font-display text-2xl font-medium text-ink">
-            Open revision requests
-          </h1>
-          <p className="font-sans text-sm text-ink-muted">
-            Client change requests across all projects. Resolved and
-            won&apos;t-do items aren&apos;t shown here.
-          </p>
-        </header>
+        <PageHeader
+          eyebrow="Workspace"
+          title="Open revision requests"
+          description="Client change requests across all projects. Resolved and won't-do items aren't shown here."
+        />
 
         {revisions.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-surface p-12 text-center">
@@ -48,7 +45,7 @@ export default async function AdminRevisionsQueuePage() {
                       <p className="truncate font-sans text-sm font-medium text-ink">
                         {r.title}
                       </p>
-                      <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                      <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
                         {r.projectName} · {r.contactName}
                         {r.milestoneTitle ? ` · ${r.milestoneTitle}` : ''}{' '}
                         · Opened {formatRelative(r.createdAt)}
@@ -59,7 +56,7 @@ export default async function AdminRevisionsQueuePage() {
                     </div>
                     <span
                       className={cn(
-                        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                         REVISION_STATUS_TONE[r.status],
                       )}
                     >

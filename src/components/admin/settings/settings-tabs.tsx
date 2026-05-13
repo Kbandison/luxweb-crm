@@ -137,15 +137,15 @@ export function AdminSettingsTabs({
       {tab !== 'integrations' ? (
         <div className="flex items-center justify-end">
           {busy ? (
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper">
+            <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
               Saving…
             </p>
           ) : error ? (
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-danger">
+            <p className="font-mono text-[10px] uppercase tracking-meta text-danger">
               {error}
             </p>
           ) : savedAt ? (
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-success">
+            <p className="font-mono text-[10px] uppercase tracking-meta text-success">
               Saved {savedAt.toLocaleTimeString()}
             </p>
           ) : null}
@@ -311,7 +311,7 @@ function IntegrationsTab({ integrations }: { integrations: IntegrationStatus }) 
             </div>
             <span
               className={cn(
-                'inline-flex shrink-0 items-center gap-1.5 rounded px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em]',
+                'inline-flex shrink-0 items-center gap-1.5 rounded px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                 connected
                   ? 'bg-success/15 text-success'
                   : 'bg-warning/15 text-warning',

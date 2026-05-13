@@ -115,7 +115,7 @@ export function TimerStrip({
       <section className="rounded-2xl border border-warning/30 bg-warning/5 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-warning">
+            <p className="font-mono text-[10px] uppercase tracking-meta text-warning">
               Timer running elsewhere
             </p>
             <p className="mt-1 font-sans text-sm text-ink">
@@ -152,7 +152,7 @@ export function TimerStrip({
       <section className="space-y-4 rounded-2xl border border-copper/40 bg-copper-soft/30 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-copper">
+            <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
               Timer running
             </p>
             <p className="mt-2 font-mono text-3xl font-medium tabular-nums tracking-tight text-ink">
@@ -190,7 +190,7 @@ export function TimerStrip({
             type="button"
             onClick={() => setConfirmingDiscard(true)}
             disabled={busy}
-            className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-danger disabled:opacity-50"
+            className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-danger disabled:opacity-50"
           >
             Discard
           </button>
@@ -218,7 +218,7 @@ export function TimerStrip({
     <section className="rounded-2xl border border-border bg-surface p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-copper">
+          <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
             Timer
           </p>
           <p className="mt-1 font-sans text-sm text-ink-muted">
@@ -231,7 +231,7 @@ export function TimerStrip({
         </Button>
       </div>
       {error ? (
-        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-meta-tight text-danger">
           {error}
         </p>
       ) : null}

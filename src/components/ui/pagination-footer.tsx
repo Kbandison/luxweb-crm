@@ -46,7 +46,7 @@ export function PaginationFooter({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface px-6 py-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+      <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
         {totalCount === 0
           ? 'No results'
           : `Showing ${showingFrom}–${showingTo} of ${totalCount}`}
@@ -56,7 +56,7 @@ export function PaginationFooter({
         className="flex items-center gap-1"
       >
         <PageLink href={prevHref} disabled={onFirst} label="Prev" rel="prev" />
-        <span className="px-3 font-mono text-[10px] uppercase tracking-[0.18em] tabular-nums text-ink-muted">
+        <span className="px-3 font-mono text-[10px] uppercase tracking-meta tabular-nums text-ink-muted">
           Page {page} of {pages}
         </span>
         <PageLink href={nextHref} disabled={onLast} label="Next" rel="next" />
@@ -77,7 +77,7 @@ function PageLink({
   rel?: 'prev' | 'next';
 }) {
   const baseClass =
-    'rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em]';
+    'rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta';
 
   if (disabled) {
     return (

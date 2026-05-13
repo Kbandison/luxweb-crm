@@ -21,7 +21,7 @@ export default function AuthLayout({
           <div className="w-full max-w-sm">{children}</div>
         </div>
 
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+        <p className="font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
           © LuxWeb Studio
         </p>
       </div>
@@ -42,7 +42,7 @@ export default function AuthLayout({
           </p>
         </div>
 
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+        <p className="font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
           portal.luxwebstudio.dev
         </p>
       </aside>

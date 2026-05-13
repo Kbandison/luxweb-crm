@@ -24,7 +24,7 @@ export function BulkActionBar({
       aria-label={`Bulk actions for ${count} ${noun}`}
       className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b border-copper/30 bg-copper-soft/40 px-6 py-2.5 backdrop-blur"
     >
-      <span className="font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-copper">
+      <span className="font-mono text-[11px] font-medium uppercase tracking-meta text-copper">
         {count} {noun}
       </span>
       <span aria-hidden className="h-3 w-px bg-copper/40" />
@@ -32,7 +32,7 @@ export function BulkActionBar({
       <button
         type="button"
         onClick={onClear}
-        className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-ink"
+        className="ml-auto font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-ink"
       >
         Clear
       </button>

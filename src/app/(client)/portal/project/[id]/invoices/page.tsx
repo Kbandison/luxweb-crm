@@ -120,7 +120,7 @@ function InvoiceSection({
     <section>
       <p
         className={cn(
-          'mb-3 font-mono text-[10px] font-medium uppercase tracking-[0.22em]',
+          'mb-3 font-mono text-[10px] font-medium uppercase tracking-meta-hero',
           tone === 'copper' ? 'text-copper' : 'text-ink-muted',
         )}
       >
@@ -151,7 +151,7 @@ function InvoiceSection({
                   <p className="truncate font-sans text-sm font-medium text-ink">
                     {inv.description ?? 'Invoice'}
                   </p>
-                  <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                  <p className="mt-0.5 font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
                     {inv.paidAt
                       ? `Paid ${formatDate(inv.paidAt)}`
                       : inv.dueDate
@@ -162,7 +162,7 @@ function InvoiceSection({
                 <div className="flex shrink-0 items-center gap-3">
                   <span
                     className={cn(
-                      'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                      'inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                       INVOICE_STATUS_TONE[inv.status as InvoiceStatus] ??
                         'bg-ink/5 text-ink-muted',
                     )}
@@ -176,7 +176,7 @@ function InvoiceSection({
                   {inv.status === 'sent' || inv.status === 'overdue' ? (
                     <Link
                       href={`/portal/project/${projectId}/invoices/${inv.id}/pay`}
-                      className="inline-flex items-center gap-1 rounded-md bg-copper px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-copper-foreground transition-colors hover:bg-copper/90"
+                      className="inline-flex items-center gap-1 rounded-md bg-copper px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta text-copper-foreground transition-colors hover:bg-copper/90"
                     >
                       Pay
                       <svg
@@ -198,7 +198,7 @@ function InvoiceSection({
                       href={inv.hostedInvoiceUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted hover:text-copper"
+                      className="font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted hover:text-copper"
                     >
                       Receipt ↗
                     </a>

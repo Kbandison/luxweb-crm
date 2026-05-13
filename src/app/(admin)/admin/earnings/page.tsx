@@ -85,7 +85,7 @@ export default async function AdminEarningsPage() {
             <div className="overflow-x-auto rounded-xl border border-border bg-surface">
               <table className="w-full min-w-[820px]">
                 <thead className="border-b border-border bg-surface text-left">
-                  <tr className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                  <tr className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
                     <th className="px-5 py-3 font-medium">Project</th>
                     <th className="px-3 py-3 font-medium">Client</th>
                     <th className="px-3 py-3 text-right font-medium">Rate</th>
@@ -182,7 +182,7 @@ function HeroEarnings({
             01
           </span>
           <span aria-hidden className="h-4 w-px bg-copper/40" />
-          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-copper">
+          <p className="font-mono text-[11px] font-medium uppercase tracking-meta-hero text-copper">
             This month · paid
           </p>
         </div>

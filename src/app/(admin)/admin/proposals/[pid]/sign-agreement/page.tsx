@@ -83,19 +83,19 @@ export default async function AdminSignAgreementPage({
         <div className="flex items-center gap-3">
           <Link
             href={backHref}
-            className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-copper"
+            className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
           >
             ← Proposal
           </Link>
           <span aria-hidden className="h-3 w-px bg-border" />
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper">
+          <span className="font-mono text-[10px] uppercase tracking-meta text-copper">
             Preview & sign · v{agreementVersion}
           </span>
         </div>
       </div>
 
       <header>
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
           Agreement preview
         </p>
         <h1 className="mt-2 font-display text-2xl font-medium tracking-tight text-ink">
@@ -113,7 +113,7 @@ export default async function AdminSignAgreementPage({
       </article>
 
       <section className="space-y-3">
-        <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-ink-muted">
+        <h2 className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-muted">
           Signatures
         </h2>
         <SignaturePair

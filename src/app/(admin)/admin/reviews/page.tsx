@@ -3,6 +3,7 @@ import { Topbar } from '@/components/admin/topbar';
 import { getAllProjectReviews } from '@/lib/queries/admin';
 import { StarDisplay } from '@/components/reviews/star-input';
 import { StatCard } from '@/components/ui/stat-card';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDateLong } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -23,14 +24,11 @@ export default async function AdminReviewsPage() {
     <>
       <Topbar title="Reviews" />
       <main className="mx-auto w-full max-w-6xl space-y-6 px-8 py-8">
-        <header className="space-y-1">
-          <h1 className="font-display text-2xl font-medium text-ink">
-            Reviews
-          </h1>
-          <p className="font-sans text-sm text-ink-muted">
-            Client testimonials and your private take on each project.
-          </p>
-        </header>
+        <PageHeader
+          eyebrow="Workspace"
+          title="Reviews"
+          description="Client testimonials and your private take on each project."
+        />
 
         <div className="grid gap-4 sm:grid-cols-3">
           <StatCard
@@ -75,7 +73,7 @@ export default async function AdminReviewsPage() {
                     <p className="font-sans text-sm font-medium text-ink">
                       {r.projectName}
                     </p>
-                    <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle">
+                    <p className="mt-0.5 font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
                       {r.contactName}
                       {r.clientSubmittedAt
                         ? ` · ${formatDateLong(r.clientSubmittedAt)}`
@@ -84,12 +82,12 @@ export default async function AdminReviewsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {r.clientConsentToPublish ? (
-                      <span className="rounded bg-success/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-success">
+                      <span className="rounded bg-success/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-meta-tight text-success">
                         Publishable
                       </span>
                     ) : null}
                     {r.adminRating ? (
-                      <span className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
+                      <span className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-meta-tight text-ink-muted">
                         Internal logged
                       </span>
                     ) : null}

@@ -40,7 +40,7 @@ export default async function AuditLogPage({
             className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gradient-to-br from-copper/20 via-gold/10 to-transparent blur-2xl"
           />
           <div className="relative">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-copper">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
               Admin · Audit log
             </p>
             <h1 className="mt-3 font-display text-3xl font-medium tracking-tight text-ink md:text-4xl">

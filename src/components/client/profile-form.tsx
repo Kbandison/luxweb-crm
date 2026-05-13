@@ -138,19 +138,19 @@ export function ClientProfileForm({
       <div className="sticky bottom-6 flex items-center justify-between gap-3 rounded-xl border border-border bg-surface/95 px-5 py-3 backdrop-blur">
         <div>
           {busy ? (
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper">
+            <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
               Saving…
             </p>
           ) : savedAt ? (
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-success">
+            <p className="font-mono text-[10px] uppercase tracking-meta text-success">
               Saved {savedAt.toLocaleTimeString()}
             </p>
           ) : error ? (
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-danger">
+            <p className="font-mono text-[10px] uppercase tracking-meta text-danger">
               {error}
             </p>
           ) : (
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-subtle">
+            <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
               Unsaved changes save on submit
             </p>
           )}

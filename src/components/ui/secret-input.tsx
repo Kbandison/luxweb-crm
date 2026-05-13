@@ -24,7 +24,7 @@ export const SecretInput = React.forwardRef<HTMLInputElement, InputProps>(
           onClick={() => setShow((v) => !v)}
           aria-label={show ? 'Hide secret' : 'Show secret'}
           aria-pressed={show}
-          className="absolute right-1.5 top-1/2 inline-flex h-7 -translate-y-1/2 items-center rounded-md px-2 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/40"
+          className="absolute right-1.5 top-1/2 inline-flex h-7 -translate-y-1/2 items-center rounded-md px-2 font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/40"
         >
           {show ? 'Hide' : 'Show'}
         </button>

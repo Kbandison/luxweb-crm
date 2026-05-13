@@ -189,7 +189,7 @@ export function MilestonesList({
           <h3 className="font-display text-lg font-medium tracking-tight text-ink">
             Milestones
           </h3>
-          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted">
             {done}/{total} done
           </p>
         </div>
@@ -252,7 +252,7 @@ export function MilestonesList({
                   onChange={(e) => setDueDate(e.target.value)}
                 />
               </div>
-              <label className="flex items-center gap-2 self-end pb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+              <label className="flex items-center gap-2 self-end pb-2 font-mono text-[11px] uppercase tracking-meta text-ink-muted">
                 <input
                   type="checkbox"
                   checked={isClientVisible}
@@ -323,7 +323,7 @@ export function MilestonesList({
                     </h4>
                     <span
                       className={cn(
-                        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                         MILESTONE_STATUS_TONE[m.status],
                       )}
                     >
@@ -331,7 +331,7 @@ export function MilestonesList({
                     </span>
                     {m.source === 'proposal' ? (
                       <span
-                        className="inline-flex shrink-0 items-center rounded bg-copper-soft/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-copper"
+                        className="inline-flex shrink-0 items-center rounded bg-copper-soft/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-meta-tight text-copper"
                         title="Auto-flips on payment"
                       >
                         Proposal
@@ -343,7 +343,7 @@ export function MilestonesList({
                       {m.description}
                     </p>
                   ) : null}
-                  <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
                     {m.dueDate ? (
                       <span>Due {formatDate(m.dueDate)}</span>
                     ) : (
@@ -450,7 +450,7 @@ export function MilestonesList({
                       patch(m.id, { status: e.target.value as MilestoneStatus })
                     }
                     disabled={pendingId === m.id}
-                    className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-muted focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30"
+                    className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[11px] uppercase tracking-meta-tight text-ink-muted focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30"
                   >
                     {MILESTONE_STATUSES.map((s) => (
                       <option key={s} value={s}>
@@ -469,7 +469,7 @@ export function MilestonesList({
                         ? 'Hide from client portal'
                         : 'Reveal in client portal'
                     }
-                    className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-border-strong hover:text-ink disabled:opacity-50"
+                    className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[11px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink disabled:opacity-50"
                   >
                     {m.isClientVisible ? 'Hide' : 'Reveal'}
                   </button>
@@ -477,7 +477,7 @@ export function MilestonesList({
                     type="button"
                     onClick={() => setConfirming(m)}
                     disabled={pendingId === m.id}
-                    className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-danger/40 hover:text-danger disabled:opacity-50"
+                    className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[11px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-danger/40 hover:text-danger disabled:opacity-50"
                   >
                     Delete
                   </button>

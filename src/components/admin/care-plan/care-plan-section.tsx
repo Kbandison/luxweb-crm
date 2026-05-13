@@ -110,7 +110,7 @@ export function AdminCarePlanSection({
       <section className="space-y-3 rounded-2xl border border-dashed border-border bg-surface p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-copper">
+            <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
               Care Plan
             </p>
             <p className="mt-1 font-sans text-sm text-ink-muted">
@@ -123,7 +123,7 @@ export function AdminCarePlanSection({
           </Button>
         </div>
         {error ? (
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+          <p className="font-mono text-[10px] uppercase tracking-meta-tight text-danger">
             {error}
           </p>
         ) : null}
@@ -146,7 +146,7 @@ export function AdminCarePlanSection({
     <section className="space-y-4 rounded-2xl border border-border bg-surface p-6">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-copper">
+          <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
             Care Plan
           </p>
           <h2 className="mt-1 font-display text-xl font-medium text-ink">
@@ -158,7 +158,7 @@ export function AdminCarePlanSection({
         </div>
         <span
           className={cn(
-            'inline-flex items-center rounded px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em]',
+            'inline-flex items-center rounded px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
             CARE_PLAN_STATUS_TONE[plan.status],
           )}
         >
@@ -233,7 +233,7 @@ export function AdminCarePlanSection({
         ) : null}
         <Link
           href="/admin/care-plans"
-          className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-copper"
+          className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
         >
           All care plans →
         </Link>

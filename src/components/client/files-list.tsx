@@ -200,7 +200,7 @@ export function ClientFilesList({
             browse
           </button>
         </p>
-        <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-subtle">
+        <p className="mt-1 font-mono text-[11px] uppercase tracking-meta text-ink-subtle">
           Up to 50MB per file · Shared with the team
         </p>
 
@@ -226,7 +226,7 @@ export function ClientFilesList({
                 <p className="truncate font-sans text-sm font-medium text-ink">
                   {u.fileName}
                 </p>
-                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-copper">
+                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-copper">
                   {u.progress === 'signing' ? 'Preparing upload…' : null}
                   {u.progress === 'uploading'
                     ? `Uploading · ${formatBytes(u.sizeBytes)}`
@@ -253,7 +253,7 @@ export function ClientFilesList({
         </div>
       ) : initial.length > 0 ? (
         <div className="space-y-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
             {initial.length} {initial.length === 1 ? 'file' : 'files'}
           </p>
           <div className="overflow-hidden rounded-xl border border-border bg-surface">
@@ -272,7 +272,7 @@ export function ClientFilesList({
                     <p className="truncate font-sans text-sm font-medium text-ink hover:text-copper">
                       {f.fileName}
                     </p>
-                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-subtle">
+                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle">
                       {formatDate(f.createdAt)} · {formatBytes(f.sizeBytes)}
                       {f.uploadedByMe ? ' · By you' : null}
                     </p>
@@ -280,7 +280,7 @@ export function ClientFilesList({
                   <button
                     type="button"
                     onClick={() => setPreviewId(f.id)}
-                    className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+                    className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
                   >
                     Preview
                   </button>
@@ -288,7 +288,7 @@ export function ClientFilesList({
                     <a
                       href={f.previewUrl}
                       download
-                      className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+                      className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
                     >
                       Download
                     </a>
@@ -297,7 +297,7 @@ export function ClientFilesList({
                     <button
                       type="button"
                       onClick={() => setConfirming(f)}
-                      className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-danger/40 hover:text-danger"
+                      className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-danger/40 hover:text-danger"
                     >
                       Delete
                     </button>

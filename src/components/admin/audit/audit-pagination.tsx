@@ -28,7 +28,7 @@ export function AuditPagination({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-5 py-3">
-      <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-muted">
+      <p className="font-mono text-[11px] uppercase tracking-meta-tight text-ink-muted">
         {total === 0
           ? 'No results'
           : `Showing ${showingFrom}–${showingTo} of ${total}`}
@@ -65,7 +65,7 @@ function PageLink({
     return (
       <span
         aria-disabled="true"
-        className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle opacity-50"
+        className="rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle opacity-50"
       >
         {label}
       </span>
@@ -75,7 +75,7 @@ function PageLink({
     <Link
       href={href}
       className={cn(
-        'rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-muted transition-colors',
+        'rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[11px] uppercase tracking-meta-tight text-ink-muted transition-colors',
         'hover:border-border-strong hover:text-ink',
       )}
     >

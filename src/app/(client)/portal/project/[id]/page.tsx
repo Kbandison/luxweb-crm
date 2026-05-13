@@ -85,7 +85,7 @@ export default async function ClientProjectOverviewPage({
       <section className="rounded-2xl border border-border bg-surface p-6">
         <div className="flex items-baseline justify-between gap-4">
           <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
               Milestone progress
             </p>
             <div className="mt-3 flex items-baseline gap-2">
@@ -133,7 +133,7 @@ export default async function ClientProjectOverviewPage({
           />
           {billingHistory.length > 0 ? (
             <div className="space-y-2">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
                 Billing history
               </p>
               <CarePlanBillingHistory invoices={billingHistory} />
@@ -174,7 +174,7 @@ export default async function ClientProjectOverviewPage({
                       </h4>
                       <span
                         className={cn(
-                          'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+                          'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
                           MILESTONE_TONE[m.status],
                         )}
                       >
@@ -187,11 +187,11 @@ export default async function ClientProjectOverviewPage({
                       </p>
                     ) : null}
                     <div className="mt-2 flex items-center justify-between gap-3">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-subtle">
+                      <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
                         {m.dueDate ? `Due ${formatDate(m.dueDate)}` : 'No due date'}
                       </p>
                       {link ? (
-                        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-copper">
+                        <span className="font-mono text-[10px] font-medium uppercase tracking-meta text-copper">
                           {link.hint} →
                         </span>
                       ) : null}

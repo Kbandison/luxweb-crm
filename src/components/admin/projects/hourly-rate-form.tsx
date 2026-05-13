@@ -62,7 +62,7 @@ export function HourlyRateForm({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper hover:underline"
+        className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
       >
         {initialRateCents != null
           ? `${formatUSD(initialRateCents)}/h · edit`

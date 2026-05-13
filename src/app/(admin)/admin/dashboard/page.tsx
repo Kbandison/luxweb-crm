@@ -93,14 +93,14 @@ function PageMeta({ timestamp }: { timestamp: Date }) {
   const stamp = formatDateTimeCompactTz(timestamp);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em] text-ink-subtle">
+      <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-meta-hero text-ink-subtle">
         <span>Admin</span>
         <span className="text-copper">/</span>
         <span className="text-ink">Overview</span>
       </nav>
       <time
         dateTime={timestamp.toISOString()}
-        className="font-mono text-[10px] uppercase tracking-[0.2em] tabular-nums text-ink-subtle"
+        className="font-mono text-[10px] uppercase tracking-meta tabular-nums text-ink-subtle"
       >
         {stamp}
       </time>
@@ -142,7 +142,7 @@ function HeroPipeline({
             01
           </span>
           <span aria-hidden className="h-4 w-px bg-copper/40" />
-          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-copper">
+          <p className="font-mono text-[11px] font-medium uppercase tracking-meta-hero text-copper">
             Pipeline value
           </p>
         </div>
@@ -179,7 +179,7 @@ function HeroPipeline({
         <div className="mt-10 border-t border-border/60 pt-6">
           <div className="mb-4 flex items-center gap-2">
             <span aria-hidden className="h-2 w-0.5 rounded-full bg-copper" />
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-ink-muted">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-muted">
               By stage
             </p>
           </div>
@@ -213,7 +213,7 @@ function StagePill({ bucket }: { bucket: StageBucket }) {
             isOpen ? 'bg-copper' : 'bg-ink-subtle',
           )}
         />
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
           {bucket.label}
         </p>
       </div>
@@ -275,7 +275,7 @@ function ActionBadge({ action }: { action: string }) {
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em]',
+        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-meta-tight',
         tone,
       )}
     >

@@ -38,7 +38,7 @@ export function SignatureBlock({
     >
       <p
         className={cn(
-          'font-mono text-[10px] font-medium uppercase tracking-[0.22em]',
+          'font-mono text-[10px] font-medium uppercase tracking-meta-hero',
           signed
             ? 'text-success'
             : tone === 'copper'
@@ -61,14 +61,14 @@ export function SignatureBlock({
           </p>
           <dl className="mt-3 grid gap-2 font-mono text-[11px] tabular-nums text-ink-muted sm:grid-cols-2">
             <div>
-              <dt className="uppercase tracking-[0.16em] text-ink-subtle">
+              <dt className="uppercase tracking-meta text-ink-subtle">
                 Signed
               </dt>
               <dd className="mt-0.5 text-ink">{formatDateTime(signedAt)}</dd>
             </div>
             {ip ? (
               <div>
-                <dt className="uppercase tracking-[0.16em] text-ink-subtle">
+                <dt className="uppercase tracking-meta text-ink-subtle">
                   IP
                 </dt>
                 <dd className="mt-0.5 break-all text-ink">{ip}</dd>

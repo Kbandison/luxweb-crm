@@ -20,7 +20,7 @@ export default async function ClientRevisionDetailPage({
     <main className="space-y-4 px-6 py-10 md:px-10">
       <Link
         href={`/portal/project/${id}/revisions`}
-        className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-copper"
+        className="font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:text-copper"
       >
         ← All revisions
       </Link>
