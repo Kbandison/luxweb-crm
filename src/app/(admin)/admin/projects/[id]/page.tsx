@@ -6,7 +6,6 @@ import {
   getProjectInvoices,
   getProjectMilestones,
   getProjectReview,
-  getProjectTimeLogs,
 } from '@/lib/queries/admin';
 import { getCarePlanInvoiceHistory } from '@/lib/care-plan/billing-history';
 import { AdminCarePlanSection } from '@/components/admin/care-plan/care-plan-section';
@@ -16,13 +15,10 @@ import {
   MILESTONE_STATUS_LABEL,
   MILESTONE_STATUS_TONE,
 } from '@/components/admin/projects/status-meta';
-import { HourlyRateForm } from '@/components/admin/projects/hourly-rate-form';
 import { StatCard } from '@/components/ui/stat-card';
 import { SectionHead } from '@/components/ui/section-head';
-import { Card } from '@/components/ui/card';
 import { StatusPill } from '@/components/ui/status-pill';
-import { formatDate, formatHours, formatUSD } from '@/lib/formatters';
-import { cn } from '@/lib/utils';
+import { formatDate, formatUSD } from '@/lib/formatters';
 
 export default async function ProjectOverviewPage({
   params,
@@ -30,36 +26,25 @@ export default async function ProjectOverviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [project, milestones, timeLogs, invoices, carePlan, review] =
-    await Promise.all([
-      getProjectDetail(id),
-      getProjectMilestones(id),
-      getProjectTimeLogs(id),
-      getProjectInvoices(id),
-      getProjectCarePlan(id),
-      getProjectReview(id),
-    ]);
+  const [project, milestones, invoices, carePlan, review] = await Promise.all([
+    getProjectDetail(id),
+    getProjectMilestones(id),
+    getProjectInvoices(id),
+    getProjectCarePlan(id),
+    getProjectReview(id),
+  ]);
   if (!project) notFound();
   const billingHistory = carePlan
     ? await getCarePlanInvoiceHistory(carePlan.stripeSubscriptionId)
     : [];
 
-  const totalHours = timeLogs.reduce((s, t) => s + t.hours, 0);
   const paidCents = invoices
     .filter((i) => i.status === 'paid')
     .reduce((s, i) => s + i.amountCents, 0);
   const invoicedCents = invoices
     .filter((i) => i.status !== 'void' && i.status !== 'draft')
     .reduce((s, i) => s + i.amountCents, 0);
-  const costCents =
-    project.hourlyRateCents != null
-      ? Math.round(totalHours * project.hourlyRateCents)
-      : null;
-  const profitCents = costCents != null ? paidCents - costCents : null;
-  const burnPct =
-    project.budgetCents && costCents != null && project.budgetCents > 0
-      ? Math.round((costCents / project.budgetCents) * 100)
-      : null;
+  const outstandingCents = invoicedCents - paidCents;
   const doneCount = milestones.filter((m) => m.status === 'done').length;
   const upcoming = milestones
     .filter((m) => m.status !== 'done' && m.dueDate)
@@ -69,9 +54,6 @@ export default async function ProjectOverviewPage({
     )
     .slice(0, 3);
 
-  // Build sections with a visibility flag so the on-screen "01", "02" numbering
-  // stays contiguous even when Care Plan or Review are hidden for projects that
-  // haven't reached those lifecycle stages yet.
   const showCarePlan = carePlan != null;
   const showReview = review != null || project.status === 'completed';
 
@@ -94,9 +76,15 @@ export default async function ProjectOverviewPage({
               size="lg"
             />
             <StatCard
-              label="Hours logged"
-              value={`${formatHours(totalHours, 1)}h`}
-              hint={`${timeLogs.length} ${timeLogs.length === 1 ? 'entry' : 'entries'}`}
+              label="Paid"
+              value={formatUSD(paidCents)}
+              hint={
+                outstandingCents > 0
+                  ? `${formatUSD(outstandingCents)} outstanding`
+                  : invoicedCents > 0
+                    ? 'All invoiced paid'
+                    : 'Nothing invoiced'
+              }
               size="lg"
             />
             <StatCard
@@ -106,111 +94,6 @@ export default async function ProjectOverviewPage({
               size="lg"
             />
           </div>
-        </section>
-      ),
-    },
-    {
-      visible: true,
-      key: 'budget',
-      render: (n) => (
-        <section key="budget">
-          <SectionHead
-            number={n}
-            title="Budget & profitability"
-            right={<HourlyRateForm projectId={project.id} initialRateCents={project.hourlyRateCents} />}
-          />
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Budget"
-              value={
-                project.budgetCents != null
-                  ? formatUSD(project.budgetCents)
-                  : '—'
-              }
-              hint={burnPct != null ? `${burnPct}% spent` : 'No rate or budget set'}
-              size="lg"
-            />
-            <StatCard
-              label="Time cost"
-              value={costCents != null ? formatUSD(costCents) : '—'}
-              hint={
-                project.hourlyRateCents != null
-                  ? `${formatHours(totalHours, 1)}h × ${formatUSD(project.hourlyRateCents)}/h`
-                  : 'Set rate above'
-              }
-              size="lg"
-            />
-            <StatCard
-              label="Paid"
-              value={formatUSD(paidCents)}
-              hint={
-                invoicedCents > paidCents
-                  ? `${formatUSD(invoicedCents - paidCents)} pending`
-                  : invoicedCents > 0
-                    ? 'All invoices paid'
-                    : 'Nothing invoiced'
-              }
-              size="lg"
-            />
-            <StatCard
-              label="Profit"
-              value={profitCents != null ? formatUSD(profitCents) : '—'}
-              hint={
-                profitCents == null
-                  ? 'Set hourly rate to compute'
-                  : profitCents > 0
-                    ? 'In the black'
-                    : profitCents < 0
-                      ? 'Underwater — review rate'
-                      : 'Break-even'
-              }
-              tone={
-                profitCents != null
-                  ? profitCents > 0
-                    ? 'success'
-                    : profitCents < 0
-                      ? 'danger'
-                      : 'default'
-                  : 'default'
-              }
-              size="lg"
-            />
-          </div>
-          {project.budgetCents != null && costCents != null && project.budgetCents > 0 ? (
-            <Card rounded="lg" padding="md" className="mt-5">
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
-                  Budget burn
-                </p>
-                <p
-                  className={cn(
-                    'font-mono text-xs tabular-nums',
-                    (burnPct ?? 0) > 100
-                      ? 'text-danger'
-                      : (burnPct ?? 0) > 80
-                        ? 'text-warning'
-                        : 'text-ink-muted',
-                  )}
-                >
-                  {formatUSD(costCents)} of {formatUSD(project.budgetCents)} ·{' '}
-                  {burnPct}%
-                </p>
-              </div>
-              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-border">
-                <div
-                  className={cn(
-                    'h-full rounded-full transition-all duration-500',
-                    (burnPct ?? 0) > 100
-                      ? 'bg-danger'
-                      : (burnPct ?? 0) > 80
-                        ? 'bg-warning'
-                        : 'bg-copper',
-                  )}
-                  style={{ width: `${Math.min(burnPct ?? 0, 100)}%` }}
-                />
-              </div>
-            </Card>
-          ) : null}
         </section>
       ),
     },
@@ -310,61 +193,6 @@ export default async function ProjectOverviewPage({
           <div className="mt-5">
             <AdminReviewCard projectId={project.id} review={review} />
           </div>
-        </section>
-      ),
-    },
-    {
-      visible: true,
-      key: 'time',
-      render: (n) => (
-        <section key="time">
-          <SectionHead
-            number={n}
-            title="Recent time"
-            right={
-              <Link
-                href={`/admin/projects/${project.id}/time`}
-                className="font-mono text-[10px] uppercase tracking-meta text-copper hover:underline"
-              >
-                View all →
-              </Link>
-            }
-          />
-          {timeLogs.length === 0 ? (
-            <div className="mt-5 rounded-xl border border-dashed border-border bg-surface/60 p-8 text-center">
-              <p className="font-sans text-sm text-ink-muted">
-                No time logged. Use the Time tab to log hours.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-5 overflow-hidden rounded-xl border border-border bg-surface">
-              <ul className="divide-y divide-border">
-                {timeLogs.slice(0, 5).map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex items-center justify-between gap-3 px-5 py-3"
-                  >
-                    <div className="flex items-baseline gap-3">
-                      <span className="font-mono text-base font-medium tabular-nums text-ink">
-                        {formatHours(t.hours)}h
-                      </span>
-                      <span className="font-mono text-xs tabular-nums text-ink-muted">
-                        {formatDate(t.logDate)}
-                      </span>
-                      {t.note ? (
-                        <span className="font-sans text-sm text-ink-muted">
-                          — {t.note}
-                        </span>
-                      ) : null}
-                    </div>
-                    <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
-                      {t.createdByEmail ?? 'system'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </section>
       ),
     },

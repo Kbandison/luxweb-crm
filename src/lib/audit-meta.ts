@@ -7,7 +7,6 @@ export const ENTITY_TYPES = [
   'deal',
   'project',
   'milestone',
-  'time_log',
   'file',
   'note',
   'proposal',

@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import { StatusPill } from '@/components/ui/status-pill';
-import { formatHours, formatUSD } from '@/lib/formatters';
+import { formatUSD } from '@/lib/formatters';
 import { useUrlSearchInput } from '@/lib/hooks/use-url-search';
 import { PROJECT_STATUS_DOT, PROJECT_STATUS_LABEL } from './status-meta';
 
@@ -108,7 +108,6 @@ export function ProjectsTable({
                 </th>
                 <th className="px-3 py-3 font-medium">Client</th>
                 <th className="px-3 py-3 font-medium">Milestones</th>
-                <th className="px-3 py-3 text-right font-medium">Hours</th>
                 <th className="px-3 py-3 text-right font-medium">
                   <SortableHeader
                     field="budget_cents"
@@ -161,9 +160,6 @@ export function ProjectsTable({
                     <span className="font-mono text-xs tabular-nums text-ink-muted">
                       {p.doneMilestoneCount}/{p.milestoneCount}
                     </span>
-                  </td>
-                  <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-ink-muted">
-                    {formatHours(p.hoursLogged, 1)}h
                   </td>
                   <td className="px-3 py-3 text-right font-mono text-sm tabular-nums text-ink">
                     {p.budgetCents != null

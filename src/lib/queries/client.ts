@@ -14,7 +14,6 @@ import type { RevisionStatus } from '@/lib/types/revision';
  *  Every SELECT from a client page MUST go through this file.
  *  The SELECTs here explicitly omit admin-only columns:
  *    · profitability_cents
- *    · time_logs (whole table)
  *    · audit_log (whole table)
  *    · lead_score
  *    · contacts.tags (internal)

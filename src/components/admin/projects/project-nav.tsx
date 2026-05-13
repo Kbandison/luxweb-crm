@@ -16,7 +16,6 @@ type Tab = {
 const TABS: readonly Tab[] = [
   { slug: '', label: 'Overview', group: 'primary' },
   { slug: 'milestones', label: 'Milestones', group: 'primary' },
-  { slug: 'time', label: 'Time', adminOnly: true, group: 'primary' },
   { slug: 'invoices', label: 'Invoices', group: 'primary' },
   { slug: 'revisions', label: 'Revisions', group: 'primary' },
   { slug: 'messages', label: 'Messages', group: 'primary' },

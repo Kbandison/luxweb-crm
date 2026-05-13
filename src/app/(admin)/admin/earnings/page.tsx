@@ -27,7 +27,7 @@ export default async function AdminEarningsPage() {
         <PageHeader
           eyebrow="Workspace"
           title="Earnings"
-          description="Revenue from paid invoices, outstanding balance, and per-project profitability based on logged time and the project's hourly rate."
+          description="Revenue from paid invoices, outstanding balance, and per-project totals."
           actions={
             <a
               href="/api/admin/earnings/export.csv"
@@ -38,7 +38,6 @@ export default async function AdminEarningsPage() {
           }
         />
 
-        {/* Hero — this-month */}
         <HeroEarnings
           thisMonthCents={o.thisMonth.paidCents}
           thisMonthCount={o.thisMonth.invoiceCount}
@@ -47,7 +46,6 @@ export default async function AdminEarningsPage() {
           ytdCents={o.ytd.paidCents}
         />
 
-        {/* Outstanding */}
         <section className="space-y-5">
           <SectionHead
             number="02"
@@ -72,31 +70,27 @@ export default async function AdminEarningsPage() {
           </div>
         </section>
 
-        {/* Per-project breakdown */}
         <section className="space-y-5">
           <SectionHead
             number="03"
-            title="Projects by profitability"
-            description="Profit = paid revenue − (logged hours × project hourly rate). Projects without a rate set show cost as —."
+            title="Projects by revenue"
+            description="Paid and invoiced totals per project, sorted by paid revenue."
             size="lg"
           />
           {o.projects.length === 0 ? (
             <EmptyState
-              title="No projects with logged time yet"
-              description="Open any project to set its hourly rate, then log hours to see profitability here."
+              title="No invoiced projects yet"
+              description="Once you invoice a project, its revenue rollup shows here."
             />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-              <table className="w-full min-w-[820px]">
+              <table className="w-full min-w-[640px]">
                 <thead className="border-b border-border bg-surface text-left">
                   <tr className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
                     <th className="px-5 py-3 font-medium">Project</th>
                     <th className="px-3 py-3 font-medium">Client</th>
-                    <th className="px-3 py-3 text-right font-medium">Rate</th>
-                    <th className="px-3 py-3 text-right font-medium">Hours</th>
-                    <th className="px-3 py-3 text-right font-medium">Cost</th>
-                    <th className="px-3 py-3 text-right font-medium">Paid</th>
-                    <th className="px-5 py-3 text-right font-medium">Profit</th>
+                    <th className="px-3 py-3 text-right font-medium">Invoiced</th>
+                    <th className="px-5 py-3 text-right font-medium">Paid</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -117,32 +111,15 @@ export default async function AdminEarningsPage() {
                         {p.contactName}
                       </td>
                       <td className="px-3 py-3 text-right font-mono text-sm tabular-nums text-ink-muted">
-                        {p.hourlyRateCents != null
-                          ? `${formatUSD(p.hourlyRateCents)}/h`
-                          : '—'}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-sm tabular-nums text-ink">
-                        {p.hours.toFixed(1)}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-sm tabular-nums text-ink-muted">
-                        {p.hourlyRateCents != null
-                          ? formatUSD(p.costCents)
-                          : '—'}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-sm tabular-nums text-ink">
-                        {formatUSD(p.paidCents)}
+                        {formatUSD(p.invoicedCents)}
                       </td>
                       <td
                         className={cn(
                           'px-5 py-3 text-right font-mono text-sm font-medium tabular-nums',
-                          p.profitCents > 0
-                            ? 'text-success'
-                            : p.profitCents < 0
-                              ? 'bg-danger/5 text-danger'
-                              : 'text-ink-muted',
+                          p.paidCents > 0 ? 'text-ink' : 'text-ink-muted',
                         )}
                       >
-                        {formatUSD(p.profitCents)}
+                        {formatUSD(p.paidCents)}
                       </td>
                     </tr>
                   ))}
@@ -156,9 +133,6 @@ export default async function AdminEarningsPage() {
   );
 }
 
-/* -------------------------------------------------------------------------
- * Hero — this-month earnings + delta + YTD
- * ------------------------------------------------------------------------- */
 function HeroEarnings({
   thisMonthCents,
   thisMonthCount,
@@ -237,4 +211,3 @@ function HeroEarnings({
     </section>
   );
 }
-

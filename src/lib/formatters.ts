@@ -110,10 +110,6 @@ export function formatDateTimeLongTz(input: string | Date | null | undefined): s
   return DATETIME_LONG_TZ.format(new Date(input));
 }
 
-export function formatHours(hours: number, digits = 2): string {
-  return hours.toFixed(digits);
-}
-
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 60 * 60 * 24 * 365],
   ['month', 60 * 60 * 24 * 30],

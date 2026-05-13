@@ -878,7 +878,6 @@ export type ProjectListRow = {
   contactCompany: string | null;
   milestoneCount: number;
   doneMilestoneCount: number;
-  hoursLogged: number;
   createdAt: string;
 };
 
@@ -890,7 +889,6 @@ export type ProjectDetail = {
   endDate: string | null;
   budgetCents: number | null;
   profitabilityCents: number | null;
-  hourlyRateCents: number | null;
   contactId: string;
   contactName: string;
   contactCompany: string | null;
@@ -913,17 +911,6 @@ export type Milestone = {
   invoiceId: string | null;
   /** Most recent open (pending_review|changes_requested) revision id. */
   openRevisionId: string | null;
-};
-
-export type TimeLog = {
-  id: string;
-  projectId: string;
-  hours: number;
-  logDate: string;
-  note: string | null;
-  createdById: string | null;
-  createdByEmail: string | null;
-  createdAt: string;
 };
 
 export async function getProjects(): Promise<ProjectListRow[]> {
@@ -983,37 +970,21 @@ export async function getProjectsPaginated(
     const rows = (data ?? []) as unknown as Row[];
     const ids = rows.map((r) => r.id);
 
-    // Pull milestones + time logs in two side queries; aggregate client-side.
-    const [milestonesRes, timeRes] = await Promise.all([
-      ids.length === 0
-        ? Promise.resolve({ data: [] })
-        : supabaseAdmin()
-            .from('milestones')
-            .select('project_id, status')
-            .in('project_id', ids),
-      ids.length === 0
-        ? Promise.resolve({ data: [] })
-        : supabaseAdmin()
-            .from('time_logs')
-            .select('project_id, hours')
-            .in('project_id', ids),
-    ]);
+    const milestonesRes = ids.length === 0
+      ? { data: [] }
+      : await supabaseAdmin()
+          .from('milestones')
+          .select('project_id, status')
+          .in('project_id', ids);
 
     const milestones = (milestonesRes.data ?? []) as {
       project_id: string;
       status: string;
     }[];
-    const timeLogs = (timeRes.data ?? []) as {
-      project_id: string;
-      hours: number | string | null;
-    }[];
 
     const mapped: ProjectListRow[] = rows.map((r) => {
       const c = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
       const ms = milestones.filter((m) => m.project_id === r.id);
-      const hours = timeLogs
-        .filter((t) => t.project_id === r.id)
-        .reduce((s, t) => s + Number(t.hours ?? 0), 0);
       return {
         id: r.id,
         name: r.name,
@@ -1026,7 +997,6 @@ export async function getProjectsPaginated(
         contactCompany: c?.company ?? null,
         milestoneCount: ms.length,
         doneMilestoneCount: ms.filter((m) => m.status === 'done').length,
-        hoursLogged: hours,
         createdAt: r.created_at,
       };
     });
@@ -1049,7 +1019,7 @@ export async function getProjectDetail(
     const { data } = await supabaseAdmin()
       .from('projects')
       .select(
-        'id, name, status, start_date, end_date, budget_cents, profitability_cents, hourly_rate_cents, contact_id, deal_id, created_at, contacts!inner(full_name, company)',
+        'id, name, status, start_date, end_date, budget_cents, profitability_cents, contact_id, deal_id, created_at, contacts!inner(full_name, company)',
       )
       .eq('id', id)
       .single();
@@ -1063,7 +1033,6 @@ export async function getProjectDetail(
       end_date: string | null;
       budget_cents: number | null;
       profitability_cents: number | null;
-      hourly_rate_cents: number | null;
       contact_id: string;
       deal_id: string | null;
       created_at: string;
@@ -1082,7 +1051,6 @@ export async function getProjectDetail(
       endDate: r.end_date,
       budgetCents: r.budget_cents,
       profitabilityCents: r.profitability_cents,
-      hourlyRateCents: r.hourly_rate_cents,
       contactId: r.contact_id,
       contactName: c?.full_name ?? '—',
       contactCompany: c?.company ?? null,
@@ -1441,41 +1409,6 @@ export async function getProjectFiles(projectId: string): Promise<ProjectFile[]>
   }
 }
 
-export async function getProjectTimeLogs(projectId: string): Promise<TimeLog[]> {
-  try {
-    const { data } = await supabaseAdmin()
-      .from('time_logs')
-      .select(
-        'id, project_id, hours, log_date, note, created_by, created_at, users!time_logs_created_by_fkey(email)',
-      )
-      .eq('project_id', projectId)
-      .order('log_date', { ascending: false });
-    type Row = {
-      id: string;
-      project_id: string;
-      hours: number | string;
-      log_date: string;
-      note: string | null;
-      created_by: string | null;
-      created_at: string;
-      users: { email: string } | { email: string }[] | null;
-    };
-    const rows = (data ?? []) as unknown as Row[];
-    return rows.map((r) => ({
-      id: r.id,
-      projectId: r.project_id,
-      hours: Number(r.hours ?? 0),
-      logDate: r.log_date,
-      note: r.note,
-      createdById: r.created_by,
-      createdByEmail: pickEmail(r.users),
-      createdAt: r.created_at,
-    }));
-  } catch {
-    return [];
-  }
-}
-
 async function fetchProjects(contactId: string): Promise<ProjectSummary[]> {
   try {
     const { data } = await supabaseAdmin()
@@ -1632,26 +1565,15 @@ async function recentActivity(): Promise<ActivityRow[]> {
 }
 
 /* -------------------------------------------------------------------------
- * Earnings — Step 14
- *
- * Cost = sum(time_logs.hours) × project.hourly_rate_cents per project.
- * Revenue = sum(invoices.amount_cents where status = 'paid').
- * Profit = revenue − cost.
- *
- * Projects without an hourly rate are still shown but report cost as null
- * (treated as 0 in profit math; surfaces show "—" for the cost column).
+ * Earnings — revenue-only (paid + invoiced) per project.
  * ------------------------------------------------------------------------- */
 
 export type EarningsProjectRow = {
   projectId: string;
   projectName: string;
   contactName: string;
-  hourlyRateCents: number | null;
-  hours: number;
-  costCents: number;
   invoicedCents: number;
   paidCents: number;
-  profitCents: number;
 };
 
 export type EarningsOverview = {
@@ -1669,7 +1591,7 @@ export async function getEarningsOverview(): Promise<EarningsOverview> {
   const startOfLastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString();
   const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1)).toISOString();
 
-  const [paidRes, openRes, projectsRes, timeRes] = await Promise.all([
+  const [paidRes, openRes, projectsRes] = await Promise.all([
     sb
       .from('invoices')
       .select('amount_cents, paid_at, project_id')
@@ -1681,8 +1603,7 @@ export async function getEarningsOverview(): Promise<EarningsOverview> {
       .in('status', ['sent', 'overdue']),
     sb
       .from('projects')
-      .select('id, name, hourly_rate_cents, contact_id, contacts!inner(full_name)'),
-    sb.from('time_logs').select('project_id, hours'),
+      .select('id, name, contact_id, contacts!inner(full_name)'),
   ]);
 
   type PaidRow = { amount_cents: number; paid_at: string; project_id: string | null };
@@ -1690,18 +1611,15 @@ export async function getEarningsOverview(): Promise<EarningsOverview> {
   type ProjectRow = {
     id: string;
     name: string;
-    hourly_rate_cents: number | null;
     contact_id: string;
     contacts:
       | { full_name: string }
       | { full_name: string }[];
   };
-  type TimeRow = { project_id: string; hours: number | string | null };
 
   const paid = (paidRes.data ?? []) as PaidRow[];
   const open = (openRes.data ?? []) as OpenRow[];
   const projects = (projectsRes.data ?? []) as unknown as ProjectRow[];
-  const time = (timeRes.data ?? []) as TimeRow[];
 
   const sumPaid = (since: string) =>
     paid
@@ -1746,11 +1664,6 @@ export async function getEarningsOverview(): Promise<EarningsOverview> {
     { sentCents: 0, sentCount: 0, overdueCents: 0, overdueCount: 0 },
   );
 
-  const hoursByProject = new Map<string, number>();
-  for (const t of time) {
-    const prev = hoursByProject.get(t.project_id) ?? 0;
-    hoursByProject.set(t.project_id, prev + Number(t.hours ?? 0));
-  }
   const paidByProject = new Map<string, number>();
   const invoicedByProject = new Map<string, number>();
   for (const p of paid) {
@@ -1771,26 +1684,18 @@ export async function getEarningsOverview(): Promise<EarningsOverview> {
 
   const projectRows: EarningsProjectRow[] = projects.map((p) => {
     const c = Array.isArray(p.contacts) ? p.contacts[0] : p.contacts;
-    const hours = hoursByProject.get(p.id) ?? 0;
-    const rate = p.hourly_rate_cents;
-    const costCents = rate != null ? Math.round(hours * rate) : 0;
     const paidCents = paidByProject.get(p.id) ?? 0;
     const invoicedCents = invoicedByProject.get(p.id) ?? 0;
     return {
       projectId: p.id,
       projectName: p.name,
       contactName: c?.full_name ?? '—',
-      hourlyRateCents: rate,
-      hours,
-      costCents,
       invoicedCents,
       paidCents,
-      profitCents: paidCents - costCents,
     };
   });
 
-  // Sort by profit desc — most profitable on top.
-  projectRows.sort((a, b) => b.profitCents - a.profitCents);
+  projectRows.sort((a, b) => b.paidCents - a.paidCents);
 
   return {
     thisMonth,

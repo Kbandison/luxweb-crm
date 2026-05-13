@@ -22,7 +22,6 @@ const UpdateSchema = z.object({
   end_date: z.string().nullable().optional(),
   budget_cents: z.number().int().min(0).nullable().optional(),
   profitability_cents: z.number().int().nullable().optional(),
-  hourly_rate_cents: z.number().int().min(0).nullable().optional(),
 });
 
 export async function PATCH(
