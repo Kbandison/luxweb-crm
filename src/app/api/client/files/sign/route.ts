@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { isAllowedUpload } from '@/lib/validation/files';
 
 export const runtime = 'nodejs';
 
@@ -34,6 +35,11 @@ export async function POST(req: Request) {
         { error: 'Invalid payload', issues: parsed.error.issues },
         { status: 400 },
       );
+    }
+
+    const gate = isAllowedUpload(parsed.data.file_name, parsed.data.content_type);
+    if (!gate.ok) {
+      return Response.json({ error: gate.reason }, { status: 400 });
     }
 
     // Ownership check — project must belong to a contact owned by this user.

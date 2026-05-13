@@ -12,6 +12,9 @@ const UpdateSchema = z.object({
   // content_json accepts any object — validated loosely so the editor can
   // evolve without server-side coupling. Admin-only mutation anyway.
   content_json: z.record(z.string(), z.unknown()).optional(),
+  // Only safe transitions: sent → rejected (admin marks declined), or
+  // sent → expired (cron). Going back to draft uses /revise, not this.
+  status: z.enum(['rejected', 'expired']).optional(),
 });
 
 export async function PATCH(
@@ -45,7 +48,7 @@ export async function PATCH(
     // Sent proposals are mid-review by the client — mutating title /
     // total_cents / content_json out from under them is a trust break.
     // Admin must explicitly revise back to draft (POST /revise) first.
-    // Status-only transitions (e.g. reject/expire) are still allowed.
+    // Status transitions (sent → rejected/expired) are still allowed.
     if ((current?.status as string) === 'sent') {
       const dataFields = Object.keys(parsed.data);
       const lockedFields = dataFields.filter((f) =>
@@ -60,6 +63,15 @@ export async function PATCH(
           { status: 409 },
         );
       }
+    }
+
+    // Status transitions: only allowed when currently 'sent'. Going from
+    // draft → rejected makes no sense (just delete it); accepted is locked.
+    if (parsed.data.status && (current?.status as string) !== 'sent') {
+      return Response.json(
+        { error: `Cannot mark proposal as ${parsed.data.status} from ${current?.status}.` },
+        { status: 409 },
+      );
     }
 
     const { error } = await supabaseAdmin()

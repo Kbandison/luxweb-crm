@@ -78,6 +78,8 @@ export function ProposalEditor({
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [reviseOpen, setReviseOpen] = useState(false);
   const [reviseBusy, setReviseBusy] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectBusy, setRejectBusy] = useState(false);
 
   const totalCents = content.investment.total_cents;
 
@@ -148,6 +150,27 @@ export function ProposalEditor({
       setDeleteBusy(false);
       setDeleteOpen(false);
       router.push(backHref);
+    }
+  }
+
+  async function reject() {
+    setRejectBusy(true);
+    try {
+      const res = await fetch(`/api/admin/proposals/${proposalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'rejected' }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't mark proposal declined", j.error ?? '');
+        return;
+      }
+      toast.success('Proposal marked declined');
+      router.refresh();
+    } finally {
+      setRejectBusy(false);
+      setRejectOpen(false);
     }
   }
 
@@ -306,14 +329,25 @@ export function ProposalEditor({
             </Button>
           ) : null}
           {isSent ? (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setReviseOpen(true)}
-              disabled={reviseBusy}
-            >
-              Revise & resend
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setRejectOpen(true)}
+                disabled={rejectBusy}
+              >
+                Mark declined
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setReviseOpen(true)}
+                disabled={reviseBusy}
+              >
+                Revise & resend
+              </Button>
+            </>
           ) : null}
         </div>
       </div>
@@ -442,6 +476,23 @@ export function ProposalEditor({
         busy={reviseBusy}
         onCancel={() => (reviseBusy ? undefined : setReviseOpen(false))}
         onConfirm={revise}
+      />
+
+      <ConfirmDialog
+        open={rejectOpen}
+        tone="danger"
+        title="Mark proposal declined?"
+        description={
+          <>
+            The proposal moves to <span className="font-mono text-ink">Declined</span>{' '}
+            and stops appearing in active queues. The client can no longer accept
+            it from their portal. The record stays in the audit log.
+          </>
+        }
+        confirmLabel="Mark declined"
+        busy={rejectBusy}
+        onCancel={() => (rejectBusy ? undefined : setRejectOpen(false))}
+        onConfirm={reject}
       />
     </div>
   );

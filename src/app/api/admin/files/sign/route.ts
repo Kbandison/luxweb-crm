@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth/guards';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { isAllowedUpload } from '@/lib/validation/files';
 
 export const runtime = 'nodejs';
 
@@ -28,6 +29,11 @@ export async function POST(req: Request) {
         { error: 'Invalid payload', issues: parsed.error.issues },
         { status: 400 },
       );
+    }
+
+    const gate = isAllowedUpload(parsed.data.file_name, parsed.data.content_type);
+    if (!gate.ok) {
+      return Response.json({ error: gate.reason }, { status: 400 });
     }
 
     // Verify the project exists before we mint a signed URL or insert a
