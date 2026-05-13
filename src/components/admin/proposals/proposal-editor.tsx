@@ -472,8 +472,8 @@ function EditorForm({
 }) {
   return (
     <div className="space-y-12">
-      {/* 01 — Header */}
-      <FormSection number="01" title="Proposal header">
+      {/* Header */}
+      <FormSection title="Proposal header">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Title" span={2}>
             <Input
@@ -519,8 +519,8 @@ function EditorForm({
         </div>
       </FormSection>
 
-      {/* 02 — Executive summary */}
-      <FormSection number="02" title="Executive summary">
+      {/* Executive summary */}
+      <FormSection title="Executive summary">
         <TextArea
           rows={5}
           value={content.executive_summary}
@@ -529,9 +529,8 @@ function EditorForm({
         />
       </FormSection>
 
-      {/* 03 — Project goals */}
+      {/* Project goals */}
       <FormSection
-        number="03"
         title="Project goals"
         description="Add structured goals with a short title and a sentence of detail."
       >
@@ -559,8 +558,8 @@ function EditorForm({
         />
       </FormSection>
 
-      {/* 04 — Scope */}
-      <FormSection number="04" title="Scope">
+      {/* Scope */}
+      <FormSection title="Scope">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Pages count">
             <Input
@@ -622,9 +621,8 @@ function EditorForm({
         </div>
       </FormSection>
 
-      {/* 05 — Out of scope */}
+      {/* Out of scope */}
       <FormSection
-        number="05"
         title="Out of scope"
         description="Things this engagement doesn't cover. One per line."
       >
@@ -636,8 +634,8 @@ function EditorForm({
         />
       </FormSection>
 
-      {/* 06 — Timeline */}
-      <FormSection number="06" title="Timeline">
+      {/* Timeline */}
+      <FormSection title="Timeline">
         <div className="space-y-5">
           {(['phase_1', 'phase_2', 'phase_3'] as const).map((key, i) => {
             const phase = content.timeline[key];
@@ -716,14 +714,13 @@ function EditorForm({
         </div>
       </FormSection>
 
-      {/* 07 — Investment */}
-      <FormSection number="07" title="Investment">
+      {/* Investment */}
+      <FormSection title="Investment">
         <InvestmentSection content={content} setContent={setContent} />
       </FormSection>
 
-      {/* 08 — Assumptions */}
+      {/* Assumptions */}
       <FormSection
-        number="08"
         title="Assumptions"
         description="Things we're assuming. One per line."
       >
@@ -734,9 +731,8 @@ function EditorForm({
         />
       </FormSection>
 
-      {/* 09 — Why LuxWeb */}
+      {/* Why LuxWeb */}
       <FormSection
-        number="09"
         title="Why LuxWeb"
         description="Differentiators to reinforce the pitch. Give each a short title and a sentence."
       >
@@ -764,9 +760,8 @@ function EditorForm({
         />
       </FormSection>
 
-      {/* 10 — Next steps */}
+      {/* Next steps */}
       <FormSection
-        number="10"
         title="Next steps"
         description="What happens after sign-off. One per line."
       >
@@ -1108,13 +1103,14 @@ function InvestmentSection({
   );
 }
 
+// Edit-mode form groups. Preview keeps the numbered 01–N document structure;
+// the editor used to mirror that, but identical numbering across Edit/Preview
+// (with different content) was disorienting. The form is just groups now.
 function FormSection({
-  number,
   title,
   description,
   children,
 }: {
-  number: string;
   title: string;
   description?: string;
   children: React.ReactNode;
@@ -1122,15 +1118,9 @@ function FormSection({
   return (
     <section className="space-y-5">
       <div>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-lg font-semibold tabular-nums text-copper">
-            {number}
-          </span>
-          <span aria-hidden className="h-3.5 w-px bg-copper/40" />
-          <h3 className="font-display text-lg font-medium tracking-tight text-ink">
-            {title}
-          </h3>
-        </div>
+        <h3 className="font-display text-lg font-medium tracking-tight text-ink">
+          {title}
+        </h3>
         {description ? (
           <p className="mt-1.5 font-sans text-sm text-ink-muted">
             {description}

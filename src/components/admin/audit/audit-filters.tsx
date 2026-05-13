@@ -43,7 +43,7 @@ export function AuditFilters() {
   return (
     <form
       onSubmit={onSubmit}
-      className="grid gap-4 rounded-xl border border-border bg-surface p-5 sm:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
+      className="grid gap-4 rounded-xl border border-border bg-surface p-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
     >
       <div className="space-y-1.5">
         <Label htmlFor="entity_type">Entity</Label>

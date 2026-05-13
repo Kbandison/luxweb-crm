@@ -21,6 +21,15 @@ export default async function ProjectTimeLogsPage({
   // Tool tab — no max-width per workspace rule (files/milestones/time/messages/invoices).
   return (
     <main className="w-full space-y-6 px-8 py-8">
+      <header className="space-y-1">
+        <h1 className="font-display text-2xl font-medium text-ink">
+          Time tracking
+        </h1>
+        <p className="font-sans text-sm text-ink-muted">
+          Start a timer while you work, or log entries manually. Hours roll up
+          into the project&apos;s profitability calculation.
+        </p>
+      </header>
       <TimerStrip projectId={id} running={running} />
       <TimeLogsList projectId={id} initial={logs} />
     </main>

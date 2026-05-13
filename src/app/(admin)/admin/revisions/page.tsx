@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Topbar } from '@/components/admin/topbar';
 import { getAllOpenRevisions } from '@/lib/queries/admin';
 import { PageHeader } from '@/components/ui/page-header';
+import { SectionHead } from '@/components/ui/section-head';
 import {
   REVISION_STATUS_LABEL,
   REVISION_STATUS_TONE,
@@ -20,6 +21,15 @@ export default async function AdminRevisionsQueuePage() {
           eyebrow="Workspace"
           title="Open revision requests"
           description="Client change requests across all projects. Resolved and won't-do items aren't shown here."
+        />
+
+        <SectionHead
+          title="Queue"
+          description={
+            revisions.length === 1
+              ? '1 open request'
+              : `${revisions.length} open requests`
+          }
         />
 
         {revisions.length === 0 ? (

@@ -272,13 +272,13 @@ function Engagements({
 }) {
   return (
     <div className="space-y-10">
-      <SectionHead number="01" title={`Deals · ${client.deals.length}`} />
+      <SectionHead number="01" title="Deals" />
       <DealsSection deals={client.deals} />
 
-      <SectionHead number="02" title={`Proposals · ${proposals.length}`} />
+      <SectionHead number="02" title="Proposals" />
       <LeadProposalsSection contactId={client.id} proposals={proposals} />
 
-      <SectionHead number="03" title={`Projects · ${client.projects.length}`} />
+      <SectionHead number="03" title="Projects" />
       <ProjectsSection projects={client.projects} />
     </div>
   );

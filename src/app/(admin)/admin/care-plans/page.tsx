@@ -3,6 +3,7 @@ import { Topbar } from '@/components/admin/topbar';
 import { getAllCarePlans } from '@/lib/queries/admin';
 import { StatCard } from '@/components/ui/stat-card';
 import { PageHeader } from '@/components/ui/page-header';
+import { SectionHead } from '@/components/ui/section-head';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
 import {
   CARE_PLAN_STATUS_LABEL,
@@ -39,6 +40,13 @@ export default async function AdminCarePlansPage() {
           <StatCard label="Monthly recurring" value={formatUSD(mrrCents)} size="lg" />
           <StatCard label="Total subs" value={String(plans.length)} size="lg" />
         </div>
+
+        <SectionHead
+          title="Queue"
+          description={
+            plans.length === 1 ? '1 subscription' : `${plans.length} subscriptions`
+          }
+        />
 
         {plans.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-surface p-12 text-center">

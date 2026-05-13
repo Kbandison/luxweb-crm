@@ -149,7 +149,7 @@ export function TimerStrip({
   if (running && running.projectId === projectId) {
     const elapsedMs = now - new Date(running.startedAt).getTime();
     return (
-      <section className="space-y-4 rounded-2xl border border-copper/40 bg-copper-soft/30 p-5">
+      <section className="space-y-4 rounded-2xl border border-copper/40 bg-copper-soft/15 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-meta text-copper">

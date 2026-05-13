@@ -4,6 +4,7 @@ import { getAllProjectReviews } from '@/lib/queries/admin';
 import { StarDisplay } from '@/components/reviews/star-input';
 import { StatCard } from '@/components/ui/stat-card';
 import { PageHeader } from '@/components/ui/page-header';
+import { SectionHead } from '@/components/ui/section-head';
 import { formatDateLong } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +50,13 @@ export default async function AdminReviewsPage() {
           />
           <StatCard label="All projects" value={String(all.length)} size="lg" />
         </div>
+
+        <SectionHead
+          title="Queue"
+          description={
+            all.length === 1 ? '1 project' : `${all.length} projects`
+          }
+        />
 
         {all.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-surface p-12 text-center">

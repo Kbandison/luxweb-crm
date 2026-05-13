@@ -99,7 +99,7 @@ export default async function AdminEarningsPage() {
                   {o.projects.map((p) => (
                     <tr
                       key={p.projectId}
-                      className="border-b border-border last:border-b-0"
+                      className="border-b border-border last:border-b-0 transition-colors even:bg-surface-2/30 hover:bg-surface-2/50"
                     >
                       <td className="px-5 py-3 font-sans text-sm font-medium text-ink">
                         <Link
@@ -134,7 +134,7 @@ export default async function AdminEarningsPage() {
                           p.profitCents > 0
                             ? 'text-success'
                             : p.profitCents < 0
-                              ? 'text-danger'
+                              ? 'bg-danger/5 text-danger'
                               : 'text-ink-muted',
                         )}
                       >
