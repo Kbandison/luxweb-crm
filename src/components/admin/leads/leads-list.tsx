@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ContactRow } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useUrlSearchInput } from '@/lib/hooks/use-url-search';
@@ -175,13 +176,20 @@ export function LeadsList({
       {/* List */}
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
-          <div className="flex h-full items-center justify-center px-6 py-12 text-center">
-            <p className="font-sans text-sm text-ink-muted">
-              {query
-                ? `No leads match “${query}”.`
-                : 'No leads. Add one with the button above.'}
-            </p>
-          </div>
+          query ? (
+            <div className="flex h-full items-center justify-center px-6 py-12 text-center">
+              <p className="font-sans text-sm text-ink-muted">
+                No leads match &ldquo;{query}&rdquo;.
+              </p>
+            </div>
+          ) : (
+            <div className="p-4">
+              <EmptyState
+                title="No leads yet"
+                description="Add one with the button above."
+              />
+            </div>
+          )
         ) : (
           <ul className="divide-y divide-border">
             {filtered.map((lead) => (

@@ -5,6 +5,7 @@ import type { ClientFile } from '@/lib/queries/client';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/components/ui/toast';
 import { FilePreview } from '@/components/admin/projects/file-preview';
 import { formatDate } from '@/lib/formatters';
@@ -246,11 +247,10 @@ export function ClientFilesList({
 
       {/* Files list */}
       {initial.length === 0 && uploading.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-surface/60 p-10 text-center">
-          <p className="font-sans text-sm text-ink-muted">
-            No files yet. Drop one above to share it with the team.
-          </p>
-        </div>
+        <EmptyState
+          title="No files yet"
+          description="Drop one above to share it with the team."
+        />
       ) : initial.length > 0 ? (
         <div className="space-y-3">
           <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">

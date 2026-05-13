@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Topbar } from '@/components/admin/topbar';
+import { EmptyState } from '@/components/ui/empty-state';
 import { StatCard } from '@/components/ui/stat-card';
 import { SectionHead } from '@/components/ui/section-head';
 import { StatusPill } from '@/components/ui/status-pill';
@@ -281,31 +282,27 @@ function ActionBadge({ action }: { action: string }) {
 
 function EmptyActivity() {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border bg-surface px-6 py-14 text-center">
-      <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-copper/15 via-copper-soft/50 to-transparent ring-1 ring-copper/15">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-5 w-5 text-copper/70"
-          aria-hidden
-        >
-          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-        </svg>
-      </div>
-      <div className="space-y-1">
-        <p className="font-display text-base font-medium text-ink">
-          Waiting for the first event
-        </p>
-        <p className="mx-auto max-w-sm font-sans text-sm text-ink-muted">
-          Add a lead, move a deal through pipeline, or send an invoice. Every
-          admin mutation lands here.
-        </p>
-      </div>
-    </div>
+    <EmptyState
+      className="bg-surface"
+      title="Waiting for the first event"
+      description="Add a lead, move a deal through pipeline, or send an invoice. Every admin mutation lands here."
+      icon={
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-copper/15 via-copper-soft/50 to-transparent ring-1 ring-copper/15">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-5 text-copper/70"
+            aria-hidden
+          >
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+        </div>
+      }
+    />
   );
 }
 

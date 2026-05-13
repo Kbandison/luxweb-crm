@@ -4,6 +4,7 @@ import { getSession } from '@/lib/supabase/session';
 import { getClientDashboard } from '@/lib/queries/client';
 import { ClientDashboardRefresher } from '@/components/realtime/client-dashboard-refresher';
 import { buttonVariants } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { StatusPill } from '@/components/ui/status-pill';
 import { cn } from '@/lib/utils';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
@@ -62,15 +63,11 @@ export default async function ClientDashboardPage() {
       ) : awaitingProposals.length > 0 ? (
         <PendingProposalsFocus proposals={awaitingProposals} />
       ) : (
-        <div className="rounded-2xl border border-dashed border-border bg-surface p-12 text-center">
-          <p className="font-display text-lg font-medium text-ink">
-            Nothing to show
-          </p>
-          <p className="mx-auto mt-2 max-w-md font-sans text-sm text-ink-muted">
-            Once the team sends a proposal or spins up your project, it will
-            appear here.
-          </p>
-        </div>
+        <EmptyState
+          className="rounded-2xl bg-surface p-12 md:p-12"
+          title="Nothing to show"
+          description="Once the team sends a proposal or spins up your project, it will appear here."
+        />
       )}
 
       {(() => {

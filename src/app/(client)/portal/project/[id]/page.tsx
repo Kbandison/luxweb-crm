@@ -11,6 +11,7 @@ import { CarePlanCard } from '@/components/client/care-plan/care-plan-card';
 import { CarePlanBillingHistory } from '@/components/care-plan/billing-history';
 import { getCarePlanInvoiceHistory } from '@/lib/care-plan/billing-history';
 import { ClientReviewCard } from '@/components/client/reviews/client-review-card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { SectionHead } from '@/components/ui/section-head';
 import { StatusPill } from '@/components/ui/status-pill';
 import { formatDate } from '@/lib/formatters';
@@ -148,12 +149,11 @@ export default async function ClientProjectOverviewPage({
         <SectionHead title="Milestones" />
 
         {project.milestones.length === 0 ? (
-          <div className="mt-5 rounded-xl border border-dashed border-border bg-surface/60 p-8 text-center">
-            <p className="font-sans text-sm text-ink-muted">
-              No visible milestones. The team will add them as the work
-              takes shape.
-            </p>
-          </div>
+          <EmptyState
+            className="mt-5"
+            title="No milestones yet"
+            description="The team will add them as the work takes shape."
+          />
         ) : (
           <ol className="mt-5 space-y-2">
             {project.milestones.map((m, i) => {

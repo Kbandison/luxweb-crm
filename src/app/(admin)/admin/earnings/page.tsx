@@ -4,7 +4,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionHead } from '@/components/ui/section-head';
 import { StatCard } from '@/components/ui/stat-card';
-import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getEarningsOverview } from '@/lib/queries/admin';
 import { formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -81,7 +81,10 @@ export default async function AdminEarningsPage() {
             size="lg"
           />
           {o.projects.length === 0 ? (
-            <EmptyProjects />
+            <EmptyState
+              title="No projects with logged time yet"
+              description="Open any project to set its hourly rate, then log hours to see profitability here."
+            />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border bg-surface">
               <table className="w-full min-w-[820px]">
@@ -235,13 +238,3 @@ function HeroEarnings({
   );
 }
 
-function EmptyProjects() {
-  return (
-    <Card tone="dashed" rounded="lg" padding="xl" className="p-10 text-center">
-      <p className="font-sans text-sm text-ink-muted">
-        No projects with logged time yet. Open any project to set its hourly
-        rate, then log hours to see profitability here.
-      </p>
-    </Card>
-  );
-}

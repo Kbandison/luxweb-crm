@@ -5,6 +5,7 @@ import type { ProjectFile } from '@/lib/queries/admin';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { EmptyState } from '@/components/ui/empty-state';
 import { StatusPill } from '@/components/ui/status-pill';
 import { useToast } from '@/components/ui/toast';
 import { FilePreview } from './file-preview';
@@ -251,11 +252,10 @@ export function FilesList({
 
       {/* Files list */}
       {initial.length === 0 && uploading.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-surface/60 p-8 text-center">
-          <p className="font-sans text-sm text-ink-muted">
-            No files. Drop one above to get started.
-          </p>
-        </div>
+        <EmptyState
+          title="No files yet"
+          description="Drop one above to get started."
+        />
       ) : initial.length > 0 ? (
         <div className="overflow-x-auto rounded-xl border border-border bg-surface">
           <table className="w-full min-w-[640px]">

@@ -1,5 +1,5 @@
 import type { ClientActivity } from '@/lib/queries/admin';
-import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { StatusPill } from '@/components/ui/status-pill';
 import { formatRelative } from '@/lib/formatters';
 
@@ -15,11 +15,10 @@ const ACTION_COLORS: Record<string, string> = {
 export function ActivityList({ rows }: { rows: ClientActivity[] }) {
   if (rows.length === 0) {
     return (
-      <Card tone="dashed" rounded="lg" padding="xl" className="text-center">
-        <p className="font-sans text-sm text-ink-muted">
-          No audit log entries for this client.
-        </p>
-      </Card>
+      <EmptyState
+        title="No activity yet"
+        description="No audit log entries for this client."
+      />
     );
   }
   return (

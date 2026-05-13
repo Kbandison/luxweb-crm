@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import type { ProjectListRow } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import { StatusPill } from '@/components/ui/status-pill';
@@ -69,13 +70,20 @@ export function ProjectsTable({
 
       <div className="flex-1 overflow-x-auto overflow-y-auto">
         {filtered.length === 0 ? (
-          <div className="flex h-full items-center justify-center px-6 py-12 text-center">
-            <p className="font-sans text-sm text-ink-muted">
-              {q
-                ? `No projects match “${q}”.`
-                : 'No projects. Create one with the button above.'}
-            </p>
-          </div>
+          q ? (
+            <div className="flex h-full items-center justify-center px-6 py-12 text-center">
+              <p className="font-sans text-sm text-ink-muted">
+                No projects match &ldquo;{q}&rdquo;.
+              </p>
+            </div>
+          ) : (
+            <div className="p-6">
+              <EmptyState
+                title="No projects yet"
+                description="Create one with the button above."
+              />
+            </div>
+          )
         ) : (
           <table className="w-full min-w-[720px]">
             <thead className="border-b border-border bg-surface text-left">
