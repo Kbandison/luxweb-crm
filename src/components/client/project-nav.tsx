@@ -63,7 +63,7 @@ export function ClientProjectNav({ projectId }: { projectId: string }) {
   }, [pathname]);
 
   return (
-    <nav className="relative flex flex-wrap items-end gap-1 border-b border-border bg-surface/80 px-6 backdrop-blur md:px-10 print:hidden">
+    <nav className="relative z-40 flex flex-wrap items-end gap-1 border-b border-border bg-surface/80 px-6 backdrop-blur md:px-10 print:hidden">
       {primaryTabs.map((t) => {
         const href = t.slug ? `${base}/${t.slug}` : base;
         const isActive = t.slug

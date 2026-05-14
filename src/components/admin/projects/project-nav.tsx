@@ -71,7 +71,7 @@ export function ProjectNav({ projectId }: { projectId: string }) {
     // grows vertically instead of clipping its contents off-screen.
     // As a bonus, no scroll context means the Docs dropdown isn't
     // clipped below the nav row.
-    <div className="relative flex flex-wrap items-end border-b border-border bg-surface print:hidden">
+    <div className="relative z-40 flex flex-wrap items-end border-b border-border bg-surface print:hidden">
       <nav className="flex flex-1 flex-wrap items-end gap-1 px-8">
         {primaryTabs.map((t) => {
           const href = t.slug ? `${base}/${t.slug}` : base;
