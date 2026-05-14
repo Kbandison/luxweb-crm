@@ -3,6 +3,10 @@ import { cn } from '@/lib/utils';
 export type WordmarkProps = {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  /** When true, hides "LuxWeb Studio" below the sm breakpoint, leaving
+   * only the copper dot. Used in topbars where the full wordmark would
+   * push other controls past the viewport on narrow phones. */
+  responsive?: boolean;
 };
 
 const sizes = {
@@ -12,7 +16,7 @@ const sizes = {
 } as const;
 
 // The copper dot serves as the mark. Quiet, intentional, recognizable.
-export function Wordmark({ className, size = 'md' }: WordmarkProps) {
+export function Wordmark({ className, size = 'md', responsive }: WordmarkProps) {
   const s = sizes[size];
   return (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
@@ -21,6 +25,7 @@ export function Wordmark({ className, size = 'md' }: WordmarkProps) {
         className={cn(
           'font-display font-medium tracking-tight text-ink',
           s.text,
+          responsive && 'hidden sm:inline',
         )}
       >
         LuxWeb Studio

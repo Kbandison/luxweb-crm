@@ -17,7 +17,7 @@ export default async function ClientLayout({
 
   return (
     <ToastProvider>
-      <div className="min-h-dvh bg-bg">
+      <div className="min-h-dvh overflow-x-hidden bg-bg">
         <ClientTopbar
           userEmail={profile?.email ?? session.email}
           userName={profile?.fullName ?? null}

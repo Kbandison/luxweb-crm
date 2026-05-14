@@ -52,9 +52,9 @@ export function ClientTopbar({ userEmail, userName }: ClientTopbarProps) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-surface/85 backdrop-blur print:hidden">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-6 px-6 md:px-10">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:gap-6 md:px-10">
         <Link href="/portal/dashboard" className="shrink-0">
-          <Wordmark size="sm" />
+          <Wordmark size="sm" responsive />
         </Link>
 
         <nav className="flex items-center gap-1">
