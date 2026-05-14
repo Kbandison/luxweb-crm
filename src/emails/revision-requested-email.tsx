@@ -18,25 +18,44 @@ export default function RevisionRequestedEmail(
   const { adminName, clientName, projectName, title, bodySnippet, kind, revisionUrl } =
     props;
   const isNew = kind === 'created';
+  // When clientName is blank, this email was dispatched the OTHER
+  // direction — admin submitting a milestone to the client for review.
+  // Use client-facing copy that doesn't reference a missing actor.
+  const fromAdmin = !clientName.trim();
   return (
     <BaseLayout
       preview={
-        isNew
-          ? `${clientName} filed a revision on ${projectName}`
-          : `${clientName} replied on a revision in ${projectName}`
+        fromAdmin
+          ? `${title} is ready for your review`
+          : isNew
+            ? `${clientName} filed a revision on ${projectName}`
+            : `${clientName} replied on a revision in ${projectName}`
       }
     >
       <Text className="m-0 text-xs uppercase tracking-[0.22em] text-copper">
-        {isNew ? 'New revision request' : 'New client reply'}
+        {fromAdmin
+          ? 'Ready for your review'
+          : isNew
+            ? 'New revision request'
+            : 'New client reply'}
       </Text>
       <Heading className="mt-3 text-2xl font-medium tracking-tight text-ink">
         Hi {adminName.split(' ')[0] || 'there'},
       </Heading>
       <Text className="mt-4 text-base leading-relaxed text-ink">
-        <strong>{clientName}</strong>{' '}
-        {isNew
-          ? `filed a revision request on ${projectName}.`
-          : `replied on a revision in ${projectName}.`}
+        {fromAdmin ? (
+          <>
+            We&apos;ve submitted <strong>{title}</strong> for your review on{' '}
+            {projectName}.
+          </>
+        ) : (
+          <>
+            <strong>{clientName}</strong>{' '}
+            {isNew
+              ? `filed a revision request on ${projectName}.`
+              : `replied on a revision in ${projectName}.`}
+          </>
+        )}
       </Text>
 
       <Section className="my-6 rounded-xl border border-solid border-border bg-[#FAFAFA] p-6">
@@ -59,6 +78,8 @@ export default function RevisionRequestedEmail(
 }
 
 export function revisionRequestedSubject(p: RevisionRequestedEmailProps) {
+  const fromAdmin = !p.clientName.trim();
+  if (fromAdmin) return `Ready for review: ${p.title}`;
   return p.kind === 'created'
     ? `New revision request: ${p.title}`
     : `${p.clientName} replied: ${p.title}`;
