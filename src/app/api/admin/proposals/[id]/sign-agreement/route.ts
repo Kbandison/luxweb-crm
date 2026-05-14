@@ -143,23 +143,47 @@ export async function POST(
       version: `v${agreementVersion.replace(/^v/, '')}`,
     });
 
-    const { data: cRow, error: cErr } = await sb
-      .from('contracts')
-      .insert({
-        proposal_id: id,
-        project_id: r.project_id,
-        contact_id: r.contact_id,
-        agreement_version: version,
-        body_md,
-        variables,
-        status: 'pending_client_signature',
-        admin_signed_name: parsed.data.full_name,
-        admin_signed_at: adminSignedAt,
-        admin_signed_ip: ip,
-        admin_signed_user_agent: userAgent,
-      })
-      .select('id')
-      .single();
+    // Hoist into a const so the closure below doesn't lose the
+    // !parsed.success narrowing.
+    const adminSignedName = parsed.data.full_name;
+    const insertContract = () =>
+      sb
+        .from('contracts')
+        .insert({
+          proposal_id: id,
+          project_id: r.project_id,
+          contact_id: r.contact_id,
+          agreement_version: version,
+          body_md,
+          variables,
+          status: 'pending_client_signature',
+          admin_signed_name: adminSignedName,
+          admin_signed_at: adminSignedAt,
+          admin_signed_ip: ip,
+          admin_signed_user_agent: userAgent,
+        })
+        .select('id')
+        .single();
+
+    let { data: cRow, error: cErr } = await insertContract();
+
+    // The DB historically had a plain UNIQUE(proposal_id) on contracts.
+    // crm-master/crm_contracts_void_reissue.sql replaces it with a
+    // partial unique index that ignores voided rows. If the migration
+    // hasn't been run yet, the insert above 409s on a re-sign-after-
+    // void. As a fallback, hard-delete the voided contracts for this
+    // proposal and retry once. After the migration this branch never
+    // fires.
+    if (cErr && /contracts_proposal_id_key/i.test(cErr.message ?? '')) {
+      await sb
+        .from('contracts')
+        .delete()
+        .eq('proposal_id', id)
+        .eq('status', 'void');
+      const retry = await insertContract();
+      cRow = retry.data;
+      cErr = retry.error;
+    }
 
     if (cErr || !cRow) {
       return Response.json(
