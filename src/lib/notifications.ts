@@ -243,13 +243,76 @@ type EmailPrefs = Record<string, boolean>;
  * for admin-side fan-out notifications where the in-app bell is enough
  * and we don't want the admin receiving client-facing email copy.
  */
+/**
+ * Pick the stable identifier for the "subject" of a notification — the
+ * thing the recipient cares about. Used to dedupe: if a new invite for
+ * the SAME user, or a fresh Agreement-ready-to-sign for the SAME contract
+ * arrives, the older unread row gets collapsed instead of stacking.
+ *
+ * Return null for event types where collapsing all unread of the same
+ * type would lose information (we currently have none).
+ */
+function subjectKeyFor(event: NotifyEvent): { field: string; value: string } | null {
+  switch (event.type) {
+    case 'invite':
+      return { field: 'userId', value: event.userId };
+    case 'message':
+      return { field: 'threadId', value: event.threadId };
+    case 'milestone_updated':
+      return { field: 'milestoneId', value: event.milestoneId };
+    case 'proposal_sent':
+    case 'proposal_accepted':
+    case 'proposal_accepted_client':
+      return { field: 'proposalId', value: event.proposalId };
+    case 'invoice_sent':
+    case 'invoice_paid':
+    case 'invoice_overdue':
+      return { field: 'invoiceId', value: event.invoiceId };
+    case 'revision_requested':
+    case 'revision_updated':
+      return { field: 'revisionId', value: event.revisionId };
+    case 'contract_pending_client_signature':
+      return { field: 'contractId', value: event.contractId };
+    case 'care_plan_activated':
+      return { field: 'subscriptionId', value: event.subscriptionId };
+    case 'project_completed':
+      return { field: 'projectId', value: event.projectId };
+    default:
+      return null;
+  }
+}
+
 export async function notify(
   event: NotifyEvent,
   opts?: { inAppOnly?: boolean },
 ): Promise<void> {
-  // 1. In-app notification — payload stores the full event for the bell UI
+  // 1. In-app notification — payload stores the full event for the bell UI.
+  //    Collapse prior unread rows with the same (user, type, subject) so
+  //    re-actions (resend invite, re-sign contract after void) replace
+  //    rather than stack in the bell. Read rows are left alone.
   try {
-    await supabaseAdmin().from('notifications').insert({
+    const sb = supabaseAdmin();
+    const subject = subjectKeyFor(event);
+    if (subject) {
+      const { data: prior } = await sb
+        .from('notifications')
+        .select('id, payload')
+        .eq('user_id', event.userId)
+        .eq('type', event.type)
+        .is('read_at', null);
+      type Row = { id: string; payload: Record<string, unknown> | null };
+      const priorIds = ((prior ?? []) as Row[])
+        .filter(
+          (r) =>
+            r.payload &&
+            (r.payload as Record<string, unknown>)[subject.field] === subject.value,
+        )
+        .map((r) => r.id);
+      if (priorIds.length > 0) {
+        await sb.from('notifications').delete().in('id', priorIds);
+      }
+    }
+    await sb.from('notifications').insert({
       user_id: event.userId,
       type: event.type,
       payload: event,

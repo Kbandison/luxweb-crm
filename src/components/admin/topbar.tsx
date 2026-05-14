@@ -7,7 +7,7 @@ import { CommandPaletteTrigger } from '@/components/admin/command-palette';
 // the title text.
 export function Topbar() {
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-end gap-3 border-b border-border bg-surface/70 px-6 backdrop-blur print:hidden">
+    <header className="sticky top-0 z-50 flex h-16 items-center justify-end gap-3 border-b border-border bg-surface/70 px-6 backdrop-blur print:hidden">
       <CommandPaletteTrigger />
       <NotificationBell />
     </header>

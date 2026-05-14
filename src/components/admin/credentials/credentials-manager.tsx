@@ -219,8 +219,13 @@ export function CredentialsManager({
             if (!res.ok) {
               const j = (await res.json().catch(() => ({}))) as {
                 error?: string;
+                issues?: { message: string; path?: (string | number)[] }[];
               };
-              const msg = j.error ?? 'Failed to save';
+              // Surface the first zod issue when available so the user
+              // sees "URL must use http or https" instead of the generic
+              // "Invalid payload".
+              const issueMsg = j.issues?.[0]?.message;
+              const msg = issueMsg ?? j.error ?? 'Failed to save';
               toast.error("Couldn't save credential", msg);
               throw new Error(msg);
             }
@@ -259,8 +264,13 @@ export function CredentialsManager({
             if (!res.ok) {
               const j = (await res.json().catch(() => ({}))) as {
                 error?: string;
+                issues?: { message: string; path?: (string | number)[] }[];
               };
-              const msg = j.error ?? 'Failed to save';
+              // Surface the first zod issue when available so the user
+              // sees "URL must use http or https" instead of the generic
+              // "Invalid payload".
+              const issueMsg = j.issues?.[0]?.message;
+              const msg = issueMsg ?? j.error ?? 'Failed to save';
               toast.error("Couldn't update credential", msg);
               throw new Error(msg);
             }

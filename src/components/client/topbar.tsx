@@ -51,7 +51,7 @@ export function ClientTopbar({ userEmail, userName }: ClientTopbarProps) {
   const displayName = userName ?? userEmail.split('@')[0];
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-surface/85 backdrop-blur print:hidden">
+    <header className="sticky top-0 z-50 border-b border-border bg-surface/85 backdrop-blur print:hidden">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-6 px-6 md:px-10">
         <Link href="/portal/dashboard" className="shrink-0">
           <Wordmark size="sm" />
@@ -126,7 +126,7 @@ export function ClientTopbar({ userEmail, userName }: ClientTopbarProps) {
           {menuOpen ? (
             <div
               role="menu"
-              className="absolute right-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-surface shadow-[0_12px_32px_-12px_rgba(0,0,0,0.18)]"
+              className="absolute right-0 top-full z-[60] mt-2 w-56 overflow-hidden rounded-xl border border-border bg-surface shadow-[0_16px_40px_-12px_rgba(0,0,0,0.22)]"
             >
               <div className="border-b border-border px-3 py-2.5">
                 <p className="truncate font-sans text-sm font-medium text-ink">
