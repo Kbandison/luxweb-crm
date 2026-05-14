@@ -262,9 +262,14 @@ export function NotificationBell() {
       </button>
 
       {open ? (
+        // Mobile: fixed-position the panel beneath the topbar so it spans
+        // the viewport with a small margin (anchoring `absolute right-0`
+        // to the bell on a narrow phone shoves the w-96 panel off-screen
+        // to the left). Tablet+ reverts to the original bell-anchored
+        // dropdown.
         <div
           role="dialog"
-          className="absolute right-0 top-full z-40 mt-2 w-96 overflow-hidden rounded-xl border border-border bg-surface shadow-[0_12px_32px_-12px_rgba(0,0,0,0.18)]"
+          className="fixed inset-x-3 top-[4.25rem] z-[60] overflow-hidden rounded-xl border border-border bg-surface shadow-[0_12px_32px_-12px_rgba(0,0,0,0.18)] sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96"
         >
           <header className="flex items-center justify-between border-b border-border px-4 py-3">
             <p className="font-display text-sm font-medium text-ink">
