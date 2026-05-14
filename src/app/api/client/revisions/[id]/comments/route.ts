@@ -90,18 +90,21 @@ export async function POST(
     if (adminUserIds.length > 0) {
       await Promise.all(
         adminUserIds.map((userId) =>
-          notify({
-            type: 'revision_requested',
-            userId,
-            revisionId: id,
-            title: r.title,
-            bodySnippet: snippet(parsed.data.body),
-            projectId: r.project_id,
-            projectName: project.name,
-            clientName: name,
-            kind: 'comment',
-            revisionPath: `/admin/projects/${r.project_id}/revisions/${id}`,
-          }),
+          notify(
+            {
+              type: 'revision_requested',
+              userId,
+              revisionId: id,
+              title: r.title,
+              bodySnippet: snippet(parsed.data.body),
+              projectId: r.project_id,
+              projectName: project.name,
+              clientName: name,
+              kind: 'comment',
+              revisionPath: `/admin/projects/${r.project_id}/revisions/${id}`,
+            },
+            { actorId: session.userId },
+          ),
         ),
       );
     }

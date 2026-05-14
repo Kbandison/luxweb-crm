@@ -143,6 +143,10 @@ export async function POST(
     });
 
     if (contact?.user_id) {
+      // Admin → client direction: leave clientName blank so the email
+      // template uses the "We've submitted {title} for your review" copy
+      // instead of the self-referential "Regina filed a revision request"
+      // it would otherwise render when the recipient IS the contact.
       await notify({
         type: 'revision_requested',
         userId: contact.user_id,
@@ -153,7 +157,7 @@ export async function POST(
           : `"${r.title}" is ready for another look.`,
         projectId: r.project_id,
         projectName: project.name,
-        clientName: contact.full_name,
+        clientName: '',
         kind: 'created',
         revisionPath: `/portal/project/${r.project_id}/revisions/${id}`,
       });

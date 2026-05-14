@@ -110,18 +110,21 @@ export async function POST(
     if (adminUserIds.length > 0) {
       await Promise.all(
         adminUserIds.map((userId) =>
-          notify({
-            type: 'revision_requested',
-            userId,
-            revisionId,
-            title: parsed.data.title,
-            bodySnippet: snippet(parsed.data.body),
-            projectId,
-            projectName: p.name,
-            clientName: contact.full_name,
-            kind: 'created',
-            revisionPath: `/admin/projects/${projectId}/revisions/${revisionId}`,
-          }),
+          notify(
+            {
+              type: 'revision_requested',
+              userId,
+              revisionId,
+              title: parsed.data.title,
+              bodySnippet: snippet(parsed.data.body),
+              projectId,
+              projectName: p.name,
+              clientName: contact.full_name,
+              kind: 'created',
+              revisionPath: `/admin/projects/${projectId}/revisions/${revisionId}`,
+            },
+            { actorId: session.userId },
+          ),
         ),
       );
     }

@@ -284,8 +284,15 @@ function subjectKeyFor(event: NotifyEvent): { field: string; value: string } | n
 
 export async function notify(
   event: NotifyEvent,
-  opts?: { inAppOnly?: boolean },
+  opts?: { inAppOnly?: boolean; actorId?: string | null },
 ): Promise<void> {
+  // Self-skip: if the actor of an event is the same user as the
+  // recipient, drop the notification entirely. Common in test setups
+  // where a single account holds both admin + client roles — Regina
+  // shouldn't be told "Regina filed a revision request" — but also
+  // valid in prod (e.g. an admin marking their own action shouldn't
+  // notify themselves).
+  if (opts?.actorId && opts.actorId === event.userId) return;
   // 1. In-app notification — payload stores the full event for the bell UI.
   //    Collapse prior unread rows with the same (user, type, subject) so
   //    re-actions (resend invite, re-sign contract after void) replace
