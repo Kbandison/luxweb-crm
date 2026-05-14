@@ -31,7 +31,7 @@ export default async function ClientContractPage({
           expectedSignerName={contract.contactFullName}
         />
       </div>
-      <PrintBar />
+      {contract.status === 'signed' ? <PrintBar /> : null}
       <article className="rounded-2xl border border-border bg-surface p-8 md:p-10 print-plain">
         <ContractBody body={contract.bodyMd} />
       </article>

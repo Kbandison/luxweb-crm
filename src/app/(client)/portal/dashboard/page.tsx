@@ -55,14 +55,25 @@ export default async function ClientDashboardPage() {
         </p>
       </header>
 
+      {/* Unified focus card. The most-actionable thing always wins the
+          big slot, in this priority order:
+            1. Pending contract (the client needs to sign)
+            2. Pending proposal (the client needs to review/accept)
+            3. Active project (work in progress)
+            4. Onboarding card (first-time clients)
+            5. Empty state (rare — completed everything) */}
       {dash.pendingContracts.length > 0 ? (
-        <PendingContractsBanner contracts={dash.pendingContracts} />
-      ) : null}
-
-      {focus ? (
-        <FocusProject project={focus} />
+        <PendingAgreementFocus
+          kind="contract"
+          contract={dash.pendingContracts[0]}
+        />
       ) : awaitingProposals.length > 0 ? (
-        <PendingProposalsFocus proposals={awaitingProposals} />
+        <PendingAgreementFocus
+          kind="proposal"
+          proposal={awaitingProposals[0]}
+        />
+      ) : focus ? (
+        <FocusProject project={focus} />
       ) : dash.projects.length === 0 && dash.pendingProposals.length === 0 ? (
         <OnboardingCard />
       ) : (
@@ -115,56 +126,41 @@ export default async function ClientDashboardPage() {
   );
 }
 
-function PendingContractsBanner({
-  contracts,
-}: {
-  contracts: import('@/lib/queries/client').ClientDashboardContract[];
-}) {
-  const primary = contracts[0];
-  return (
-    <section className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-copper/30 bg-copper-soft/25 p-6">
-      <div>
-        <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
-          Sign your agreement
-        </p>
-        <p className="mt-1 font-display text-lg font-medium text-ink">
-          {primary.proposalTitle}
-        </p>
-        <p className="mt-1 font-sans text-sm text-ink-muted">
-          You&apos;ve accepted the proposal. One more signature to lock in the
-          legal terms.
-        </p>
-      </div>
-      <Link
-        href={`/portal/contracts/${primary.id}`}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-copper px-4 py-2 font-sans text-sm font-medium text-copper-foreground transition-colors hover:bg-copper/90"
-      >
-        Open agreement
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-3.5 w-3.5"
-          aria-hidden
-        >
-          <line x1="5" y1="12" x2="19" y2="12" />
-          <polyline points="12 5 19 12 12 19" />
-        </svg>
-      </Link>
-    </section>
-  );
-}
+/**
+ * One component for both pending-proposal and pending-contract focus
+ * states. The two used to render differently (proposal as the big focus
+ * card, contract as a small banner above it) — that asymmetry made the
+ * dashboard feel like the client lost ground when their proposal
+ * advanced to a contract. Now both render in the same prominent slot
+ * with matching layout; only the eyebrow text and CTA path differ.
+ */
+function PendingAgreementFocus(
+  props:
+    | {
+        kind: 'contract';
+        contract: import('@/lib/queries/client').ClientDashboardContract;
+      }
+    | {
+        kind: 'proposal';
+        proposal: import('@/lib/queries/client').ClientDashboardProposal;
+      },
+) {
+  const isContract = props.kind === 'contract';
+  const eyebrow = isContract
+    ? 'Awaiting your signature'
+    : 'Awaiting your review';
+  const title = isContract
+    ? props.contract.proposalTitle
+    : props.proposal.title;
+  const subhead = isContract
+    ? "You've accepted the proposal. One more signature to lock in the legal terms."
+    : 'Open the proposal to review scope, timeline, and investment.';
+  const amount = isContract ? null : props.proposal.totalCents;
+  const href = isContract
+    ? `/portal/contracts/${props.contract.id}`
+    : `/portal/proposals/${props.proposal.id}`;
+  const cta = isContract ? 'Open agreement' : 'Open proposal';
 
-function PendingProposalsFocus({
-  proposals,
-}: {
-  proposals: import('@/lib/queries/client').ClientDashboardProposal[];
-}) {
-  const awaiting = proposals.filter((p) => p.status === 'sent');
-  const primary = awaiting[0] ?? proposals[0];
   return (
     <section className="relative isolate overflow-hidden rounded-2xl border border-border bg-surface p-8 copper-mesh md:p-12">
       <div
@@ -173,23 +169,26 @@ function PendingProposalsFocus({
       />
       <div className="relative">
         <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
-          {awaiting.length > 0 ? 'Awaiting your review' : 'Proposals'}
+          {eyebrow}
         </p>
         <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-ink md:text-4xl">
-          {primary.title}
+          {title}
         </h2>
-        {primary.totalCents != null ? (
+        <p className="mt-3 max-w-xl font-sans text-sm text-ink-muted">
+          {subhead}
+        </p>
+        {amount != null ? (
           <p className="mt-4 font-mono text-xl tabular-nums text-ink-muted">
-            {formatUSD(primary.totalCents)}
+            {formatUSD(amount)}
           </p>
         ) : null}
         <div className="copper-rule mt-10 h-px w-32" />
         <div className="mt-6">
           <Link
-            href={`/portal/proposals/${primary.id}`}
+            href={href}
             className="inline-flex items-center gap-1.5 rounded-md bg-copper px-4 py-2 font-sans text-sm font-medium text-copper-foreground transition-colors hover:bg-copper/90"
           >
-            Open proposal
+            {cta}
             <svg
               viewBox="0 0 24 24"
               fill="none"

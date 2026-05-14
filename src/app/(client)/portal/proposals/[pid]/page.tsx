@@ -34,7 +34,7 @@ export default async function PortalProposalPage({
           expectedSignerName={proposal.contactFullName}
         />
       </div>
-      <PrintBar />
+      {proposal.status === 'accepted' ? <PrintBar /> : null}
       <ProposalPreview
         title={proposal.title}
         content={proposal.content}
