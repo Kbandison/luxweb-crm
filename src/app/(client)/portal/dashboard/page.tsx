@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/supabase/session';
 import { getClientDashboard } from '@/lib/queries/client';
 import { ClientDashboardRefresher } from '@/components/realtime/client-dashboard-refresher';
+import { LocalGreeting } from '@/components/client/local-greeting';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -37,15 +38,13 @@ export default async function ClientDashboardPage() {
   const awaitingProposals = dash.pendingProposals.filter(
     (p) => p.status === 'sent',
   );
-  const greeting = greetingFor();
-
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-10 md:px-10 md:py-14">
       <ClientDashboardRefresher />
       {/* Greeting */}
       <header className="mb-10 space-y-2">
         <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
-          {greeting}
+          <LocalGreeting />
         </p>
         <h1 className="font-display text-4xl font-medium tracking-tight text-ink md:text-5xl">
           Welcome back, {dash.displayName}.
@@ -565,14 +564,6 @@ function OtherProjects({
       )}
     </section>
   );
-}
-
-function greetingFor(): string {
-  const hour = new Date().getHours();
-  if (hour < 5) return 'Late night';
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
 }
 
 function OnboardingCard() {
