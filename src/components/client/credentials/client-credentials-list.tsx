@@ -379,22 +379,6 @@ function AddCredentialDialog({
           const cfg = fieldsFor(form.kind);
           return (
             <>
-              {cfg.showUsername ? (
-                <div className="space-y-1.5">
-                  <Label htmlFor="cl_cred_username">
-                    {cfg.usernameLabel ?? 'Username'}
-                  </Label>
-                  <Input
-                    id="cl_cred_username"
-                    maxLength={500}
-                    value={form.username}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, username: e.target.value }))
-                    }
-                  />
-                </div>
-              ) : null}
-
               {cfg.showUrl ? (
                 <div className="space-y-1.5">
                   <Label htmlFor="cl_cred_url">{cfg.urlLabel ?? 'URL'}</Label>
@@ -407,6 +391,22 @@ function AddCredentialDialog({
                     value={form.url}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, url: e.target.value }))
+                    }
+                  />
+                </div>
+              ) : null}
+
+              {cfg.showUsername ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="cl_cred_username">
+                    {cfg.usernameLabel ?? 'Username'}
+                  </Label>
+                  <Input
+                    id="cl_cred_username"
+                    maxLength={500}
+                    value={form.username}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, username: e.target.value }))
                     }
                   />
                 </div>
