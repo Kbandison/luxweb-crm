@@ -41,7 +41,10 @@ export async function POST(
         });
       } catch {
         return Response.json(
-          { error: 'Failed to decrypt.' },
+          {
+            error:
+              "Couldn't unlock this credential. Please ask your team to re-add it — the saved secret is no longer readable from our side.",
+          },
           { status: 500 },
         );
       }

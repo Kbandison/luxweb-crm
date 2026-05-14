@@ -99,6 +99,30 @@ export default async function InvoicePayPage({
 
   const amountCents = Number(invoice.amount_cents ?? 0);
 
+  // Determine which milestone this invoice maps to so the post-payment
+  // modal copy ("kicking off", "moving on", "project complete") matches
+  // the actual lifecycle step instead of always saying "kicking off."
+  const sb = supabaseAdmin();
+  const { data: thisMilestone } = await sb
+    .from('milestones')
+    .select('id, sort_order')
+    .eq('invoice_id', invoiceId)
+    .maybeSingle();
+  let milestoneStage: 'kickoff' | 'midway' | 'launch' | 'standalone' = 'standalone';
+  if (thisMilestone) {
+    const { data: all } = await sb
+      .from('milestones')
+      .select('id')
+      .eq('project_id', projectId)
+      .order('sort_order', { ascending: true });
+    const ids = (all ?? []).map((m) => (m as { id: string }).id);
+    const idx = ids.indexOf((thisMilestone as { id: string }).id);
+    if (idx === 0 && ids.length > 1) milestoneStage = 'kickoff';
+    else if (idx === ids.length - 1 && ids.length > 1) milestoneStage = 'launch';
+    else if (ids.length > 1) milestoneStage = 'midway';
+    // single-milestone projects stay as 'standalone'
+  }
+
   return (
     <main className="min-h-full px-6 py-10 md:px-10">
       <div className="mx-auto max-w-xl space-y-8">
@@ -128,6 +152,7 @@ export default async function InvoicePayPage({
           publishableKey={publishableKey}
           returnUrl={`/portal/project/${projectId}/invoices?paid=${invoice.id}`}
           cancelHref={`/portal/project/${projectId}/invoices`}
+          milestoneStage={milestoneStage}
         />
       </div>
     </main>

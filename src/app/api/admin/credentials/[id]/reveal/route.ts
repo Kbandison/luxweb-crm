@@ -43,7 +43,10 @@ export async function POST(
         });
       } catch {
         return Response.json(
-          { error: 'Failed to decrypt — encryption key may be wrong or rotated.' },
+          {
+            error:
+              "Couldn't unlock this credential — the encryption key on this environment doesn't match the one used when the credential was saved. Verify CREDS_ENCRYPTION_KEY matches between local + prod (decoded value must be exactly 32 bytes, no 'openssl' prefix). Once the key is restored, the credential will reveal again. Otherwise delete this row and have the owner re-enter the secret.",
+          },
           { status: 500 },
         );
       }

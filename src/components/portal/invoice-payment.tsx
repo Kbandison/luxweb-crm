@@ -23,16 +23,27 @@ import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
+/** Which step of the milestone chain this invoice is paying for —
+ * controls the post-payment SuccessModal copy:
+ *  - kickoff    → first milestone (deposit) → "we'll get started"
+ *  - midway     → middle milestone        → "moving on to the next phase"
+ *  - launch     → final milestone         → "your project is complete"
+ *  - standalone → unattached / sole       → generic "thanks"
+ */
+export type MilestoneStage = 'kickoff' | 'midway' | 'launch' | 'standalone';
+
 export function InvoicePayment({
   clientSecret,
   publishableKey,
   returnUrl,
   cancelHref,
+  milestoneStage = 'standalone',
 }: {
   clientSecret: string;
   publishableKey: string;
   returnUrl: string;
   cancelHref: string;
+  milestoneStage?: MilestoneStage;
 }) {
   const stripePromise = useMemo<Promise<StripeJs | null>>(
     () => loadStripe(publishableKey),
@@ -52,6 +63,7 @@ export function InvoicePayment({
         clientSecret={clientSecret}
         returnUrl={returnUrl}
         cancelHref={cancelHref}
+        milestoneStage={milestoneStage}
       />
     </Elements>
   );
@@ -80,10 +92,12 @@ function PaymentForm({
   clientSecret,
   returnUrl,
   cancelHref,
+  milestoneStage,
 }: {
   clientSecret: string;
   returnUrl: string;
   cancelHref: string;
+  milestoneStage: MilestoneStage;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -285,12 +299,32 @@ function PaymentForm({
 
       <SuccessModal
         open={succeeded}
-        title="Payment received"
+        title={
+          milestoneStage === 'launch' ? 'Project complete' : 'Payment received'
+        }
         description={
-          <>
-            Thanks — your payment is in. We&apos;re kicking the project off
-            from our side. You&apos;ll get a receipt by email shortly.
-          </>
+          milestoneStage === 'kickoff' ? (
+            <>
+              Thanks — your deposit is in. We&apos;re kicking the project off
+              from our side and will be in touch with next steps shortly.
+            </>
+          ) : milestoneStage === 'midway' ? (
+            <>
+              Thanks — your payment is in. We&apos;re moving on to the next
+              phase. You&apos;ll get a receipt by email shortly.
+            </>
+          ) : milestoneStage === 'launch' ? (
+            <>
+              Thanks — your final payment is in. Your project is now complete.
+              We&apos;ll be in touch with launch details and the project
+              hand-off. A receipt will arrive by email shortly.
+            </>
+          ) : (
+            <>
+              Thanks — your payment is in. You&apos;ll get a receipt by email
+              shortly.
+            </>
+          )
         }
         primaryLabel="Back to invoices"
         onPrimary={() => {
