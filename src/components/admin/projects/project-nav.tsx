@@ -150,7 +150,7 @@ export function ProjectNav({ projectId }: { projectId: string }) {
                   href={href}
                   role="menuitem"
                   className={cn(
-                    'flex w-full items-center gap-2 px-3 py-2 text-left font-sans text-sm transition-colors',
+                    'flex w-full items-center gap-2 bg-surface px-3 py-2 text-left font-sans text-sm transition-colors',
                     isActive
                       ? 'bg-copper-soft/50 text-ink'
                       : 'text-ink-muted hover:bg-surface-2 hover:text-ink',

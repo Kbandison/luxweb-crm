@@ -121,9 +121,12 @@ export async function POST(req: Request) {
       return Response.json({ error: message }, { status: 500 });
     }
 
-    // 4. Finalize + send.
+    // 4. Finalize the invoice. We deliberately do NOT call sendInvoice —
+    //    that would trigger Stripe's "View your invoice" email, which
+    //    duplicates the branded invoice_sent email notify() dispatches
+    //    via Resend below. Finalize alone is enough to make the invoice
+    //    payable through the hosted URL + our /pay page.
     const finalized = await s.invoices.finalizeInvoice(stripeInvoiceId);
-    await s.invoices.sendInvoice(stripeInvoiceId);
 
     // 5. Mirror into crm.invoices.
     const dueDate = finalized.due_date

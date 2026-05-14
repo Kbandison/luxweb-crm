@@ -95,9 +95,11 @@ export async function createAndSendInvoice(opts: {
     throw err;
   }
 
-  // 4. Finalize + send.
+  // 4. Finalize the invoice. Deliberately NOT calling sendInvoice — that
+  //    would trigger Stripe's "View your invoice" email, which duplicates
+  //    the branded invoice_sent email notify() sends via Resend. Finalize
+  //    is enough to make the invoice payable.
   const finalized = await s.invoices.finalizeInvoice(stripeInvoiceId);
-  await s.invoices.sendInvoice(stripeInvoiceId);
 
   const dueDate = finalized.due_date
     ? new Date(finalized.due_date * 1000).toISOString().slice(0, 10)

@@ -216,22 +216,28 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
     });
   }
 
+  // Admin fan-out: in-app only. We don't want admins receiving the
+  // client-facing "thank you for your deposit" copy — the bell
+  // notification is enough.
   const adminIds = await getAdminUserIds();
   if (adminIds.length > 0) {
     await Promise.all(
       adminIds.map((userId) =>
-        notify({
-          type: 'invoice_paid',
-          userId,
-          invoiceId: crmInvoiceId,
-          description,
-          amountCents,
-          paidAt,
-          hostedInvoiceUrl,
-          invoicePath: projectId
-            ? `/admin/projects/${projectId}/invoices`
-            : '/admin/dashboard',
-        }),
+        notify(
+          {
+            type: 'invoice_paid',
+            userId,
+            invoiceId: crmInvoiceId,
+            description,
+            amountCents,
+            paidAt,
+            hostedInvoiceUrl,
+            invoicePath: projectId
+              ? `/admin/projects/${projectId}/invoices`
+              : '/admin/dashboard',
+          },
+          { inAppOnly: true },
+        ),
       ),
     );
   }
@@ -318,22 +324,26 @@ async function handleInvoiceOverdue(inv: Stripe.Invoice) {
     });
   }
 
+  // Admin fan-out: in-app only (same rationale as invoice_paid).
   const adminIds = await getAdminUserIds();
   if (adminIds.length > 0) {
     await Promise.all(
       adminIds.map((userId) =>
-        notify({
-          type: 'invoice_overdue',
-          userId,
-          invoiceId: crmInvoiceId,
-          description,
-          amountCents,
-          dueDate,
-          hostedInvoiceUrl,
-          invoicePath: projectId
-            ? `/admin/projects/${projectId}/invoices`
-            : '/admin/dashboard',
-        }),
+        notify(
+          {
+            type: 'invoice_overdue',
+            userId,
+            invoiceId: crmInvoiceId,
+            description,
+            amountCents,
+            dueDate,
+            hostedInvoiceUrl,
+            invoicePath: projectId
+              ? `/admin/projects/${projectId}/invoices`
+              : '/admin/dashboard',
+          },
+          { inAppOnly: true },
+        ),
       ),
     );
   }

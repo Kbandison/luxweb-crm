@@ -238,8 +238,15 @@ type EmailPrefs = Record<string, boolean>;
  * Writes an in-app notification row and, if email prefs allow, sends a
  * transactional email via Resend. Fails soft — a broken email provider
  * must never block the mutation that triggered it.
+ *
+ * Pass `{ inAppOnly: true }` to skip the email portion entirely — used
+ * for admin-side fan-out notifications where the in-app bell is enough
+ * and we don't want the admin receiving client-facing email copy.
  */
-export async function notify(event: NotifyEvent): Promise<void> {
+export async function notify(
+  event: NotifyEvent,
+  opts?: { inAppOnly?: boolean },
+): Promise<void> {
   // 1. In-app notification — payload stores the full event for the bell UI
   try {
     await supabaseAdmin().from('notifications').insert({
@@ -250,6 +257,11 @@ export async function notify(event: NotifyEvent): Promise<void> {
   } catch (err) {
     console.warn('[notify] failed to write notifications row:', err);
   }
+
+  // In-app-only short-circuit. Used for admin fan-out so admins don't
+  // receive the client-facing email copy (e.g., the "thank you for your
+  // deposit" payment confirmation).
+  if (opts?.inAppOnly) return;
 
   // 2. Look up recipient + email prefs
   let user: { email: string; full_name: string | null; email_prefs: EmailPrefs } | null =
