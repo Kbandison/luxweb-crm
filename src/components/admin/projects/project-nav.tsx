@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-const ACTIVE_TAB_ATTR = 'data-active';
-
 type Tab = {
   slug: string;
   label: string;
@@ -68,34 +66,13 @@ export function ProjectNav({ projectId }: { projectId: string }) {
     setOpen(false);
   }, [pathname]);
 
-  // Scroll the active tab into view if the nav has horizontal overflow.
-  // Without this, the active tab can be off-screen when the route changes
-  // and the user sees a row that looks like nothing is selected.
-  const scrollerRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-    const active = scroller.querySelector<HTMLElement>(`[${ACTIVE_TAB_ATTR}]`);
-    if (active) {
-      active.scrollIntoView({
-        behavior: 'instant',
-        block: 'nearest',
-        inline: 'center',
-      });
-    }
-  }, [pathname]);
-
   return (
-    // The outer wrapper must NOT have overflow-x-auto — otherwise the Docs
-    // dropdown (rendered absolute below its trigger) gets vertically clipped
-    // by the scrolling context. The primary tabs scroll in their own inner
-    // container; the Docs trigger sits as a sibling on the right so its
-    // dropdown can pop out freely.
-    <div className="relative flex items-end border-b border-border bg-surface print:hidden">
-      <nav
-        ref={scrollerRef}
-        className="flex flex-1 items-end gap-1 overflow-x-auto px-8"
-      >
+    // flex-wrap (not overflow-x-auto) — on narrow viewports the nav
+    // grows vertically instead of clipping its contents off-screen.
+    // As a bonus, no scroll context means the Docs dropdown isn't
+    // clipped below the nav row.
+    <div className="relative flex flex-wrap items-end border-b border-border bg-surface print:hidden">
+      <nav className="flex flex-1 flex-wrap items-end gap-1 px-8">
         {primaryTabs.map((t) => {
           const href = t.slug ? `${base}/${t.slug}` : base;
           const isActive = t.slug
@@ -105,7 +82,6 @@ export function ProjectNav({ projectId }: { projectId: string }) {
             <Link
               key={t.slug || 'overview'}
               href={href}
-              {...(isActive ? { [ACTIVE_TAB_ATTR]: 'true' } : {})}
               className={cn(
                 '-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 font-sans text-sm font-medium transition-colors',
                 isActive

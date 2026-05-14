@@ -38,7 +38,7 @@ export function ClientTabs({
   }
 
   return (
-    <nav className="flex items-end gap-1 border-b border-border bg-surface px-8">
+    <nav className="flex flex-wrap items-end gap-1 border-b border-border bg-surface px-8">
       {TABS.map((t) => {
         const isActive = active === t.key;
         const count = counts?.[t.key];
