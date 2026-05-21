@@ -31,13 +31,25 @@ export async function POST(
     const { id: projectId, milestoneId } = await params;
     const sb = supabaseAdmin();
 
-    const { data: m } = await sb
+    const { data: m, error: mErr } = await sb
       .from('milestones')
       .select('id, project_id, title, status')
       .eq('id', milestoneId)
       .maybeSingle();
+    if (mErr) {
+      console.warn('[submit-for-review] milestone lookup error', mErr);
+      return Response.json(
+        { error: `Milestone lookup failed: ${mErr.message}` },
+        { status: 500 },
+      );
+    }
     if (!m) {
-      return Response.json({ error: 'Milestone not found' }, { status: 404 });
+      return Response.json(
+        {
+          error: `Milestone ${milestoneId} not found in crm.milestones. The UI list may be stale — refresh and try again.`,
+        },
+        { status: 404 },
+      );
     }
     type MRow = {
       project_id: string;
@@ -77,15 +89,25 @@ export async function POST(
     }
 
     // Project context — needed for notify + ownership.
-    const { data: project } = await sb
+    const { data: project, error: pErr } = await sb
       .from('projects')
       .select('id, name, contact_id')
       .eq('id', projectId)
       .maybeSingle();
+    if (pErr) {
+      console.warn('[submit-for-review] project lookup error', pErr);
+      return Response.json(
+        { error: `Project lookup failed: ${pErr.message}` },
+        { status: 500 },
+      );
+    }
     type ProjRow = { name: string; contact_id: string };
     const p = project as unknown as ProjRow | null;
     if (!p) {
-      return Response.json({ error: 'Project not found' }, { status: 404 });
+      return Response.json(
+        { error: `Project ${projectId} not found in crm.projects.` },
+        { status: 404 },
+      );
     }
 
     // Flip milestone status.
