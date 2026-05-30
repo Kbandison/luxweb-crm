@@ -2,6 +2,21 @@
 export type TimelinePhase = { name: string; weeks: string; items: string[] };
 
 /**
+ * An ongoing care plan recommended in the proposal. This is an editable
+ * snapshot the client reads — it is NOT a live link to the actual Stripe
+ * subscription. The admin enrolls the real plan separately after launch.
+ */
+export type ProposalCarePlan = {
+  /** When false, the care-plan section is hidden from the proposal entirely. */
+  recommended: boolean;
+  name: string;
+  price_cents: number;
+  interval: 'month' | 'year';
+  description: string;
+  features: string[];
+};
+
+/**
  * LuxWeb proposal content model — stored verbatim in crm.proposals.content_json.
  * Mirrors the structure of the real LuxWeb Development Proposal doc.
  */
@@ -47,6 +62,8 @@ export type ProposalContent = {
     net_days: number;
     late_fee: string;
   };
+  /** Recommended ongoing care plan, shown after Investment in the proposal. */
+  care_plan: ProposalCarePlan;
   assumptions: string[];
   why_luxweb: Array<{ title: string; description: string }>;
   next_steps: string[];
@@ -61,6 +78,26 @@ export const PROPOSAL_STATUSES = [
   'expired',
 ] as const;
 export type ProposalStatus = (typeof PROPOSAL_STATUSES)[number];
+
+/**
+ * The standard LuxWeb Care Plan ($175/month). Used as the proposal's
+ * default recommendation and to pre-fill the fields when an admin toggles
+ * the recommendation on for a proposal that didn't have one.
+ */
+export const DEFAULT_CARE_PLAN: ProposalCarePlan = {
+  recommended: true,
+  name: 'LuxWeb Care Plan',
+  price_cents: 17500,
+  interval: 'month',
+  description:
+    'Keep your site fast, secure, and current after launch. We handle updates, monitoring, backups, and small edits so you never have to think about it.',
+  features: [
+    'Software, security & plugin updates',
+    'Uptime monitoring and off-site backups',
+    'Up to 1 hour of content edits each month',
+    'Priority email support',
+  ],
+};
 
 export function defaultProposalContent(opts: {
   clientName: string;
@@ -166,6 +203,7 @@ export function defaultProposalContent(opts: {
       net_days: 7,
       late_fee: '1.5%/month or legal max',
     },
+    care_plan: { ...DEFAULT_CARE_PLAN },
     assumptions: [
       'Client will provide final copy, imagery, and brand assets within three (3) business days of request.',
       'One consolidated feedback round per phase; additional rounds billed at $100/hr.',
@@ -224,6 +262,17 @@ export function getTimelinePhases(timeline: {
   return [timeline?.phase_1, timeline?.phase_2, timeline?.phase_3]
     .filter((p): p is Partial<TimelinePhase> => Boolean(p))
     .map(coerce);
+}
+
+/**
+ * Backfill the care_plan section for proposals saved before it existed.
+ * Legacy proposals get the standard plan details pre-filled but with the
+ * recommendation OFF, so an old proposal doesn't start pitching a plan the
+ * admin never chose — they can toggle it on with the fields already there.
+ */
+export function withCarePlanDefaults(content: ProposalContent): ProposalContent {
+  if (content.care_plan) return content;
+  return { ...content, care_plan: { ...DEFAULT_CARE_PLAN, recommended: false } };
 }
 
 /**

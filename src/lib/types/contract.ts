@@ -43,6 +43,11 @@ export type ContractVariables = {
   security: string;
   /** scope.performance — e.g. "Image optimization, lazy-loading …" */
   performance: string;
+  /**
+   * Pre-rendered markdown clause naming the recommended care plan and its
+   * agreed price, or an empty string when the proposal didn't recommend one.
+   */
+  care_plan_clause: string;
   // Legacy variables — kept so older agreement template revisions still
   // resolve cleanly. The current v1.2 template renders {{milestones_table}}
   // instead of these three individual amounts.

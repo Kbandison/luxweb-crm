@@ -4,10 +4,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type {
   ProposalContent,
+  ProposalCarePlan,
   ProposalStatus,
   TimelinePhase,
 } from '@/lib/types/proposal';
-import { reconcileTimelineToMilestones } from '@/lib/types/proposal';
+import {
+  DEFAULT_CARE_PLAN,
+  reconcileTimelineToMilestones,
+  withCarePlanDefaults,
+} from '@/lib/types/proposal';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -73,11 +78,12 @@ export function ProposalEditor({
   // Force preview mode when locked.
   const [mode, setMode] = useState<Mode>(isLocked ? 'preview' : 'edit');
   const [title, setTitle] = useState(initialTitle);
-  // Normalize on load so the timeline has one phase per payment milestone
-  // (and the array shape) before any editing — legacy proposals stored a
-  // fixed phase_1/2/3 object, and counts may have drifted.
+  // Normalize on load: backfill the care_plan section for older proposals,
+  // then force the timeline to one phase per payment milestone (and the
+  // array shape) — legacy proposals stored a fixed phase_1/2/3 object, and
+  // counts may have drifted.
   const [content, setContent] = useState<ProposalContent>(() =>
-    reconcileTimelineToMilestones(initialContent),
+    reconcileTimelineToMilestones(withCarePlanDefaults(initialContent)),
   );
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
@@ -793,6 +799,14 @@ function EditorForm({
         <InvestmentSection content={content} setContent={setContent} />
       </FormSection>
 
+      {/* Recommended care plan */}
+      <FormSection
+        title="Recommended care plan"
+        description="An optional ongoing-care recommendation shown after Investment. Turn it off to hide the section from this proposal."
+      >
+        <CarePlanSection content={content} setContent={setContent} />
+      </FormSection>
+
       {/* Assumptions */}
       <FormSection
         title="Assumptions"
@@ -1184,6 +1198,98 @@ function InvestmentSection({
         </div>
       </div>
     </>
+  );
+}
+
+function CarePlanSection({
+  content,
+  setContent,
+}: {
+  content: ProposalContent;
+  setContent: (updater: (c: ProposalContent) => ProposalContent) => void;
+}) {
+  const cp = content.care_plan;
+
+  function setCarePlan(next: Partial<ProposalCarePlan>) {
+    setContent((c) => ({ ...c, care_plan: { ...c.care_plan, ...next } }));
+  }
+
+  return (
+    <div className="space-y-5">
+      <label className="flex items-center gap-2.5">
+        <input
+          type="checkbox"
+          checked={cp.recommended}
+          onChange={(e) => {
+            const on = e.target.checked;
+            // Toggling on a blank/legacy section re-seeds the standard plan
+            // so the admin isn't staring at empty fields.
+            if (on && !cp.name && !cp.price_cents) {
+              setCarePlan({ ...DEFAULT_CARE_PLAN, recommended: true });
+            } else {
+              setCarePlan({ recommended: on });
+            }
+          }}
+          className="h-4 w-4 rounded border-border accent-copper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/30"
+        />
+        <span className="font-sans text-sm text-ink">
+          Recommend a care plan in this proposal
+        </span>
+      </label>
+
+      {cp.recommended ? (
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-[1fr_140px_120px]">
+            <Field label="Plan name">
+              <Input
+                value={cp.name}
+                placeholder="LuxWeb Care Plan"
+                onChange={(e) => setCarePlan({ name: e.target.value })}
+              />
+            </Field>
+            <Field label="Price (USD)">
+              <CurrencyInput
+                cents={cp.price_cents}
+                onCommit={(price_cents) => setCarePlan({ price_cents })}
+              />
+            </Field>
+            <Field label="Billed">
+              <select
+                value={cp.interval}
+                onChange={(e) =>
+                  setCarePlan({
+                    interval: e.target.value as ProposalCarePlan['interval'],
+                  })
+                }
+                className="flex h-10 w-full rounded-md border border-border bg-surface px-3 font-sans text-sm text-ink focus-visible:border-copper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/30"
+              >
+                <option value="month">Monthly</option>
+                <option value="year">Yearly</option>
+              </select>
+            </Field>
+          </div>
+          <Field label="Description">
+            <TextArea
+              rows={2}
+              value={cp.description}
+              onChange={(v) => setCarePlan({ description: v })}
+              placeholder="What the plan covers, in a sentence or two."
+            />
+          </Field>
+          <Field label="What's included" hint="One per line">
+            <LineArea
+              rows={4}
+              value={cp.features}
+              onChange={(features) => setCarePlan({ features })}
+            />
+          </Field>
+        </div>
+      ) : (
+        <p className="font-sans text-xs text-ink-subtle">
+          The care-plan section is hidden from this proposal.
+        </p>
+      )}
+    </div>
   );
 }
 

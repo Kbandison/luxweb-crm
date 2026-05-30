@@ -33,6 +33,8 @@ The specific deliverables, timeline, and pricing described in the Proposal dated
 
 After the Support Period ends, any additional work—new pages, change requests, DNS help, etc.—will be billed at **$100 per hour, Net 7**, subject to prior written approval by Client.
 
+{{care_plan_clause}}
+
 ### 1.3 What's Not Included
 
 - Ongoing hosting fees

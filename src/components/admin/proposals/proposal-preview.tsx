@@ -1,4 +1,4 @@
-import type { ProposalContent } from '@/lib/types/proposal';
+import type { ProposalCarePlan, ProposalContent } from '@/lib/types/proposal';
 import { getTimelinePhases } from '@/lib/types/proposal';
 import { Card } from '@/components/ui/card';
 import { formatDateLong, formatDateTimeLongTz, formatUSD } from '@/lib/formatters';
@@ -26,6 +26,8 @@ export function ProposalPreview({
 }) {
   const preparedDate = formatDateLong(content.prepared_date);
   const timelinePhases = getTimelinePhases(content.timeline);
+  // Optional — older proposals predate this field, so treat it as maybe-absent.
+  const carePlan = content.care_plan as ProposalCarePlan | undefined;
 
   return (
     <article className="space-y-10 font-sans text-ink">
@@ -238,9 +240,61 @@ export function ProposalPreview({
         </Card>
       </Section>
 
+      {/* Recommended care plan */}
+      {carePlan?.recommended ? (
+        <Section number="07" title="Recommended care plan">
+          <Card padding="lg" rounded="xl" className="print-avoid-break">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h4 className="font-display text-xl font-medium text-ink">
+                {carePlan.name || 'Care plan'}
+              </h4>
+              <p className="font-mono text-sm tabular-nums text-ink">
+                <span className="text-2xl font-medium tracking-tight">
+                  {formatUSD(carePlan.price_cents)}
+                </span>
+                <span className="text-ink-subtle">
+                  {' '}
+                  / {carePlan.interval === 'year' ? 'year' : 'month'}
+                </span>
+              </p>
+            </div>
+            {carePlan.description ? (
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink-muted">
+                {carePlan.description}
+              </p>
+            ) : null}
+            {carePlan.features.length > 0 ? (
+              <ul className="mt-5 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+                {carePlan.features.map((f, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-ink">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.25"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="mt-0.5 h-4 w-4 shrink-0 text-copper"
+                      aria-hidden
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <p className="mt-5 font-sans text-[11px] text-ink-subtle">
+              Optional and billed separately after launch — not included in the
+              project total above.
+            </p>
+          </Card>
+        </Section>
+      ) : null}
+
       {/* Assumptions */}
       {content.assumptions.length > 0 ? (
-        <Section number="07" title="Assumptions">
+        <Section number="08" title="Assumptions">
           <ul className="list-disc space-y-1 rounded-xl border border-border bg-surface p-6 pl-10 text-sm text-ink">
             {content.assumptions.map((a, i) => (
               <li key={i}>{a}</li>
@@ -251,7 +305,7 @@ export function ProposalPreview({
 
       {/* Why LuxWeb */}
       {content.why_luxweb.length > 0 ? (
-        <Section number="08" title="Why LuxWeb">
+        <Section number="09" title="Why LuxWeb">
           <ul className="space-y-4">
             {content.why_luxweb.map((item, i) => {
               // Tolerate legacy rows stored as string[] before the titled
@@ -291,7 +345,7 @@ export function ProposalPreview({
 
       {/* Next steps */}
       {content.next_steps.length > 0 ? (
-        <Section number="09" title="Next steps">
+        <Section number="10" title="Next steps">
           <ol className="list-decimal space-y-1 rounded-xl border border-border bg-surface p-6 pl-10 text-sm text-ink">
             {content.next_steps.map((a, i) => (
               <li key={i}>{a}</li>

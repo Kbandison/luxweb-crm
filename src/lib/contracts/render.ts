@@ -54,6 +54,7 @@ export function deriveContractVariables(
     integrations_list: integrationsLine,
     security: flattenLine(content.scope.security),
     performance: flattenLine(content.scope.performance),
+    care_plan_clause: renderCarePlanClause(content.care_plan),
     deposit_amount: deposit ? formatUSD(deposit.amount_cents) : '—',
     phase1_amount: phase1 ? formatUSD(phase1.amount_cents) : '—',
     launch_amount: launch ? formatUSD(launch.amount_cents) : '—',
@@ -114,6 +115,31 @@ function renderMilestonesTable(
     return `| ${label} | ${amount} | ${percent} | ${due} |`;
   });
   return [header, ...rows].join('\n');
+}
+
+/**
+ * Render the optional ongoing-care-plan clause for the Agreement. Returns
+ * the markdown paragraph (with the agreed name + price) when the proposal
+ * recommended a care plan, or an empty string otherwise — so an agreement
+ * for a proposal without a care plan simply omits the clause. Legacy
+ * proposals predate the field, so a missing care_plan is treated as "none".
+ */
+function renderCarePlanClause(
+  carePlan: ProposalContent['care_plan'] | undefined,
+): string {
+  if (!carePlan?.recommended) return '';
+  const name = flattenLine(carePlan.name);
+  const displayName = name === '—' ? 'Care Plan' : name;
+  const price = formatUSD(carePlan.price_cents);
+  const interval = carePlan.interval === 'year' ? 'year' : 'month';
+  return (
+    `**Ongoing Care Plan (Optional).** Contractor offers an optional ongoing ` +
+    `care plan, the **${displayName}**, at **${price}/${interval}**, to keep ` +
+    `the site updated, secure, monitored, and backed up after the Support ` +
+    `Period. The care plan is optional, billed separately, is not included in ` +
+    `the Total Project Investment, and may be started or cancelled by Client ` +
+    `at any time.`
+  );
 }
 
 /**
