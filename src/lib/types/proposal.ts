@@ -1,3 +1,6 @@
+/** A single work phase in the proposal timeline. */
+export type TimelinePhase = { name: string; weeks: string; items: string[] };
+
 /**
  * LuxWeb proposal content model — stored verbatim in crm.proposals.content_json.
  * Mirrors the structure of the real LuxWeb Development Proposal doc.
@@ -22,9 +25,14 @@ export type ProposalContent = {
   };
   out_of_scope: string[];
   timeline: {
-    phase_1: { name: 'Discovery & Design'; weeks: string; items: string[] };
-    phase_2: { name: 'Build'; weeks: string; items: string[] };
-    phase_3: { name: 'Test & Launch'; weeks: string; items: string[] };
+    /**
+     * Work phases, kept 1:1 with investment.milestones (one phase per
+     * payment milestone). Variable length — the editor adds/removes a phase
+     * whenever a milestone is added/removed. Proposals created before this
+     * became milestone-driven stored a fixed phase_1/phase_2/phase_3 object
+     * instead; read phases through getTimelinePhases() which tolerates both.
+     */
+    phases: TimelinePhase[];
     total_weeks: number;
     target_launch: string; // ISO
   };
@@ -111,33 +119,35 @@ export function defaultProposalContent(opts: {
       'Paid ads management',
     ],
     timeline: {
-      phase_1: {
-        name: 'Discovery & Design',
-        weeks: '2',
-        items: [
-          'Goal & audience workshop',
-          'Site map & wireframes',
-          'Visual mock-ups → client review (3 business days)',
-        ],
-      },
-      phase_2: {
-        name: 'Build',
-        weeks: '4',
-        items: [
-          'Responsive front-end & CMS setup',
-          'Content migration and integrations',
-          'Staging demo → client feedback (3 business days)',
-        ],
-      },
-      phase_3: {
-        name: 'Test & Launch',
-        weeks: '1',
-        items: [
-          'Cross-browser / device QA',
-          'Performance & security checks',
-          'Final tweaks, go-live, hand-off training',
-        ],
-      },
+      phases: [
+        {
+          name: 'Discovery & Design',
+          weeks: '2',
+          items: [
+            'Goal & audience workshop',
+            'Site map & wireframes',
+            'Visual mock-ups → client review (3 business days)',
+          ],
+        },
+        {
+          name: 'Build',
+          weeks: '4',
+          items: [
+            'Responsive front-end & CMS setup',
+            'Content migration and integrations',
+            'Staging demo → client feedback (3 business days)',
+          ],
+        },
+        {
+          name: 'Test & Launch',
+          weeks: '1',
+          items: [
+            'Cross-browser / device QA',
+            'Performance & security checks',
+            'Final tweaks, go-live, hand-off training',
+          ],
+        },
+      ],
       total_weeks: 7,
       target_launch: '',
     },
@@ -187,5 +197,57 @@ export function defaultProposalContent(opts: {
       'Kick-off call & scheduling — we get to work.',
     ],
     agreement_version: '1.2',
+  };
+}
+
+/**
+ * Read a proposal's timeline phases as an array, tolerating both the
+ * current array shape (`timeline.phases`) and the legacy fixed
+ * phase_1/phase_2/phase_3 object that proposals saved before the timeline
+ * became milestone-driven still carry. Use this everywhere phases are
+ * rendered so old proposals keep displaying correctly.
+ */
+export function getTimelinePhases(timeline: {
+  phases?: TimelinePhase[];
+  phase_1?: Partial<TimelinePhase>;
+  phase_2?: Partial<TimelinePhase>;
+  phase_3?: Partial<TimelinePhase>;
+}): TimelinePhase[] {
+  const coerce = (p: Partial<TimelinePhase> | undefined): TimelinePhase => ({
+    name: p?.name ?? '',
+    weeks: p?.weeks ?? '',
+    items: Array.isArray(p?.items) ? p.items : [],
+  });
+  if (Array.isArray(timeline?.phases)) {
+    return timeline.phases.map(coerce);
+  }
+  return [timeline?.phase_1, timeline?.phase_2, timeline?.phase_3]
+    .filter((p): p is Partial<TimelinePhase> => Boolean(p))
+    .map(coerce);
+}
+
+/**
+ * Force a proposal's timeline phases to line up 1:1 with its payment
+ * milestones — one phase per milestone. Pads with a blank phase (named
+ * after the milestone) when there are fewer phases than milestones, and
+ * drops extras when there are more. Run on load so legacy proposals — and
+ * any that drifted — open with the invariant already satisfied; the editor
+ * then keeps it in sync as milestones are added/removed.
+ */
+export function reconcileTimelineToMilestones(
+  content: ProposalContent,
+): ProposalContent {
+  const phases = getTimelinePhases(content.timeline);
+  const next = content.investment.milestones.map(
+    (m, i): TimelinePhase =>
+      phases[i] ?? { name: m.label ?? '', weeks: '', items: [] },
+  );
+  return {
+    ...content,
+    timeline: {
+      phases: next,
+      total_weeks: content.timeline.total_weeks ?? 0,
+      target_launch: content.timeline.target_launch ?? '',
+    },
   };
 }

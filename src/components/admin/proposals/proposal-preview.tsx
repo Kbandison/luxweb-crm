@@ -1,4 +1,5 @@
 import type { ProposalContent } from '@/lib/types/proposal';
+import { getTimelinePhases } from '@/lib/types/proposal';
 import { Card } from '@/components/ui/card';
 import { formatDateLong, formatDateTimeLongTz, formatUSD } from '@/lib/formatters';
 
@@ -24,6 +25,7 @@ export function ProposalPreview({
   signature?: ProposalSignatureBlock;
 }) {
   const preparedDate = formatDateLong(content.prepared_date);
+  const timelinePhases = getTimelinePhases(content.timeline);
 
   return (
     <article className="space-y-10 font-sans text-ink">
@@ -152,14 +154,10 @@ export function ProposalPreview({
 
       {/* Timeline */}
       <Section number="05" title="Timeline">
-        <div className="grid gap-4 md:grid-cols-3">
-          {(['phase_1', 'phase_2', 'phase_3'] as const).map((key, i) => {
-            const phase = content.timeline[key];
-            return (
-              <Card
-                key={key}
-                padding="md"
-              >
+        {timelinePhases.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {timelinePhases.map((phase, i) => (
+              <Card key={i} padding="md">
                 <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
                   Phase {i + 1}
                 </p>
@@ -177,9 +175,9 @@ export function ProposalPreview({
                   </ul>
                 ) : null}
               </Card>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : null}
         <p className="mt-4 text-center font-mono text-xs tabular-nums text-ink-muted">
           Total {content.timeline.total_weeks} weeks
           {content.timeline.target_launch

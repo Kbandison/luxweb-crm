@@ -2,7 +2,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { ProposalContent, ProposalStatus } from '@/lib/types/proposal';
+import type {
+  ProposalContent,
+  ProposalStatus,
+  TimelinePhase,
+} from '@/lib/types/proposal';
+import { reconcileTimelineToMilestones } from '@/lib/types/proposal';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -68,7 +73,12 @@ export function ProposalEditor({
   // Force preview mode when locked.
   const [mode, setMode] = useState<Mode>(isLocked ? 'preview' : 'edit');
   const [title, setTitle] = useState(initialTitle);
-  const [content, setContent] = useState<ProposalContent>(initialContent);
+  // Normalize on load so the timeline has one phase per payment milestone
+  // (and the array shape) before any editing — legacy proposals stored a
+  // fixed phase_1/2/3 object, and counts may have drifted.
+  const [content, setContent] = useState<ProposalContent>(() =>
+    reconcileTimelineToMilestones(initialContent),
+  );
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -687,48 +697,60 @@ function EditorForm({
       </FormSection>
 
       {/* Timeline */}
-      <FormSection title="Timeline">
+      <FormSection
+        title="Timeline"
+        description="Phases mirror your payment milestones one-to-one. Add or remove a milestone in the Investment section below to change the number of phases."
+      >
         <div className="space-y-5">
-          {(['phase_1', 'phase_2', 'phase_3'] as const).map((key, i) => {
-            const phase = content.timeline[key];
+          {content.timeline.phases.length === 0 ? (
+            <p className="rounded-md border border-dashed border-border bg-surface px-4 py-3 font-sans text-sm text-ink-muted">
+              No phases yet — add a payment milestone in the Investment section
+              below to create the first phase.
+            </p>
+          ) : null}
+          {content.timeline.phases.map((phase, i) => {
+            const linked = content.investment.milestones[i];
+            const setPhase = (next: Partial<TimelinePhase>) =>
+              setContent((c) => ({
+                ...c,
+                timeline: {
+                  ...c.timeline,
+                  phases: c.timeline.phases.map((p, j) =>
+                    j === i ? { ...p, ...next } : p,
+                  ),
+                },
+              }));
             return (
-              <Card
-                key={key}
-                padding="md"
-              >
+              <Card key={i} padding="md">
                 <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
-                  Phase {i + 1} · {phase.name}
+                  Phase {i + 1}
+                  {linked?.label ? (
+                    <span className="text-ink-subtle"> · paid by “{linked.label}”</span>
+                  ) : null}
                 </p>
-                <div className="mt-4 grid gap-4 sm:grid-cols-[140px_1fr]">
-                  <Field label="Weeks">
+                <div className="mt-4 space-y-4">
+                  <Field label="Phase name">
                     <Input
-                      value={phase.weeks}
-                      onChange={(e) =>
-                        setContent((c) => ({
-                          ...c,
-                          timeline: {
-                            ...c.timeline,
-                            [key]: { ...c.timeline[key], weeks: e.target.value },
-                          },
-                        }))
-                      }
+                      value={phase.name}
+                      placeholder="e.g., Discovery & Design"
+                      onChange={(e) => setPhase({ name: e.target.value })}
                     />
                   </Field>
-                  <Field label="Items" hint="One per line">
-                    <LineArea
-                      rows={3}
-                      value={phase.items}
-                      onChange={(lines) =>
-                        setContent((c) => ({
-                          ...c,
-                          timeline: {
-                            ...c.timeline,
-                            [key]: { ...c.timeline[key], items: lines },
-                          },
-                        }))
-                      }
-                    />
-                  </Field>
+                  <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
+                    <Field label="Weeks">
+                      <Input
+                        value={phase.weeks}
+                        onChange={(e) => setPhase({ weeks: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Items" hint="One per line">
+                      <LineArea
+                        rows={3}
+                        value={phase.items}
+                        onChange={(lines) => setPhase({ items: lines })}
+                      />
+                    </Field>
+                  </div>
                 </div>
               </Card>
             );
@@ -973,6 +995,8 @@ function InvestmentSection({
     }));
   }
 
+  // Milestones drive the timeline 1:1 — adding/removing a milestone adds or
+  // removes its matching phase at the same index so the two stay in lockstep.
   function addMilestone() {
     setContent((c) => ({
       ...c,
@@ -983,6 +1007,10 @@ function InvestmentSection({
           { label: '', percent: 0, amount_cents: 0, due: '' },
         ],
       },
+      timeline: {
+        ...c.timeline,
+        phases: [...c.timeline.phases, { name: '', weeks: '', items: [] }],
+      },
     }));
   }
 
@@ -992,6 +1020,10 @@ function InvestmentSection({
       investment: {
         ...c.investment,
         milestones: c.investment.milestones.filter((_, i) => i !== index),
+      },
+      timeline: {
+        ...c.timeline,
+        phases: c.timeline.phases.filter((_, i) => i !== index),
       },
     }));
   }
