@@ -5,6 +5,7 @@ import { Monogram } from '@/components/admin/leads/monogram';
 import { cn } from '@/lib/utils';
 import type { DealCard as DealCardType } from '@/lib/queries/admin';
 import { formatUSD } from '@/lib/formatters';
+import { EditDealDrawer } from './edit-deal-drawer';
 
 export function DealCard({ deal }: { deal: DealCardType }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -27,14 +28,17 @@ export function DealCard({ deal }: { deal: DealCardType }) {
         isDragging && 'opacity-40',
       )}
     >
-      {/* Top row: value + days-in-stage */}
+      {/* Top row: value + days-in-stage + edit */}
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-mono text-base font-medium tabular-nums tracking-tight text-ink">
           {formatUSD(deal.valueCents)}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
-          {stageAge}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+            {stageAge}
+          </span>
+          <EditDealDrawer deal={deal} />
+        </div>
       </div>
 
       {/* Title */}
