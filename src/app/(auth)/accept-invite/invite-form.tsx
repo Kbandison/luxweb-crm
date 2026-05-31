@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import type { EmailOtpType } from '@supabase/supabase-js';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +14,13 @@ type State =
   | { kind: 'saving'; email: string }
   | { kind: 'error'; message: string };
 
-export function InviteForm({ tokenHash }: { tokenHash: string | null }) {
+export function InviteForm({
+  tokenHash,
+  type,
+}: {
+  tokenHash: string | null;
+  type: string | null;
+}) {
   const [state, setState] = useState<State>(() =>
     tokenHash
       ? { kind: 'verifying' }
@@ -29,8 +36,12 @@ export function InviteForm({ tokenHash }: { tokenHash: string | null }) {
   useEffect(() => {
     if (!tokenHash) return;
     let cancelled = false;
+    // First-time invites arrive as type 'invite'; resends arrive as
+    // 'magiclink' (generateLink('invite') 422s once the user exists). Honor
+    // whichever the link carries, defaulting to 'invite' for older links.
+    const otpType: EmailOtpType = type === 'magiclink' ? 'magiclink' : 'invite';
     supabaseBrowser()
-      .auth.verifyOtp({ token_hash: tokenHash, type: 'invite' })
+      .auth.verifyOtp({ token_hash: tokenHash, type: otpType })
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error) {
@@ -42,7 +53,7 @@ export function InviteForm({ tokenHash }: { tokenHash: string | null }) {
     return () => {
       cancelled = true;
     };
-  }, [tokenHash]);
+  }, [tokenHash, type]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
