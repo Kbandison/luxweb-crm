@@ -6,6 +6,7 @@ import {
   getContactProposals,
   getLeadsPaginated,
   getNotesForEntity,
+  getPortalAccessStatus,
   CONTACT_SORTS,
 } from '@/lib/queries/admin';
 import { LeadsListWithSelection } from '@/components/admin/leads/leads-list-with-selection';
@@ -42,6 +43,9 @@ export default async function LeadsPage({
         getContactActivity(selected.id),
       ])
     : [[], [], [], []];
+  const portalStatus = selected
+    ? await getPortalAccessStatus(selected.userId)
+    : 'none';
 
   return (
     <>
@@ -75,6 +79,7 @@ export default async function LeadsPage({
             {selected ? (
               <LeadDetail
                 lead={selected}
+                portalStatus={portalStatus}
                 proposals={proposals}
                 contracts={contracts}
                 notes={notes}

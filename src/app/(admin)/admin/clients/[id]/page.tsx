@@ -5,6 +5,7 @@ import {
   getClientWithDetails,
   getContactContracts,
   getContactProposals,
+  getPortalAccessStatus,
 } from '@/lib/queries/admin';
 import { StatusPill } from '@/components/ui/status-pill';
 import { formatDate } from '@/lib/formatters';
@@ -13,7 +14,7 @@ import {
   CONTRACT_STATUS_TONE,
   type ContractStatus,
 } from '@/lib/status-meta';
-import { InviteToPortalButton } from '@/components/admin/contacts/invite-button';
+import { PortalAccessControl } from '@/components/admin/contacts/portal-access-control';
 import { Monogram } from '@/components/admin/leads/monogram';
 import { TagPill } from '@/components/admin/leads/tag-pill';
 import { LeadScore } from '@/components/admin/leads/lead-score';
@@ -44,6 +45,7 @@ export default async function ClientDetailPage({
   const { tab } = await searchParams;
   const client = await getClientWithDetails(id);
   if (!client) notFound();
+  const portalStatus = await getPortalAccessStatus(client.userId);
   const [proposals, contracts] = await Promise.all([
     getContactProposals(id),
     getContactContracts(id),
@@ -134,26 +136,12 @@ export default async function ClientDetailPage({
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <LeadScore score={client.leadScore} size="md" />
-                {client.userId ? (
-                  <>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-success">
-                      <span className="h-1 w-1 rounded-full bg-success" aria-hidden />
-                      Portal access
-                    </span>
-                    <InviteToPortalButton
-                      contactId={client.id}
-                      contactEmail={client.email}
-                      contactName={client.fullName}
-                      mode="resend"
-                    />
-                  </>
-                ) : (
-                  <InviteToPortalButton
-                    contactId={client.id}
-                    contactEmail={client.email}
-                    contactName={client.fullName}
-                  />
-                )}
+                <PortalAccessControl
+                  status={portalStatus}
+                  contactId={client.id}
+                  contactEmail={client.email}
+                  contactName={client.fullName}
+                />
                 {client.tags.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {client.tags.map((t) => (

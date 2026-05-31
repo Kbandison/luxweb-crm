@@ -65,7 +65,10 @@ export function InviteForm({
     setState({ kind: 'saving', email: state.email });
     const { error } = await supabaseBrowser().auth.updateUser({
       password,
-      data: { full_name: fullName },
+      // Stamp onboarding completion. This is the deliberate password-set step
+      // (a link-scanning mail server never reaches it), so it's the reliable
+      // signal the admin UI uses to show "Portal access" vs "Invited".
+      data: { full_name: fullName, onboarded_at: new Date().toISOString() },
     });
     if (error) {
       setState({ kind: 'error', message: error.message });

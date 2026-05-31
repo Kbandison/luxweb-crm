@@ -1614,6 +1614,36 @@ export async function getContactDetail(id: string): Promise<ContactRow | null> {
   }
 }
 
+/**
+ * A contact's portal state, for the admin UI:
+ *   - 'none'    no auth user yet → show "Invite"
+ *   - 'invited' auth user exists but hasn't finished setup → "Invited · pending"
+ *   - 'active'  client set their password / onboarded → "Portal access"
+ *
+ * `user_id` being set only means an invite was provisioned, not accepted —
+ * email_confirmed_at / last_sign_in_at are unreliable (set by any magic-link
+ * consumption, incl. mail-server link scanners). The trustworthy signal is
+ * user_metadata.onboarded_at, stamped by the accept-invite form when the
+ * client sets their password.
+ */
+export type PortalAccessStatus = 'none' | 'invited' | 'active';
+
+export async function getPortalAccessStatus(
+  userId: string | null,
+): Promise<PortalAccessStatus> {
+  if (!userId) return 'none';
+  try {
+    const { data } = await supabaseAdmin().auth.admin.getUserById(userId);
+    const user = data?.user;
+    if (!user) return 'none'; // auth user gone (e.g. deleted) → needs a fresh invite
+    const meta = (user.user_metadata ?? {}) as { onboarded_at?: string };
+    return meta.onboarded_at ? 'active' : 'invited';
+  } catch {
+    // Lookup failed — keep the resend path available rather than hiding it.
+    return 'invited';
+  }
+}
+
 async function recentActivity(): Promise<ActivityRow[]> {
   try {
     const { data } = await supabaseAdmin()

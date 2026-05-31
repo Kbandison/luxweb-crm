@@ -4,9 +4,10 @@ import type {
   ContactRow,
   ContractRow,
   NoteRow,
+  PortalAccessStatus,
   ProposalRow,
 } from '@/lib/queries/admin';
-import { InviteToPortalButton } from '@/components/admin/contacts/invite-button';
+import { PortalAccessControl } from '@/components/admin/contacts/portal-access-control';
 import { DeleteContactButton } from '@/components/admin/contacts/delete-button';
 import { EditContactDrawer } from '@/components/admin/contacts/edit-contact-drawer';
 import { NotesPanel } from '@/components/admin/clients/notes-panel';
@@ -25,12 +26,14 @@ import {
 
 export function LeadDetail({
   lead,
+  portalStatus,
   proposals,
   contracts = [],
   notes = [],
   activity = [],
 }: {
   lead: ContactRow;
+  portalStatus: PortalAccessStatus;
   proposals: ProposalRow[];
   contracts?: ContractRow[];
   notes?: NoteRow[];
@@ -66,28 +69,12 @@ export function LeadDetail({
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <LeadScore score={lead.leadScore} size="md" />
-              {lead.userId ? (
-                <>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-meta text-success">
-                    <span className="h-1 w-1 rounded-full bg-success" aria-hidden />
-                    Portal access
-                  </span>
-                  {/* The pill says "has access" but the auth user may still
-                      be pending acceptance. Resend handles that case. */}
-                  <InviteToPortalButton
-                    contactId={lead.id}
-                    contactEmail={lead.email}
-                    contactName={lead.fullName}
-                    mode="resend"
-                  />
-                </>
-              ) : (
-                <InviteToPortalButton
-                  contactId={lead.id}
-                  contactEmail={lead.email}
-                  contactName={lead.fullName}
-                />
-              )}
+              <PortalAccessControl
+                status={portalStatus}
+                contactId={lead.id}
+                contactEmail={lead.email}
+                contactName={lead.fullName}
+              />
             </div>
           </div>
 
