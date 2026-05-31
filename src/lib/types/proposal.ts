@@ -1,5 +1,16 @@
-/** A single work phase in the proposal timeline. */
-export type TimelinePhase = { name: string; weeks: string; items: string[] };
+/**
+ * A single work phase in the proposal timeline. `id` is a stable key that
+ * links the phase to its payment milestone (milestone.phase_id) so the two
+ * survive being edited or pruned independently. Optional for tolerance of
+ * proposals saved before the id existed; pairTimelineAndMilestones() assigns
+ * one on load.
+ */
+export type TimelinePhase = {
+  id?: string;
+  name: string;
+  weeks: string;
+  items: string[];
+};
 
 /**
  * An ongoing care plan recommended in the proposal. This is an editable
@@ -58,6 +69,8 @@ export type ProposalContent = {
       percent: number;
       amount_cents: number;
       due: string; // e.g., 'On signing'
+      /** Stable link to the timeline phase this milestone is billed for. */
+      phase_id?: string;
     }>;
     net_days: number;
     late_fee: string;
@@ -252,6 +265,7 @@ export function getTimelinePhases(timeline: {
   phase_3?: Partial<TimelinePhase>;
 }): TimelinePhase[] {
   const coerce = (p: Partial<TimelinePhase> | undefined): TimelinePhase => ({
+    id: p?.id,
     name: p?.name ?? '',
     weeks: p?.weeks ?? '',
     items: Array.isArray(p?.items) ? p.items : [],
@@ -276,27 +290,33 @@ export function withCarePlanDefaults(content: ProposalContent): ProposalContent 
 }
 
 /**
- * Force a proposal's timeline phases to line up 1:1 with its payment
- * milestones — one phase per milestone. Pads with a blank phase (named
- * after the milestone) when there are fewer phases than milestones, and
- * drops extras when there are more. Run on load so legacy proposals — and
- * any that drifted — open with the invariant already satisfied; the editor
- * then keeps it in sync as milestones are added/removed.
+ * Give every timeline phase a stable id and link each payment milestone to
+ * its phase, so the phase↔milestone pairing survives even after milestones
+ * are pruned independently. Historically the two arrays were strictly 1:1 by
+ * index, so legacy proposals (and the default) pair by position. Also fills a
+ * blank milestone label with its phase's name — without clobbering a label
+ * that's already set — so auto-created milestones don't read as empty rows.
+ * Run on load; the editor keeps the link and the names in sync thereafter.
  */
-export function reconcileTimelineToMilestones(
+export function pairTimelineAndMilestones(
   content: ProposalContent,
 ): ProposalContent {
-  const phases = getTimelinePhases(content.timeline);
-  const next = content.investment.milestones.map(
-    (m, i): TimelinePhase =>
-      phases[i] ?? { name: m.label ?? '', weeks: '', items: [] },
+  const phases = getTimelinePhases(content.timeline).map(
+    (p, i): TimelinePhase => ({ ...p, id: p.id ?? `p${i}` }),
   );
+  const milestones = content.investment.milestones.map((m, i) => {
+    const phaseId = m.phase_id ?? phases[i]?.id;
+    const paired = phases.find((p) => p.id === phaseId);
+    const label = m.label?.trim() ? m.label : (paired?.name ?? m.label);
+    return { ...m, phase_id: phaseId, label };
+  });
   return {
     ...content,
     timeline: {
-      phases: next,
+      phases,
       total_weeks: content.timeline.total_weeks ?? 0,
       target_launch: content.timeline.target_launch ?? '',
     },
+    investment: { ...content.investment, milestones },
   };
 }

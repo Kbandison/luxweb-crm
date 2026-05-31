@@ -10,7 +10,7 @@ import type {
 } from '@/lib/types/proposal';
 import {
   DEFAULT_CARE_PLAN,
-  reconcileTimelineToMilestones,
+  pairTimelineAndMilestones,
   withCarePlanDefaults,
 } from '@/lib/types/proposal';
 import { Button } from '@/components/ui/button';
@@ -79,11 +79,10 @@ export function ProposalEditor({
   const [mode, setMode] = useState<Mode>(isLocked ? 'preview' : 'edit');
   const [title, setTitle] = useState(initialTitle);
   // Normalize on load: backfill the care_plan section for older proposals,
-  // then force the timeline to one phase per payment milestone (and the
-  // array shape) — legacy proposals stored a fixed phase_1/2/3 object, and
-  // counts may have drifted.
+  // then pair each timeline phase with its payment milestone via a stable id
+  // (and fill any blank milestone label from its phase name).
   const [content, setContent] = useState<ProposalContent>(() =>
-    reconcileTimelineToMilestones(withCarePlanDefaults(initialContent)),
+    pairTimelineAndMilestones(withCarePlanDefaults(initialContent)),
   );
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
@@ -538,38 +537,47 @@ function EditorForm({
     value: ProposalContent['scope'][K],
   ) => void;
 }) {
-  // Phases drive the count: each timeline phase owns one payment milestone at
-  // the same index. Adding/removing a phase adds/removes its milestone so the
-  // two stay 1:1. The Investment section only edits the milestone amounts.
+  // Adding a phase also seeds its payment milestone, linked by a stable id so
+  // the two stay paired even after milestones are pruned from the Investment
+  // section. Removing a phase removes its milestone too; removing a milestone
+  // on its own (in Investment) just leaves the phase unpaid.
   function addPhase() {
-    setContent((c) => ({
-      ...c,
-      timeline: {
-        ...c.timeline,
-        phases: [...c.timeline.phases, { name: '', weeks: '', items: [] }],
-      },
-      investment: {
-        ...c.investment,
-        milestones: [
-          ...c.investment.milestones,
-          { label: '', percent: 0, amount_cents: 0, due: '' },
-        ],
-      },
-    }));
+    setContent((c) => {
+      const id = makePhaseId();
+      return {
+        ...c,
+        timeline: {
+          ...c.timeline,
+          phases: [...c.timeline.phases, { id, name: '', weeks: '', items: [] }],
+        },
+        investment: {
+          ...c.investment,
+          milestones: [
+            ...c.investment.milestones,
+            { label: '', percent: 0, amount_cents: 0, due: '', phase_id: id },
+          ],
+        },
+      };
+    });
   }
 
   function removePhase(index: number) {
-    setContent((c) => ({
-      ...c,
-      timeline: {
-        ...c.timeline,
-        phases: c.timeline.phases.filter((_, i) => i !== index),
-      },
-      investment: {
-        ...c.investment,
-        milestones: c.investment.milestones.filter((_, i) => i !== index),
-      },
-    }));
+    setContent((c) => {
+      const phaseId = c.timeline.phases[index]?.id;
+      return {
+        ...c,
+        timeline: {
+          ...c.timeline,
+          phases: c.timeline.phases.filter((_, i) => i !== index),
+        },
+        investment: {
+          ...c.investment,
+          milestones: c.investment.milestones.filter(
+            (m) => m.phase_id !== phaseId,
+          ),
+        },
+      };
+    });
   }
 
   return (
@@ -739,7 +747,7 @@ function EditorForm({
       {/* Timeline */}
       <FormSection
         title="Timeline"
-        description="Each phase has one payment milestone attached. Add or remove phases here; set the payment amounts in the Investment section below."
+        description="Each phase seeds a payment milestone named after it. Add or remove phases here; set the amounts — and remove any phase you don't bill for — in the Investment section below."
       >
         <div className="space-y-5">
           {content.timeline.phases.length === 0 ? (
@@ -748,24 +756,36 @@ function EditorForm({
             </p>
           ) : null}
           {content.timeline.phases.map((phase, i) => {
-            const linked = content.investment.milestones[i];
+            const linked = content.investment.milestones.find(
+              (m) => m.phase_id === phase.id,
+            );
             const setPhase = (next: Partial<TimelinePhase>) =>
-              setContent((c) => ({
-                ...c,
-                timeline: {
-                  ...c.timeline,
-                  phases: c.timeline.phases.map((p, j) =>
-                    j === i ? { ...p, ...next } : p,
-                  ),
-                },
-              }));
+              setContent((c) => {
+                const phases = c.timeline.phases.map((p, j) =>
+                  j === i ? { ...p, ...next } : p,
+                );
+                // Keep the paired milestone's label following the phase name.
+                const milestones =
+                  'name' in next
+                    ? c.investment.milestones.map((m) =>
+                        m.phase_id === phase.id
+                          ? { ...m, label: next.name ?? m.label }
+                          : m,
+                      )
+                    : c.investment.milestones;
+                return {
+                  ...c,
+                  timeline: { ...c.timeline, phases },
+                  investment: { ...c.investment, milestones },
+                };
+              });
             return (
               <Card key={i} padding="md">
                 <div className="flex items-start justify-between gap-3">
                   <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
                     Phase {i + 1}
-                    {linked?.label ? (
-                      <span className="text-ink-subtle"> · paid by “{linked.label}”</span>
+                    {!linked ? (
+                      <span className="text-ink-subtle"> · no payment milestone</span>
                     ) : null}
                   </p>
                   <button
@@ -940,6 +960,16 @@ function EditorForm({
 
 /* ----------------------------- tiny helpers ----------------------------- */
 
+// Unique id for a freshly added phase ↔ milestone pair. Runs only in a
+// click handler (client), so crypto.randomUUID is available; the fallback
+// keeps it working in any odd environment.
+function makePhaseId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return `ph-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 // Format integer cents → "5000.00"-style dollar string.
 function centsToDollarStr(cents: number): string {
   return (cents / 100).toFixed(2);
@@ -1084,9 +1114,18 @@ function InvestmentSection({
     }));
   }
 
-  // Count is driven from the Timeline section: each timeline phase owns one
-  // payment milestone at the same index. Add/remove happens there (see
-  // addPhase/removePhase in EditorForm); this section only edits amounts.
+  // Milestones are seeded from the Timeline section (one per phase). They can
+  // be pruned here independently — removing one just leaves its phase unpaid
+  // and doesn't touch the timeline.
+  function removeMilestone(index: number) {
+    setContent((c) => ({
+      ...c,
+      investment: {
+        ...c.investment,
+        milestones: c.investment.milestones.filter((_, i) => i !== index),
+      },
+    }));
+  }
 
   // Even-split: redistribute 100% across N milestones equally. Last row
   // absorbs any rounding remainder so percents sum to exactly 100.
@@ -1162,8 +1201,8 @@ function InvestmentSection({
               Payment milestones
             </p>
             <p className="mt-1 font-sans text-xs text-ink-subtle">
-              One per timeline phase — add or remove phases in the Timeline
-              section. Edit % and the amount auto-fills, or vice-versa.
+              Seeded one per timeline phase and named after it. Remove any
+              phase you don&apos;t bill for; the phase stays in the timeline.
             </p>
           </div>
           {ms.length > 1 ? (
@@ -1181,14 +1220,14 @@ function InvestmentSection({
         <div className="mt-3 space-y-2">
           {ms.length === 0 ? (
             <p className="rounded-md border border-dashed border-border bg-surface px-4 py-3 font-sans text-sm text-ink-muted">
-              No milestones yet — add a phase in the Timeline section to create
-              one.
+              No payment milestones — add a phase in the Timeline section, or
+              you&apos;ve removed them all.
             </p>
           ) : null}
           {ms.map((m, i) => (
             <div
               key={i}
-              className="grid items-center gap-3 sm:grid-cols-[1fr_90px_140px_1fr]"
+              className="grid items-center gap-3 sm:grid-cols-[1fr_90px_140px_1fr_auto]"
             >
               <Input
                 value={m.label}
@@ -1215,6 +1254,15 @@ function InvestmentSection({
                 placeholder="Due (e.g., On signing)"
                 onChange={(e) => setMilestoneField(i, 'due', e.target.value)}
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeMilestone(i)}
+                aria-label="Remove milestone"
+              >
+                ×
+              </Button>
             </div>
           ))}
         </div>
