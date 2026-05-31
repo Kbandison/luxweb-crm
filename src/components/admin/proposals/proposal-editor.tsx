@@ -538,6 +538,40 @@ function EditorForm({
     value: ProposalContent['scope'][K],
   ) => void;
 }) {
+  // Phases drive the count: each timeline phase owns one payment milestone at
+  // the same index. Adding/removing a phase adds/removes its milestone so the
+  // two stay 1:1. The Investment section only edits the milestone amounts.
+  function addPhase() {
+    setContent((c) => ({
+      ...c,
+      timeline: {
+        ...c.timeline,
+        phases: [...c.timeline.phases, { name: '', weeks: '', items: [] }],
+      },
+      investment: {
+        ...c.investment,
+        milestones: [
+          ...c.investment.milestones,
+          { label: '', percent: 0, amount_cents: 0, due: '' },
+        ],
+      },
+    }));
+  }
+
+  function removePhase(index: number) {
+    setContent((c) => ({
+      ...c,
+      timeline: {
+        ...c.timeline,
+        phases: c.timeline.phases.filter((_, i) => i !== index),
+      },
+      investment: {
+        ...c.investment,
+        milestones: c.investment.milestones.filter((_, i) => i !== index),
+      },
+    }));
+  }
+
   return (
     <div className="space-y-12">
       {/* Header */}
@@ -705,13 +739,12 @@ function EditorForm({
       {/* Timeline */}
       <FormSection
         title="Timeline"
-        description="Phases mirror your payment milestones one-to-one. Add or remove a milestone in the Investment section below to change the number of phases."
+        description="Each phase has one payment milestone attached. Add or remove phases here; set the payment amounts in the Investment section below."
       >
         <div className="space-y-5">
           {content.timeline.phases.length === 0 ? (
             <p className="rounded-md border border-dashed border-border bg-surface px-4 py-3 font-sans text-sm text-ink-muted">
-              No phases yet — add a payment milestone in the Investment section
-              below to create the first phase.
+              No phases yet — add your first phase below.
             </p>
           ) : null}
           {content.timeline.phases.map((phase, i) => {
@@ -728,12 +761,34 @@ function EditorForm({
               }));
             return (
               <Card key={i} padding="md">
-                <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
-                  Phase {i + 1}
-                  {linked?.label ? (
-                    <span className="text-ink-subtle"> · paid by “{linked.label}”</span>
-                  ) : null}
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
+                    Phase {i + 1}
+                    {linked?.label ? (
+                      <span className="text-ink-subtle"> · paid by “{linked.label}”</span>
+                    ) : null}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => removePhase(i)}
+                    aria-label="Remove phase"
+                    className="-mt-1 shrink-0 rounded-md border border-border bg-surface p-1.5 text-ink-muted transition-colors hover:border-danger/40 hover:text-danger"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-3.5 w-3.5"
+                      aria-hidden
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
                 <div className="mt-4 space-y-4">
                   <Field label="Phase name">
                     <Input
@@ -761,6 +816,26 @@ function EditorForm({
               </Card>
             );
           })}
+          <button
+            type="button"
+            onClick={addPhase}
+            className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-border bg-surface px-3 py-2 font-mono text-[11px] uppercase tracking-meta text-ink-muted transition-colors hover:border-copper/40 hover:text-copper"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-3 w-3"
+              aria-hidden
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add phase
+          </button>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Total weeks">
               <Input
@@ -1009,38 +1084,9 @@ function InvestmentSection({
     }));
   }
 
-  // Milestones drive the timeline 1:1 — adding/removing a milestone adds or
-  // removes its matching phase at the same index so the two stay in lockstep.
-  function addMilestone() {
-    setContent((c) => ({
-      ...c,
-      investment: {
-        ...c.investment,
-        milestones: [
-          ...c.investment.milestones,
-          { label: '', percent: 0, amount_cents: 0, due: '' },
-        ],
-      },
-      timeline: {
-        ...c.timeline,
-        phases: [...c.timeline.phases, { name: '', weeks: '', items: [] }],
-      },
-    }));
-  }
-
-  function removeMilestone(index: number) {
-    setContent((c) => ({
-      ...c,
-      investment: {
-        ...c.investment,
-        milestones: c.investment.milestones.filter((_, i) => i !== index),
-      },
-      timeline: {
-        ...c.timeline,
-        phases: c.timeline.phases.filter((_, i) => i !== index),
-      },
-    }));
-  }
+  // Count is driven from the Timeline section: each timeline phase owns one
+  // payment milestone at the same index. Add/remove happens there (see
+  // addPhase/removePhase in EditorForm); this section only edits amounts.
 
   // Even-split: redistribute 100% across N milestones equally. Last row
   // absorbs any rounding remainder so percents sum to exactly 100.
@@ -1116,8 +1162,8 @@ function InvestmentSection({
               Payment milestones
             </p>
             <p className="mt-1 font-sans text-xs text-ink-subtle">
-              Edit % and amount auto-fills, or vice-versa. Both columns are
-              kept in sync with the total.
+              One per timeline phase — add or remove phases in the Timeline
+              section. Edit % and the amount auto-fills, or vice-versa.
             </p>
           </div>
           {ms.length > 1 ? (
@@ -1133,10 +1179,16 @@ function InvestmentSection({
         </div>
 
         <div className="mt-3 space-y-2">
+          {ms.length === 0 ? (
+            <p className="rounded-md border border-dashed border-border bg-surface px-4 py-3 font-sans text-sm text-ink-muted">
+              No milestones yet — add a phase in the Timeline section to create
+              one.
+            </p>
+          ) : null}
           {ms.map((m, i) => (
             <div
               key={i}
-              className="grid items-center gap-3 sm:grid-cols-[1fr_90px_140px_1fr_auto]"
+              className="grid items-center gap-3 sm:grid-cols-[1fr_90px_140px_1fr]"
             >
               <Input
                 value={m.label}
@@ -1163,23 +1215,11 @@ function InvestmentSection({
                 placeholder="Due (e.g., On signing)"
                 onChange={(e) => setMilestoneField(i, 'due', e.target.value)}
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeMilestone(i)}
-                aria-label="Remove milestone"
-              >
-                ×
-              </Button>
             </div>
           ))}
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <Button type="button" variant="secondary" size="sm" onClick={addMilestone}>
-            Add milestone
-          </Button>
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-3">
           {ms.length > 0 ? (
             <p
               className={cn(
