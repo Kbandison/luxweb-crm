@@ -45,30 +45,15 @@ export async function POST(
 
     const sb = supabaseAdmin();
 
-    // If contact.user_id is already set, decide whether to treat this as
-    // a re-send of a pending invite (auth user provisioned but never
-    // accepted) or a 409 (active user with portal access). Without this
-    // branch the route locks the admin out of resending a botched first
-    // attempt — e.g., the React-render email failure from earlier.
-    let isResend = false;
-    if (contact.user_id) {
-      const { data: authData } = await sb.auth.admin.getUserById(
-        contact.user_id as string,
-      );
-      const authUser = authData?.user as
-        | { email_confirmed_at?: string | null; last_sign_in_at?: string | null }
-        | undefined;
-      const accepted = Boolean(
-        authUser?.email_confirmed_at || authUser?.last_sign_in_at,
-      );
-      if (accepted) {
-        return Response.json(
-          { error: 'This contact already has portal access.' },
-          { status: 409 },
-        );
-      }
-      isResend = true;
-    }
+    // A resend just means an auth user already exists for this contact, so we
+    // send a magic link rather than a fresh invite. We deliberately DON'T
+    // block on a user looking "accepted": email_confirmed_at / last_sign_in_at
+    // get set the moment any magic link is consumed — including by a
+    // link-scanning mail server or a click that never reached the password
+    // step — so they're false signals for "finished setup" and were wrongly
+    // returning "already has portal access". Re-sending an access link is
+    // harmless: for an existing user it's just a login link.
+    let isResend = Boolean(contact.user_id);
 
     // Build the redirect URL. Falls back to localhost when dev.
     const origin =
@@ -109,19 +94,6 @@ export async function POST(
       return Response.json(
         { error: error?.message ?? 'Failed to generate invite link' },
         { status: 500 },
-      );
-    }
-
-    // The fallback can land on a user who already finished setup — don't
-    // re-invite someone who already has active portal access.
-    const linkedUser = data.user as {
-      email_confirmed_at?: string | null;
-      last_sign_in_at?: string | null;
-    };
-    if (linkedUser.email_confirmed_at || linkedUser.last_sign_in_at) {
-      return Response.json(
-        { error: 'This contact already has portal access.' },
-        { status: 409 },
       );
     }
 
