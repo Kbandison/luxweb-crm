@@ -34,7 +34,7 @@ export function ProposalPreview({
       {/* Cover */}
       <section className="relative isolate overflow-hidden rounded-2xl border border-border bg-surface p-8 md:p-10 copper-mesh print-plain print-avoid-break">
         <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
-          Proposal · v{content.version}
+          Proposal · Agreement v{content.agreement_version}
         </p>
         <h1 className="mt-3 font-display text-4xl font-medium leading-tight tracking-tight text-ink md:text-5xl">
           {title}

@@ -80,14 +80,29 @@ export function formatUSD(cents: number | null | undefined): string {
     : USD_CENTS.format(dollars);
 }
 
+/**
+ * Parse a formatter input into a Date for *calendar-date* display. A bare
+ * "YYYY-MM-DD" string is interpreted by the JS engine as UTC midnight, which
+ * then renders as the day before in any timezone behind UTC (e.g. a proposal
+ * prepared 2026-05-30 showed as May 29). Build it as a local date instead so
+ * a date-only value shows the same day everywhere. Full timestamps (anything
+ * with a time component) are parsed as-is so their local time is preserved.
+ */
+function parseDisplayDate(input: string | Date): Date {
+  if (input instanceof Date) return input;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input.trim());
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(input);
+}
+
 export function formatDate(input: string | Date | null | undefined): string {
   if (!input) return '—';
-  return DATE_SHORT.format(new Date(input));
+  return DATE_SHORT.format(parseDisplayDate(input));
 }
 
 export function formatDateLong(input: string | Date | null | undefined): string {
   if (!input) return '—';
-  return DATE_LONG.format(new Date(input));
+  return DATE_LONG.format(parseDisplayDate(input));
 }
 
 export function formatDateTime(input: string | Date | null | undefined): string {
