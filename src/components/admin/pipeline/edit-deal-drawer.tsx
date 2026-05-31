@@ -25,6 +25,8 @@ export function EditDealDrawer({ deal }: { deal: DealCard }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [delBusy, setDelBusy] = useState(false);
 
   const [title, setTitle] = useState(deal.title);
   const [valueDollars, setValueDollars] = useState(
@@ -42,7 +44,29 @@ export function EditDealDrawer({ deal }: { deal: DealCard }) {
     setProbability(String(deal.probability));
     setExpectedClose(deal.expectedClose ?? '');
     setError(null);
+    setConfirmingDelete(false);
   }, [open, deal]);
+
+  async function destroy() {
+    setDelBusy(true);
+    try {
+      const res = await fetch(`/api/admin/deals/${deal.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error("Couldn't delete deal", body.error ?? 'Delete failed.');
+        return;
+      }
+      setOpen(false);
+      toast.success('Deal deleted');
+      router.refresh();
+    } catch {
+      toast.error("Couldn't delete deal", 'Network error. Try again.');
+    } finally {
+      setDelBusy(false);
+    }
+  }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -216,19 +240,61 @@ export function EditDealDrawer({ deal }: { deal: DealCard }) {
             ) : null}
           </div>
 
-          <footer className="flex items-center justify-end gap-2 border-t border-border bg-surface px-6 py-4">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setOpen(false)}
-              disabled={busy}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" disabled={busy || !title.trim()}>
-              {busy ? 'Saving…' : 'Save deal'}
-            </Button>
+          <footer className="flex items-center justify-between gap-2 border-t border-border bg-surface px-6 py-4">
+            {confirmingDelete ? (
+              <div className="flex w-full items-center justify-between gap-3">
+                <span className="font-sans text-xs text-danger">
+                  Delete this deal permanently?
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={delBusy}
+                  >
+                    Keep
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    onClick={destroy}
+                    disabled={delBusy}
+                  >
+                    {delBusy ? 'Deleting…' : 'Delete'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmingDelete(true)}
+                  disabled={busy}
+                  className="text-danger hover:bg-danger/10 hover:text-danger"
+                >
+                  Delete
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setOpen(false)}
+                    disabled={busy}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" size="sm" disabled={busy || !title.trim()}>
+                    {busy ? 'Saving…' : 'Save deal'}
+                  </Button>
+                </div>
+              </>
+            )}
           </footer>
         </form>
       </Drawer>
