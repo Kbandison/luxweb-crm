@@ -304,6 +304,8 @@ export type ClientProjectDetail = {
   startDate: string | null;
   endDate: string | null;
   contactName: string;
+  /** Temporary staging/preview URL to view the site before the domain links. */
+  previewUrl: string | null;
   milestones: ClientMilestone[];
 };
 
@@ -336,7 +338,7 @@ export async function getClientProject(
     const { data } = await supabaseAdmin()
       .from('projects')
       .select(
-        `id, name, status, start_date, end_date, contact_id,
+        `id, name, status, start_date, end_date, contact_id, preview_url,
          contacts!inner(full_name, user_id)`,
       )
       .eq('id', projectId)
@@ -350,6 +352,7 @@ export async function getClientProject(
       start_date: string | null;
       end_date: string | null;
       contact_id: string;
+      preview_url: string | null;
       contacts:
         | { full_name: string; user_id: string | null }
         | { full_name: string; user_id: string | null }[];
@@ -439,6 +442,7 @@ export async function getClientProject(
       startDate: r.start_date,
       endDate: r.end_date,
       contactName: contact.full_name,
+      previewUrl: r.preview_url ?? null,
       milestones: mRows.map((m) => ({
         id: m.id,
         title: m.title,

@@ -3,6 +3,7 @@ import type { ProjectDetail } from '@/lib/queries/admin';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import { ProjectStatusEditor } from './project-status-editor';
 import { ArchiveProjectButton } from './archive-project-button';
+import { ProjectPreviewLink } from './project-preview-link';
 
 export function ProjectHeader({ project }: { project: ProjectDetail }) {
   const budgetLabel =
@@ -68,6 +69,10 @@ export function ProjectHeader({ project }: { project: ProjectDetail }) {
                 Archived
               </span>
             ) : null}
+            <ProjectPreviewLink
+              projectId={project.id}
+              previewUrl={project.previewUrl}
+            />
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">

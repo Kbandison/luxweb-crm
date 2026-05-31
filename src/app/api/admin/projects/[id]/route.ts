@@ -5,6 +5,7 @@ import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { isSafeHttpUrl, normalizeHttpUrl } from '@/lib/validation/url';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +27,13 @@ const UpdateSchema = z.object({
   // archived_at: ISO timestamp to archive, or null to unarchive.
   // Admin-only; clients never see archived flag transitions.
   archived_at: z.string().nullable().optional(),
+  // Temporary staging/preview URL. Accepts a bare domain or http(s) URL;
+  // anything else (javascript:, data:, …) is rejected. Null/'' clears it.
+  preview_url: z
+    .string()
+    .nullable()
+    .optional()
+    .refine(isSafeHttpUrl, 'Enter a valid http(s) link'),
 });
 
 export async function PATCH(
@@ -41,6 +49,12 @@ export async function PATCH(
     const parsed = UpdateSchema.safeParse(raw);
     if (!parsed.success || Object.keys(parsed.data).length === 0) {
       return Response.json({ error: 'Invalid payload' }, { status: 400 });
+    }
+
+    // Canonicalize the preview URL (prepend https:// to bare domains, '' → null)
+    // so the stored value is always a working absolute link or cleared.
+    if (parsed.data.preview_url !== undefined) {
+      parsed.data.preview_url = normalizeHttpUrl(parsed.data.preview_url);
     }
 
     const { data: before } = await supabaseAdmin()

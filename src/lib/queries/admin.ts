@@ -876,6 +876,8 @@ export type ProjectDetail = {
   dealId: string | null;
   createdAt: string;
   archivedAt: string | null;
+  /** Temporary staging/preview URL shown to the client until their domain is linked. */
+  previewUrl: string | null;
 };
 
 export type Milestone = {
@@ -988,7 +990,7 @@ export async function getProjectDetail(
     const { data } = await supabaseAdmin()
       .from('projects')
       .select(
-        'id, name, status, start_date, end_date, budget_cents, profitability_cents, contact_id, deal_id, created_at, archived_at, contacts!inner(full_name, company)',
+        'id, name, status, start_date, end_date, budget_cents, profitability_cents, contact_id, deal_id, created_at, archived_at, preview_url, contacts!inner(full_name, company)',
       )
       .eq('id', id)
       .single();
@@ -1006,6 +1008,7 @@ export async function getProjectDetail(
       deal_id: string | null;
       created_at: string;
       archived_at: string | null;
+      preview_url: string | null;
       contacts:
         | { full_name: string; company: string | null }
         | { full_name: string; company: string | null }[];
@@ -1027,6 +1030,7 @@ export async function getProjectDetail(
       dealId: r.deal_id,
       createdAt: r.created_at,
       archivedAt: r.archived_at ?? null,
+      previewUrl: r.preview_url ?? null,
     };
   } catch {
     return null;
