@@ -76,19 +76,34 @@ export async function POST(
       process.env.NEXT_PUBLIC_APP_URL ??
       'http://localhost:3000';
 
-    // For first-time invites we use generateLink({type:'invite'}) so the
-    // handle_new_user trigger fires and links the contact. For a resend
-    // (auth user already exists) generateLink('invite') would 422 with
-    // "user already exists" — switch to magiclink, which any auth user
-    // can consume to set up their session.
-    const { data, error } = await sb.auth.admin.generateLink({
-      type: isResend ? 'magiclink' : 'invite',
-      email: contact.email as string,
-      options: {
-        data: { full_name: contact.full_name ?? '' },
-        redirectTo: `${origin}/accept-invite`,
-      },
-    });
+    const genLink = (type: 'invite' | 'magiclink') =>
+      sb.auth.admin.generateLink({
+        type,
+        email: contact.email as string,
+        options: {
+          data: { full_name: contact.full_name ?? '' },
+          redirectTo: `${origin}/accept-invite`,
+        },
+      });
+
+    // First-time invites use generateLink('invite') so the handle_new_user
+    // trigger provisions + links the auth user. A resend can't use 'invite'
+    // (it 422s once the user exists) — it uses a magic link, which any
+    // existing user can consume to finish setup.
+    //
+    // We can also reach here thinking it's a first invite (contact.user_id is
+    // null) when the auth user actually exists — e.g. the trigger never linked
+    // it back. Then the 'invite' call 422s "already registered"; fall back to
+    // a magic link and self-heal the link below.
+    let { data, error } = await genLink(isResend ? 'magiclink' : 'invite');
+    if (
+      error &&
+      !isResend &&
+      /already|exists|registered/i.test(error.message ?? '')
+    ) {
+      isResend = true;
+      ({ data, error } = await genLink('magiclink'));
+    }
 
     if (error || !data?.properties?.action_link || !data?.user?.id) {
       return Response.json(
@@ -97,8 +112,31 @@ export async function POST(
       );
     }
 
+    // The fallback can land on a user who already finished setup — don't
+    // re-invite someone who already has active portal access.
+    const linkedUser = data.user as {
+      email_confirmed_at?: string | null;
+      last_sign_in_at?: string | null;
+    };
+    if (linkedUser.email_confirmed_at || linkedUser.last_sign_in_at) {
+      return Response.json(
+        { error: 'This contact already has portal access.' },
+        { status: 409 },
+      );
+    }
+
     const inviteUrl = data.properties.action_link;
     const newUserId = data.user.id;
+
+    // Self-heal: if the contact wasn't linked to its auth user (the
+    // handle_new_user trigger didn't fire), set it now so future resends
+    // detect the pending invite directly instead of 422-ing on 'invite'.
+    if (!contact.user_id) {
+      await sb
+        .from('contacts')
+        .update({ user_id: newUserId })
+        .eq('id', contact.id as string);
+    }
 
     // Branded email + in-app notification. notify() reads the user's
     // email_prefs but invite emails always go (see notify()).
