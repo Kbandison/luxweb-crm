@@ -90,14 +90,23 @@ export async function POST(
       ({ data, error } = await genLink('magiclink'));
     }
 
-    if (error || !data?.properties?.action_link || !data?.user?.id) {
+    if (error || !data?.properties?.hashed_token || !data?.user?.id) {
       return Response.json(
         { error: error?.message ?? 'Failed to generate invite link' },
         { status: 500 },
       );
     }
 
-    const inviteUrl = data.properties.action_link;
+    // Link straight to our /accept-invite page with the token_hash + type,
+    // rather than mailing Supabase's action_link (the GoTrue /auth/v1/verify
+    // URL). That action_link verifies server-side and redirects WITHOUT a
+    // token_hash query param (the session lands in the URL fragment), so the
+    // page saw no token and said "Missing invite token". This is the
+    // documented token_hash pattern the accept page calls verifyOtp against.
+    const inviteType = isResend ? 'magiclink' : 'invite';
+    const inviteUrl = `${origin}/accept-invite?token_hash=${encodeURIComponent(
+      data.properties.hashed_token,
+    )}&type=${inviteType}`;
     const newUserId = data.user.id;
 
     // Self-heal: if the contact wasn't linked to its auth user (the
