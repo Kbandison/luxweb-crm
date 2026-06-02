@@ -5,15 +5,19 @@ import Link from 'next/link';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 type State =
   | { kind: 'verifying' }
-  | { kind: 'ready'; email: string }
-  | { kind: 'saving'; email: string }
+  | { kind: 'ready'; name: string }
   | { kind: 'error'; message: string };
 
+/**
+ * Invite acceptance. The studio uses magic-link / Google sign-in (no password
+ * login), and the client's name is already on their contact, so there's
+ * nothing for them to fill in: we verify the link, mark the invite accepted
+ * (user_metadata.onboarded_at → the admin "Portal access" signal), and send
+ * them into the portal.
+ */
 export function InviteForm({
   tokenHash,
   type,
@@ -29,53 +33,36 @@ export function InviteForm({
           message: 'Missing invite token. Use the link from your email.',
         },
   );
-  const [fullName, setFullName] = useState('');
-  const [password, setPassword] = useState('');
   const router = useRouter();
 
   useEffect(() => {
     if (!tokenHash) return;
     let cancelled = false;
-    // First-time invites arrive as type 'invite'; resends arrive as
-    // 'magiclink' (generateLink('invite') 422s once the user exists). Honor
-    // whichever the link carries, defaulting to 'invite' for older links.
+    const supabase = supabaseBrowser();
+    // First-time invites arrive as type 'invite'; resends as 'magiclink'.
     const otpType: EmailOtpType = type === 'magiclink' ? 'magiclink' : 'invite';
-    supabaseBrowser()
-      .auth.verifyOtp({ token_hash: tokenHash, type: otpType })
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          setState({ kind: 'error', message: error.message });
-          return;
-        }
-        setState({ kind: 'ready', email: data.user?.email ?? '' });
+    (async () => {
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: otpType,
       });
+      if (cancelled) return;
+      if (error) {
+        setState({ kind: 'error', message: error.message });
+        return;
+      }
+      // Mark the invite accepted. No password — sign-in is magic-link / Google.
+      await supabase.auth.updateUser({
+        data: { onboarded_at: new Date().toISOString() },
+      });
+      if (cancelled) return;
+      const meta = data.user?.user_metadata as { full_name?: string } | undefined;
+      setState({ kind: 'ready', name: meta?.full_name ?? '' });
+    })();
     return () => {
       cancelled = true;
     };
   }, [tokenHash, type]);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (state.kind !== 'ready') return;
-    if (password.length < 8) {
-      setState({ kind: 'error', message: 'Password must be at least 8 characters.' });
-      return;
-    }
-    setState({ kind: 'saving', email: state.email });
-    const { error } = await supabaseBrowser().auth.updateUser({
-      password,
-      // Stamp onboarding completion. This is the deliberate password-set step
-      // (a link-scanning mail server never reaches it), so it's the reliable
-      // signal the admin UI uses to show "Portal access" vs "Invited".
-      data: { full_name: fullName, onboarded_at: new Date().toISOString() },
-    });
-    if (error) {
-      setState({ kind: 'error', message: error.message });
-      return;
-    }
-    router.replace('/');
-  }
 
   if (state.kind === 'verifying') {
     return (
@@ -107,52 +94,26 @@ export function InviteForm({
     );
   }
 
-  const busy = state.kind === 'saving';
-
+  const firstName = state.name.trim().split(/\s+/)[0] ?? '';
   return (
     <div className="space-y-8">
       <header className="space-y-2">
         <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
-          Welcome
+          You&apos;re in{firstName ? `, ${firstName}` : ''}
         </h1>
         <p className="font-sans text-sm text-ink-muted">
-          Setting up access for{' '}
-          <span className="font-mono text-ink">{state.email}</span>.
+          Your portal access is all set. You can sign in any time with a magic
+          link or Google — no password needed.
         </p>
       </header>
 
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
-        <div className="space-y-1.5">
-          <Label htmlFor="fullName">Full name</Label>
-          <Input
-            id="fullName"
-            required
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="Your name"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <p className="font-sans text-xs text-ink-subtle">
-            At least 8 characters.
-          </p>
-        </div>
-
-        <Button type="submit" className="w-full" disabled={busy}>
-          {busy ? 'Setting up…' : 'Finish setup'}
-        </Button>
-      </form>
+      <Button
+        type="button"
+        className="w-full"
+        onClick={() => router.replace('/')}
+      >
+        Enter your portal
+      </Button>
     </div>
   );
 }
