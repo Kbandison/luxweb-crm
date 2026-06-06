@@ -306,6 +306,14 @@ const CATEGORY_BY_TYPE: Record<NotifyEvent['type'], EmailCategory> = {
   revision_requested: 'admin',
 };
 
+/**
+ * Internal alerts are delivered to the studio's monitored inbox, not the
+ * admin's login email (which is a personal Google account). One shared
+ * inbox today; per-admin routing would be a multi-admin concern.
+ */
+const ADMIN_NOTIFICATIONS_TO =
+  process.env.ADMIN_NOTIFICATIONS_EMAIL ?? 'kbandison@luxwebstudio.dev';
+
 export async function notify(
   event: NotifyEvent,
   opts?: { inAppOnly?: boolean; actorId?: string | null },
@@ -407,12 +415,17 @@ export async function notify(
       // Some types (e.g. message) intentionally have no email template.
       return;
     }
+    const category = CATEGORY_BY_TYPE[event.type];
+    // Internal alerts go to the studio inbox; everything else to the
+    // recipient's own email. (We still looked the user up above for their
+    // name + email-prefs opt-outs.)
+    const to = category === 'admin' ? ADMIN_NOTIFICATIONS_TO : user.email;
     const result = await sendEmail({
-      to: user.email,
+      to,
       subject: rendered.subject,
       react: rendered.react,
       tag: event.type,
-      category: CATEGORY_BY_TYPE[event.type],
+      category,
     });
     const messageId = (result as { data?: { id?: string } }).data?.id;
     if (messageId) {
