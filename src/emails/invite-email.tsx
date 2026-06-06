@@ -19,17 +19,23 @@ export default function InviteEmail(props: InviteEmailProps) {
         Welcome, {recipientName.split(' ')[0] || 'there'}.
       </Heading>
       <Text className="mt-4 text-base leading-relaxed text-ink">
-        You&apos;ve been invited to the LuxWeb Studio client portal. From there
-        you can review proposals, track milestones, download files, and pay
+        You&apos;ve been invited to the LuxWeb Studio client portal — where you
+        can review proposals, track milestones, download files, and pay
         invoices.
+      </Text>
+      <Text className="mt-3 text-base leading-relaxed text-ink">
+        No password to set up: the button below signs you straight in. After
+        that, you&apos;ll get back in any time with a one-tap email link or your
+        Google account.
       </Text>
 
       <div style={{ height: 20 }} />
-      <EmailButton href={inviteUrl}>Accept invite</EmailButton>
+      <EmailButton href={inviteUrl}>Open your portal</EmailButton>
 
       <Text className="mt-6 text-sm text-ink-muted">
-        This link expires in 24 hours. If you didn&apos;t expect this, you can
-        safely ignore it.
+        This is a one-time sign-in link. If it&apos;s expired by the time you
+        open it, just reply and we&apos;ll send a fresh one. If you didn&apos;t
+        expect this, you can safely ignore it.
       </Text>
     </BaseLayout>
   );

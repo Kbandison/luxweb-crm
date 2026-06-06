@@ -3,6 +3,7 @@ import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
+import { sendPortalInvite } from '@/lib/invites';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -13,7 +14,7 @@ export const runtime = 'nodejs';
  * (via notify()) if they have portal access + email prefs allow.
  */
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -57,7 +58,11 @@ export async function POST(
     const projectId = before.project_id as string | null;
     if (projectId) revalidateProject(projectId);
 
-    // Notify the client (if invited to the portal + not opted out).
+    // Notify the client. If they already have portal access, send the
+    // "proposal ready" email. If they don't, auto-invite them instead — the
+    // invite lands them in the portal where the proposal is the focus card,
+    // closing the gap where a sent proposal went unseen because the client
+    // was never invited. Best-effort: a failed invite won't fail the send.
     const contactId = before.contact_id as string | null;
     if (contactId) {
       const clientUserId = await getContactUserId(contactId);
@@ -71,6 +76,21 @@ export async function POST(
             before.total_cents == null ? null : Number(before.total_cents),
           proposalPath: `/portal/proposals/${id}`,
         });
+      } else {
+        const origin =
+          req.headers.get('origin') ??
+          process.env.NEXT_PUBLIC_APP_URL ??
+          'http://localhost:3000';
+        const invite = await sendPortalInvite({
+          contactId,
+          origin,
+          actorId: session.userId,
+        });
+        if (!invite.ok) {
+          console.warn(
+            `[proposal send] auto-invite failed for contact=${contactId}: ${invite.error}`,
+          );
+        }
       }
     }
 
