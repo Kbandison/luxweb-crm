@@ -41,6 +41,9 @@ import CarePlanActivatedEmail, {
 import ContractPendingClientSignatureEmail, {
   contractPendingClientSignatureSubject,
 } from '@/emails/contract-pending-client-signature-email';
+import PaymentAlertEmail, {
+  paymentAlertSubject,
+} from '@/emails/payment-alert-email';
 
 /* -------------------------------------------------------------------------
  * Event shapes
@@ -226,6 +229,32 @@ export type NotifyEvent =
       projectName: string;
       /** client portal URL for the project overview (review card lives there) */
       projectPath: string;
+    }
+  | {
+      // Admin-facing money alert: a client paid an invoice. Separate from the
+      // client's invoice_paid receipt — this is the studio's "you got paid"
+      // email (alerts@ → studio inbox) + bell.
+      type: 'payment_received';
+      /** admin user id */
+      userId: string;
+      invoiceId: string;
+      clientName: string;
+      description: string;
+      amountCents: number;
+      /** admin URL for the invoice/project */
+      invoicePath: string;
+    }
+  | {
+      // Admin-facing money alert: a client's payment failed / went overdue.
+      type: 'payment_overdue';
+      /** admin user id */
+      userId: string;
+      invoiceId: string;
+      clientName: string;
+      description: string;
+      amountCents: number;
+      /** admin URL for the invoice/project */
+      invoicePath: string;
     };
 
 type EmailPrefs = Record<string, boolean>;
@@ -267,6 +296,8 @@ function subjectKeyFor(event: NotifyEvent): { field: string; value: string } | n
     case 'invoice_sent':
     case 'invoice_paid':
     case 'invoice_overdue':
+    case 'payment_received':
+    case 'payment_overdue':
       return { field: 'invoiceId', value: event.invoiceId };
     case 'revision_requested':
     case 'revision_updated':
@@ -304,6 +335,8 @@ const CATEGORY_BY_TYPE: Record<NotifyEvent['type'], EmailCategory> = {
   proposal_accepted: 'admin',
   contract_signed: 'admin',
   revision_requested: 'admin',
+  payment_received: 'admin',
+  payment_overdue: 'admin',
 };
 
 /**
@@ -659,6 +692,22 @@ function renderTemplate(
         react: createElement(InvoiceOverdueEmail, props),
       };
     }
+    case 'payment_received':
+    case 'payment_overdue': {
+      const kind: 'received' | 'overdue' =
+        event.type === 'payment_received' ? 'received' : 'overdue';
+      const props = {
+        kind,
+        clientName: event.clientName,
+        description: event.description,
+        amountCents: event.amountCents,
+        invoiceUrl: appUrl(event.invoicePath),
+      };
+      return {
+        subject: paymentAlertSubject(props),
+        react: createElement(PaymentAlertEmail, props),
+      };
+    }
   }
 }
 
@@ -706,5 +755,25 @@ export async function getContactUserId(
     return (data?.user_id as string | null) ?? null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Display name for a contact (full name, falling back to company), for use in
+ * admin alert copy like "Payment received — {name}". Returns 'A client' if
+ * unknown so the email never reads blank.
+ */
+export async function getContactName(contactId: string): Promise<string> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('contacts')
+      .select('full_name, company')
+      .eq('id', contactId)
+      .single();
+    const name =
+      (data?.full_name as string | null) ?? (data?.company as string | null);
+    return name && name.trim() ? name : 'A client';
+  } catch {
+    return 'A client';
   }
 }

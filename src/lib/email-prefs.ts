@@ -92,14 +92,14 @@ export const ADMIN_EMAIL_PREFS = [
     hint: 'Email when an invoice is dispatched via Stripe.',
   },
   {
-    key: 'invoice_paid',
+    key: 'payment_received',
     label: 'Payment received',
     hint: 'Email when a client payment clears.',
   },
   {
-    key: 'invoice_overdue',
-    label: 'Invoice overdue',
-    hint: 'Email when an invoice passes its due date.',
+    key: 'payment_overdue',
+    label: 'Payment overdue',
+    hint: 'Email when a client payment fails or passes its due date.',
   },
   {
     key: 'proposal_sent',

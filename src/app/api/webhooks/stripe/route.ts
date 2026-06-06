@@ -2,7 +2,12 @@ import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
-import { notify, getAdminUserIds, getContactUserId } from '@/lib/notifications';
+import {
+  notify,
+  getAdminUserIds,
+  getContactUserId,
+  getContactName,
+} from '@/lib/notifications';
 import {
   fetchSubscriptionForSync,
   syncSubscriptionRow,
@@ -216,28 +221,26 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
     });
   }
 
-  // Admin fan-out: in-app only. We don't want admins receiving the
-  // client-facing "thank you for your deposit" copy — the bell
-  // notification is enough.
+  // Admin fan-out: "you got paid" — in-app bell + email to the studio inbox
+  // (alerts@). This is the studio's money alert, separate from the client's
+  // invoice_paid receipt above.
+  const clientName = await getContactName(contactId);
   const adminIds = await getAdminUserIds();
   if (adminIds.length > 0) {
+    const adminInvoicePath = projectId
+      ? `/admin/projects/${projectId}/invoices`
+      : '/admin/dashboard';
     await Promise.all(
       adminIds.map((userId) =>
-        notify(
-          {
-            type: 'invoice_paid',
-            userId,
-            invoiceId: crmInvoiceId,
-            description,
-            amountCents,
-            paidAt,
-            hostedInvoiceUrl,
-            invoicePath: projectId
-              ? `/admin/projects/${projectId}/invoices`
-              : '/admin/dashboard',
-          },
-          { inAppOnly: true },
-        ),
+        notify({
+          type: 'payment_received',
+          userId,
+          invoiceId: crmInvoiceId,
+          clientName,
+          description,
+          amountCents,
+          invoicePath: adminInvoicePath,
+        }),
       ),
     );
   }
@@ -324,26 +327,25 @@ async function handleInvoiceOverdue(inv: Stripe.Invoice) {
     });
   }
 
-  // Admin fan-out: in-app only (same rationale as invoice_paid).
+  // Admin fan-out: "a payment went overdue" — in-app bell + email to the
+  // studio inbox (alerts@), separate from the client's overdue notice above.
+  const clientName = await getContactName(contactId);
   const adminIds = await getAdminUserIds();
   if (adminIds.length > 0) {
+    const adminInvoicePath = projectId
+      ? `/admin/projects/${projectId}/invoices`
+      : '/admin/dashboard';
     await Promise.all(
       adminIds.map((userId) =>
-        notify(
-          {
-            type: 'invoice_overdue',
-            userId,
-            invoiceId: crmInvoiceId,
-            description,
-            amountCents,
-            dueDate,
-            hostedInvoiceUrl,
-            invoicePath: projectId
-              ? `/admin/projects/${projectId}/invoices`
-              : '/admin/dashboard',
-          },
-          { inAppOnly: true },
-        ),
+        notify({
+          type: 'payment_overdue',
+          userId,
+          invoiceId: crmInvoiceId,
+          clientName,
+          description,
+          amountCents,
+          invoicePath: adminInvoicePath,
+        }),
       ),
     );
   }

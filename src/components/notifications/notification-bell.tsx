@@ -531,6 +531,22 @@ function describe(n: Notification): Described {
           ? normalizePath(str('projectPath'))
           : undefined,
       };
+    case 'payment_received':
+      return {
+        title: `Payment received · ${str('clientName')}`,
+        body: `${str('description')} · ${formatUSD(num('amountCents'))}`,
+        href: str('invoicePath')
+          ? normalizePath(str('invoicePath'))
+          : undefined,
+      };
+    case 'payment_overdue':
+      return {
+        title: `Payment overdue · ${str('clientName')}`,
+        body: `${str('description')} · ${formatUSD(num('amountCents'))}`,
+        href: str('invoicePath')
+          ? normalizePath(str('invoicePath'))
+          : undefined,
+      };
     default:
       return { title: n.type.replace(/_/g, ' ') };
   }
