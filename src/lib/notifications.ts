@@ -1,7 +1,7 @@
 import 'server-only';
 import { createElement } from 'react';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { sendEmail } from '@/lib/resend';
+import { sendEmail, type EmailCategory } from '@/lib/resend';
 
 import InvoiceSentEmail, {
   invoiceSentSubject,
@@ -282,6 +282,30 @@ function subjectKeyFor(event: NotifyEvent): { field: string; value: string } | n
   }
 }
 
+/**
+ * Which studio from-address each email sends from. Receipts/billing →
+ * no-reply@, client project updates → updates@, message threads → chat@
+ * (reserved; no chat email is sent yet), internal owner alerts → alerts@.
+ */
+const CATEGORY_BY_TYPE: Record<NotifyEvent['type'], EmailCategory> = {
+  invoice_sent: 'receipt',
+  invoice_paid: 'receipt',
+  invoice_overdue: 'receipt',
+  care_plan_activated: 'receipt',
+  proposal_sent: 'update',
+  proposal_accepted_client: 'update',
+  contract_pending_client_signature: 'update',
+  milestone_updated: 'update',
+  revision_updated: 'update',
+  invite: 'update',
+  project_completed: 'update',
+  message: 'chat',
+  new_lead: 'admin',
+  proposal_accepted: 'admin',
+  contract_signed: 'admin',
+  revision_requested: 'admin',
+};
+
 export async function notify(
   event: NotifyEvent,
   opts?: { inAppOnly?: boolean; actorId?: string | null },
@@ -388,6 +412,7 @@ export async function notify(
       subject: rendered.subject,
       react: rendered.react,
       tag: event.type,
+      category: CATEGORY_BY_TYPE[event.type],
     });
     const messageId = (result as { data?: { id?: string } }).data?.id;
     if (messageId) {
@@ -445,7 +470,7 @@ function renderTemplate(
         hostedInvoiceUrl: event.hostedInvoiceUrl ?? null,
       };
       return {
-        subject: invoicePaidSubject(props),
+        subject: invoicePaidSubject(),
         react: createElement(InvoicePaidEmail, props),
       };
     }

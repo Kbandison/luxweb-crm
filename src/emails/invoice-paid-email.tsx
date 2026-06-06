@@ -14,9 +14,7 @@ export default function InvoicePaidEmail(props: InvoicePaidEmailProps) {
   const { recipientName, description, amountCents, paidAt, hostedInvoiceUrl } =
     props;
   return (
-    <BaseLayout
-      preview={`Receipt — ${formatUSD(amountCents)} received, thank you`}
-    >
+    <BaseLayout preview="Your payment has been received — thank you">
       <Text className="m-0 text-xs uppercase tracking-[0.22em] text-copper">
         Payment received
       </Text>
@@ -54,6 +52,8 @@ export default function InvoicePaidEmail(props: InvoicePaidEmailProps) {
   );
 }
 
-export function invoicePaidSubject(p: InvoicePaidEmailProps) {
-  return `Receipt · ${formatUSD(p.amountCents)}`;
+// Deliberately warm and amount-free — the dollar figure stays inside the
+// receipt body, not in the subject line / inbox preview.
+export function invoicePaidSubject() {
+  return 'Payment received — thank you';
 }

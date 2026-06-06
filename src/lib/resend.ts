@@ -31,19 +31,41 @@ function unsubscribeUrl(audience: EmailAudience): string | null {
   return `${base}${path}`;
 }
 
+/**
+ * Each email category sends from (and replies to) its own studio address,
+ * rather than one catch-all. Addresses live in code because they're stable
+ * brand identities on the verified luxwebstudio.dev domain:
+ *   - receipt  billing/invoices/receipts (no-reply)
+ *   - chat     message-thread notifications (reserved — no chat email yet)
+ *   - update   client-facing project updates
+ *   - admin    internal alerts sent to the studio owner
+ */
+export type EmailCategory = 'receipt' | 'chat' | 'update' | 'admin';
+
+const STUDIO_NAME = 'LuxWeb Studio';
+
+const FROM_BY_CATEGORY: Record<EmailCategory, string> = {
+  receipt: 'no-reply@luxwebstudio.dev',
+  chat: 'chat@luxwebstudio.dev',
+  update: 'updates@luxwebstudio.dev',
+  admin: 'alerts@luxwebstudio.dev',
+};
+
 export async function sendEmail(opts: {
   to: string;
   subject: string;
   react: ReactElement;
   tag: string;
-  /** Defaults to 'client' — most transactional mail lands client-side. */
-  audience?: EmailAudience;
+  category: EmailCategory;
 }) {
-  const from = process.env.RESEND_FROM_EMAIL;
-  const replyTo = process.env.RESEND_REPLY_TO;
-  if (!from) throw new Error('Missing RESEND_FROM_EMAIL');
+  const from = FROM_BY_CATEGORY[opts.category];
+  // Admin alerts deep-link the unsubscribe header to admin settings; all
+  // other mail is client-facing.
+  const audience: EmailAudience = opts.category === 'admin' ? 'admin' : 'client';
+  // Replies route back to the same shared inbox (e.g. a reply to a project
+  // update reaches updates@). Receipts come from no-reply@ and take no reply.
+  const replyTo = opts.category === 'receipt' ? undefined : from;
 
-  const audience = opts.audience ?? 'client';
   const unsub = unsubscribeUrl(audience);
   // Header keys are case-insensitive but Resend's typed `headers` requires
   // a flat string→string map. Build it conditionally so we don't ship a
@@ -55,7 +77,7 @@ export async function sendEmail(opts: {
   }
 
   return client().emails.send({
-    from: `LuxWeb Studio <${from}>`,
+    from: `${STUDIO_NAME} <${from}>`,
     replyTo,
     to: opts.to,
     subject: opts.subject,
