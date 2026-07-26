@@ -2,7 +2,7 @@
 import { useMemo, useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { ContactRow } from '@/lib/queries/admin';
+import type { ContactRow, LeadOwnerOption } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,8 @@ export function LeadsList({
   selectedIds,
   onToggleRow,
   onToggleAll,
+  owners = [],
+  currentOwner = '',
 }: {
   initial: ContactRow[];
   selectedId: string | null;
@@ -40,6 +42,10 @@ export function LeadsList({
   selectedIds?: Set<string>;
   onToggleRow?: (id: string) => void;
   onToggleAll?: (rows: ContactRow[]) => void;
+  /** Assignable owners for the filter dropdown. */
+  owners?: LeadOwnerOption[];
+  /** Current ?owner= filter value ('' = all, 'unassigned', or a user id). */
+  currentOwner?: string;
 }) {
   const { q: query, setQ: setQuery } = useUrlSearchInput();
   const pathname = usePathname();
@@ -92,6 +98,16 @@ export function LeadsList({
     sp.delete('page');
     startTransition(() => {
       router.push(`${pathname}?${sp.toString()}`);
+    });
+  }
+
+  function onOwnerFilterChange(value: string) {
+    const sp = new URLSearchParams(searchParams.toString());
+    if (value) sp.set('owner', value);
+    else sp.delete('owner');
+    sp.delete('page');
+    startTransition(() => {
+      router.push(sp.toString() ? `${pathname}?${sp.toString()}` : pathname);
     });
   }
   // Silence the unused-import lint when SortableHeader was previously imported.
@@ -157,20 +173,40 @@ export function LeadsList({
               : `${filtered.length} ${filtered.length === 1 ? 'lead' : 'leads'}`}
           </span>
         </div>
-        <label className="flex items-center gap-2">
-          <span className="sr-only">Sort leads</span>
-          <select
-            value={currentSortValue}
-            onChange={(e) => onSortChange(e.target.value)}
-            className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:border-border-strong focus:border-copper focus:outline-none"
-          >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex items-center gap-2">
+          {owners.length > 0 ? (
+            <label className="flex items-center gap-2">
+              <span className="sr-only">Filter by owner</span>
+              <select
+                value={currentOwner}
+                onChange={(e) => onOwnerFilterChange(e.target.value)}
+                className="max-w-[9rem] rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:border-border-strong focus:border-copper focus:outline-none"
+              >
+                <option value="">All owners</option>
+                <option value="unassigned">Unassigned</option>
+                {owners.map((o) => (
+                  <option key={o.userId} value={o.userId}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <label className="flex items-center gap-2">
+            <span className="sr-only">Sort leads</span>
+            <select
+              value={currentSortValue}
+              onChange={(e) => onSortChange(e.target.value)}
+              className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta text-ink-muted hover:border-border-strong focus:border-copper focus:outline-none"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       {/* List */}
@@ -230,6 +266,13 @@ export function LeadsList({
                       <p className="mt-0.5 truncate font-sans text-xs text-ink-muted">
                         {[lead.company, lead.email].filter(Boolean).join(' · ') ||
                           '—'}
+                      </p>
+                      <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+                        {lead.ownerName ? (
+                          <>Owner · <span className="text-ink-muted">{lead.ownerName}</span></>
+                        ) : (
+                          'Unassigned'
+                        )}
                       </p>
                       {lead.tags.length > 0 ? (
                         <div className="mt-1.5 flex flex-wrap gap-1">

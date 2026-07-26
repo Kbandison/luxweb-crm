@@ -3,11 +3,13 @@ import type {
   ClientActivity,
   ContactRow,
   ContractRow,
+  LeadOwnerOption,
   NoteRow,
   PortalAccessStatus,
   ProposalRow,
 } from '@/lib/queries/admin';
 import { PortalAccessControl } from '@/components/admin/contacts/portal-access-control';
+import { LeadOwnerControl } from './lead-owner-control';
 import { DeleteContactButton } from '@/components/admin/contacts/delete-button';
 import { EditContactDrawer } from '@/components/admin/contacts/edit-contact-drawer';
 import { NotesPanel } from '@/components/admin/clients/notes-panel';
@@ -31,6 +33,7 @@ export function LeadDetail({
   contracts = [],
   notes = [],
   activity = [],
+  owners = [],
 }: {
   lead: ContactRow;
   portalStatus: PortalAccessStatus;
@@ -38,6 +41,7 @@ export function LeadDetail({
   contracts?: ContractRow[];
   notes?: NoteRow[];
   activity?: ClientActivity[];
+  owners?: LeadOwnerOption[];
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -74,6 +78,12 @@ export function LeadDetail({
                 contactId={lead.id}
                 contactEmail={lead.email}
                 contactName={lead.fullName}
+              />
+              <LeadOwnerControl
+                contactId={lead.id}
+                currentOwnerId={lead.ownerId}
+                currentOwnerName={lead.ownerName}
+                owners={owners}
               />
             </div>
           </div>

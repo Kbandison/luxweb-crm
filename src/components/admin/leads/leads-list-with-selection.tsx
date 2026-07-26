@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ContactRow } from '@/lib/queries/admin';
+import type { ContactRow, LeadOwnerOption } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -22,6 +22,8 @@ export function LeadsListWithSelection({
   searchParams,
   totalCount,
   newLeadSlot,
+  owners = [],
+  currentOwner = '',
 }: {
   rows: ContactRow[];
   selectedId: string | null;
@@ -30,6 +32,8 @@ export function LeadsListWithSelection({
   searchParams: Record<string, string | string[] | undefined>;
   totalCount: number;
   newLeadSlot?: React.ReactNode;
+  owners?: LeadOwnerOption[];
+  currentOwner?: string;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -155,6 +159,8 @@ export function LeadsListWithSelection({
           selectedIds={selected}
           onToggleRow={toggleRow}
           onToggleAll={toggleAll}
+          owners={owners}
+          currentOwner={currentOwner}
         />
       </div>
 
