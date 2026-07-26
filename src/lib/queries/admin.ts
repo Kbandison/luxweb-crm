@@ -1,6 +1,7 @@
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { applyListParams, type ListParams } from '@/lib/list-params';
+import { hasCapability, type Role } from '@/lib/auth/permissions';
 
 /**
  * Shape returned by paginated list queries. `totalCount` reflects the size
@@ -341,6 +342,16 @@ export type ContactRow = {
   leadScore: number;
   createdAt: string;
   userId: string | null;
+  /** The internal user who owns this lead (creator, or reassigned). */
+  ownerId: string | null;
+  /** Resolved display name for ownerId, or null when unassigned. */
+  ownerName: string | null;
+};
+
+export type LeadOwnerOption = {
+  userId: string;
+  name: string;
+  role: Role;
 };
 
 /**
@@ -396,6 +407,8 @@ export async function getContacts(q?: string): Promise<ContactRow[]> {
       leadScore: r.lead_score ?? 0,
       createdAt: r.created_at,
       userId: r.user_id,
+      ownerId: null,
+      ownerName: null,
     }));
   } catch {
     return [];
@@ -457,9 +470,47 @@ function clientFilterList(ids: Set<string>): string {
   return `(${Array.from(ids).join(',')})`;
 }
 
+/**
+ * Resolve owner user ids to display names. Prefers a linked team member's
+ * name (authoritative, always set) over the crm.users profile name, falling
+ * back to email. Returns a map keyed by user id.
+ */
+async function resolveOwnerNames(
+  ownerIds: Array<string | null>,
+): Promise<Map<string, string>> {
+  const ids = [...new Set(ownerIds.filter((v): v is string => !!v))];
+  const map = new Map<string, string>();
+  if (ids.length === 0) return map;
+  try {
+    const sb = supabaseAdmin();
+    const [usersRes, membersRes] = await Promise.all([
+      sb.from('users').select('id, full_name, email').in('id', ids),
+      sb.from('team_members').select('user_id, full_name').in('user_id', ids),
+    ]);
+    const memberName = new Map<string, string>();
+    for (const m of (membersRes.data ?? []) as {
+      user_id: string | null;
+      full_name: string;
+    }[]) {
+      if (m.user_id) memberName.set(m.user_id, m.full_name);
+    }
+    for (const u of (usersRes.data ?? []) as {
+      id: string;
+      full_name: string | null;
+      email: string;
+    }[]) {
+      map.set(u.id, memberName.get(u.id) ?? u.full_name ?? u.email);
+    }
+  } catch {
+    /* leave names unresolved — the UI shows "—" */
+  }
+  return map;
+}
+
 async function fetchContactsPaginated(
   params: ListParams,
   scope: 'leads' | 'clients',
+  ownerId?: string,
 ): Promise<PaginatedResult<ContactRow>> {
   try {
     const clientIds = await getClientContactIds();
@@ -467,7 +518,7 @@ async function fetchContactsPaginated(
     let query = supabaseAdmin()
       .from('contacts')
       .select(
-        'id, full_name, email, phone, company, source, tags, lead_score, created_at, user_id',
+        'id, full_name, email, phone, company, source, tags, lead_score, created_at, user_id, owner_id',
         { count: 'exact' },
       );
 
@@ -480,6 +531,14 @@ async function fetchContactsPaginated(
         return { rows: [], totalCount: 0, hasMore: false };
       }
       query = query.in('id', Array.from(clientIds));
+    }
+
+    // Optional owner filter ("show only X's leads").
+    if (ownerId) {
+      query =
+        ownerId === 'unassigned'
+          ? query.is('owner_id', null)
+          : query.eq('owner_id', ownerId);
     }
 
     if (params.q) {
@@ -503,7 +562,10 @@ async function fetchContactsPaginated(
       lead_score: number | null;
       created_at: string;
       user_id: string | null;
+      owner_id: string | null;
     }[];
+
+    const ownerNames = await resolveOwnerNames(rows.map((r) => r.owner_id));
 
     const mapped: ContactRow[] = rows.map((r) => ({
       id: r.id,
@@ -516,6 +578,8 @@ async function fetchContactsPaginated(
       leadScore: r.lead_score ?? 0,
       createdAt: r.created_at,
       userId: r.user_id,
+      ownerId: r.owner_id,
+      ownerName: r.owner_id ? (ownerNames.get(r.owner_id) ?? null) : null,
     }));
 
     const totalCount = count ?? mapped.length;
@@ -529,10 +593,47 @@ async function fetchContactsPaginated(
   }
 }
 
+/**
+ * Internal users who can own a lead (owner/admin/sales/contractor — anyone
+ * with manage_leads or manage_own_leads). Used to populate the reassign
+ * dropdown and the owner filter.
+ */
+export async function getAssignableLeadOwners(): Promise<LeadOwnerOption[]> {
+  try {
+    const sb = supabaseAdmin();
+    const { data: users } = await sb
+      .from('users')
+      .select('id, full_name, email, role');
+    const internal = ((users ?? []) as {
+      id: string;
+      full_name: string | null;
+      email: string;
+      role: Role;
+    }[]).filter(
+      (u) =>
+        hasCapability(u.role, 'manage_leads') ||
+        hasCapability(u.role, 'manage_own_leads'),
+    );
+    if (internal.length === 0) return [];
+
+    const names = await resolveOwnerNames(internal.map((u) => u.id));
+    return internal
+      .map((u) => ({
+        userId: u.id,
+        name: names.get(u.id) ?? u.full_name ?? u.email,
+        role: u.role,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch {
+    return [];
+  }
+}
+
 export async function getLeadsPaginated(
   params: ListParams,
+  ownerId?: string,
 ): Promise<PaginatedResult<ContactRow>> {
-  return fetchContactsPaginated(params, 'leads');
+  return fetchContactsPaginated(params, 'leads', ownerId);
 }
 
 async function enrichClientRows(
@@ -689,6 +790,8 @@ export async function getContactsForExport(
       leadScore: r.lead_score ?? 0,
       createdAt: r.created_at,
       userId: r.user_id,
+      ownerId: null,
+      ownerName: null,
     }));
   } catch {
     return [];
@@ -1592,11 +1695,13 @@ export async function getContactDetail(id: string): Promise<ContactRow | null> {
     const { data } = await supabaseAdmin()
       .from('contacts')
       .select(
-        'id, full_name, email, phone, company, source, tags, lead_score, created_at, user_id',
+        'id, full_name, email, phone, company, source, tags, lead_score, created_at, user_id, owner_id',
       )
       .eq('id', id)
       .single();
     if (!data) return null;
+    const ownerId = (data.owner_id as string | null) ?? null;
+    const ownerNames = await resolveOwnerNames([ownerId]);
     return {
       id: data.id as string,
       fullName: data.full_name as string,
@@ -1608,6 +1713,8 @@ export async function getContactDetail(id: string): Promise<ContactRow | null> {
       leadScore: (data.lead_score as number | null) ?? 0,
       createdAt: data.created_at as string,
       userId: (data.user_id as string | null) ?? null,
+      ownerId,
+      ownerName: ownerId ? (ownerNames.get(ownerId) ?? null) : null,
     };
   } catch {
     return null;

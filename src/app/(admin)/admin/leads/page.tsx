@@ -1,5 +1,6 @@
 import { Topbar } from '@/components/admin/topbar';
 import {
+  getAssignableLeadOwners,
   getContactActivity,
   getContactContracts,
   getContactDetail,
@@ -25,15 +26,17 @@ export default async function LeadsPage({
 }) {
   const sp = await searchParams;
   const leadId = typeof sp.lead === 'string' ? sp.lead : undefined;
+  const ownerFilter = typeof sp.owner === 'string' ? sp.owner : undefined;
 
   const params = parseListParams(sp, {
     defaultSort: 'created_at',
     allowedSorts: CONTACT_SORTS,
   });
 
-  const [result, selected] = await Promise.all([
-    getLeadsPaginated(params),
+  const [result, selected, owners] = await Promise.all([
+    getLeadsPaginated(params, ownerFilter),
     leadId ? getContactDetail(leadId) : Promise.resolve(null),
+    getAssignableLeadOwners(),
   ]);
   const [proposals, contracts, notes, activity] = selected
     ? await Promise.all([
@@ -64,6 +67,8 @@ export default async function LeadsPage({
               searchParams={sp}
               totalCount={result.totalCount}
               newLeadSlot={<NewLeadDrawer />}
+              owners={owners}
+              currentOwner={ownerFilter ?? ''}
             />
             <PaginationFooter
               page={params.page}
@@ -84,6 +89,7 @@ export default async function LeadsPage({
                 contracts={contracts}
                 notes={notes}
                 activity={activity}
+                owners={owners}
               />
             ) : (
               <LeadDetailEmpty />
