@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { getSession } from '@/lib/supabase/session';
 import { markThreadRead, threadBelongsToUser } from '@/lib/queries/messages';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { isContractorAssigned, projectIdForThread } from '@/lib/staff/access';
 
 export const runtime = 'nodejs';
 
@@ -13,11 +14,6 @@ export async function PATCH(req: Request) {
   if (!session) {
     return Response.json({ error: 'Unauthenticated' }, { status: 401 });
   }
-  // Contractor messaging is assignment-scoped and lands with the staff portal
-  // (Pass 2); fail closed until then.
-  if (session.role === 'contractor') {
-    return Response.json({ error: 'Not found' }, { status: 404 });
-  }
 
   const raw = await req.json().catch(() => ({}));
   const parsed = Schema.safeParse(raw);
@@ -28,6 +24,15 @@ export async function PATCH(req: Request) {
   if (session.role === 'client') {
     const ok = await threadBelongsToUser(parsed.data.thread_id, session.userId);
     if (!ok) return Response.json({ error: 'Not found' }, { status: 404 });
+  } else if (session.role === 'contractor') {
+    // Contractors may only mark-read threads on their assigned projects.
+    const projectId = await projectIdForThread(parsed.data.thread_id);
+    if (
+      !projectId ||
+      !(await isContractorAssigned(session.userId, projectId))
+    ) {
+      return Response.json({ error: 'Not found' }, { status: 404 });
+    }
   }
 
   await markThreadRead(parsed.data.thread_id, session.userId);

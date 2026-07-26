@@ -6,6 +6,7 @@ import { notify, getAdminUserIds, getContactUserId } from '@/lib/notifications';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 import { truncateGraphemes } from '@/lib/text';
 import { flattenJoin } from '@/lib/array-join';
+import { isContractorAssigned } from '@/lib/staff/access';
 
 export const runtime = 'nodejs';
 
@@ -25,13 +26,6 @@ export async function POST(req: Request) {
     const session = await getSession();
     if (!session) {
       return Response.json({ error: 'Unauthenticated' }, { status: 401 });
-    }
-
-    // Assignment-scoped messaging for contractors arrives with the staff
-    // portal (Pass 2). Until then fail closed rather than allow a contractor
-    // to post to a project they may not be assigned to.
-    if (session.role === 'contractor') {
-      return Response.json({ error: 'Not found' }, { status: 404 });
     }
 
     // 30 messages/min per user. Cheap enough to be transparent in normal
@@ -72,6 +66,11 @@ export async function POST(req: Request) {
       const r = project as unknown as Row;
       const contact = flattenJoin(r.contacts);
       if (contact?.user_id !== session.userId) {
+        return Response.json({ error: 'Not found' }, { status: 404 });
+      }
+    } else if (session.role === 'contractor') {
+      // Contractors may only post on projects they're assigned to.
+      if (!(await isContractorAssigned(session.userId, parsed.data.project_id))) {
         return Response.json({ error: 'Not found' }, { status: 404 });
       }
     }
