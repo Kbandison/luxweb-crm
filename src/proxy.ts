@@ -1,6 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import {
+  hasCapability,
+  isBackOffice,
+  portalHomeFor,
+  requiredCapabilityForAdminPath,
+  type Role,
+} from '@/lib/auth/permissions';
 
 // Next 16: `middleware.ts` → `proxy.ts`. Runtime is nodejs (required —
 // the service-role admin client won't run on edge).
@@ -55,10 +62,12 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
   const isClientPath =
     pathname.startsWith('/portal') || pathname.startsWith('/api/client');
+  const isStaffPath =
+    pathname.startsWith('/staff') || pathname.startsWith('/api/staff');
 
   // Unauthenticated
   if (!user) {
-    if (isAdminPath || isClientPath) {
+    if (isAdminPath || isClientPath || isStaffPath) {
       const dest = new URL('/login', request.url);
       dest.searchParams.set('next', pathname);
       return NextResponse.redirect(dest);
@@ -67,14 +76,14 @@ export async function proxy(request: NextRequest) {
   }
 
   // Authenticated — resolve role from crm.users.
-  let role: 'admin' | 'client' | null = null;
+  let role: Role | null = null;
   try {
     const { data } = await supabaseAdmin()
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
-    role = (data?.role as 'admin' | 'client' | undefined) ?? null;
+    role = (data?.role as Role | undefined) ?? null;
   } catch {
     role = null;
   }
@@ -93,19 +102,39 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(dest);
   }
 
-  // Bounce signed-in users away from auth pages.
+  // Bounce signed-in users away from auth pages, to their own home.
   if (isAuthPath) {
-    const dest = role === 'admin' ? '/admin/dashboard' : '/portal/dashboard';
-    return NextResponse.redirect(new URL(dest, request.url));
+    return NextResponse.redirect(new URL(portalHomeFor(role), request.url));
   }
 
-  // Role mismatch — push to the user's own dashboard (404-on-scoping is
-  // the job of the server guards; this gate is coarse-grained).
-  if (isAdminPath && role !== 'admin') {
-    return NextResponse.redirect(new URL('/portal/dashboard', request.url));
+  // Role mismatch — push to the user's own home (fine-grained 404-on-scoping
+  // is the job of the server guards; this gate is coarse-grained).
+  //   /admin   → back-office roles (owner / manager / finance)
+  //   /staff   → contractor
+  //   /portal  → client
+  if (isAdminPath && !isBackOffice(role)) {
+    return NextResponse.redirect(new URL(portalHomeFor(role), request.url));
+  }
+  // Capability gate for /admin *pages* — confine each back-office role to the
+  // sections it can access (API routes enforce their own capability). A role
+  // that lacks the section's capability is sent to its dashboard, which every
+  // back-office role can see. API paths are skipped here (guarded per-route).
+  if (
+    pathname.startsWith('/admin') &&
+    !pathname.startsWith('/api/')
+  ) {
+    const needed = requiredCapabilityForAdminPath(pathname);
+    if (needed && !hasCapability(role, needed)) {
+      return NextResponse.redirect(
+        new URL('/admin/dashboard', request.url),
+      );
+    }
+  }
+  if (isStaffPath && role !== 'contractor') {
+    return NextResponse.redirect(new URL(portalHomeFor(role), request.url));
   }
   if (isClientPath && role !== 'client') {
-    return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+    return NextResponse.redirect(new URL(portalHomeFor(role), request.url));
   }
 
   return response;

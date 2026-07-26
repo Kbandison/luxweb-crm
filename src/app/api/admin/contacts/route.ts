@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireCapability } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -18,7 +18,7 @@ const CreateSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('manage_leads');
     const limit = limitByKey(`admin/contacts:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
     if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const raw = await req.json().catch(() => ({}));
@@ -41,6 +41,9 @@ export async function POST(req: Request) {
         source: parsed.data.source ?? null,
         tags: parsed.data.tags ?? [],
         lead_score: parsed.data.lead_score ?? 0,
+        // The creator owns the lead — lets contractors manage their own leads
+        // while the owner sees all.
+        owner_id: session.userId,
       })
       .select()
       .single();
@@ -69,7 +72,7 @@ export async function POST(req: Request) {
     const dealTitle = `${company ?? fullName} — new inquiry`;
     const { data: deal } = await sb
       .from('deals')
-      .insert({ contact_id: contactId, title: dealTitle })
+      .insert({ contact_id: contactId, title: dealTitle, owner_id: session.userId })
       .select('id')
       .single();
     if (deal) {

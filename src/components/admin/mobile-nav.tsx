@@ -6,9 +6,10 @@ import { Wordmark } from '@/components/brand/wordmark';
 import { Dialog } from '@/components/ui/dialog';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
+import { hasCapability, type Role } from '@/lib/auth/permissions';
 import {
-  ADMIN_NAV,
   ADMIN_NAV_GROUPS,
+  navItemsForRole,
   IconAudit,
   IconLogout,
   IconSettings,
@@ -17,6 +18,7 @@ import {
 export type MobileNavProps = {
   userEmail: string;
   userName?: string | null;
+  role: Role;
 };
 
 /**
@@ -24,11 +26,12 @@ export type MobileNavProps = {
  * drawer from the left with the same nav items as the desktop sidebar,
  * plus Settings / Audit log / Sign out.
  */
-export function MobileNav({ userEmail, userName }: MobileNavProps) {
+export function MobileNav({ userEmail, userName, role }: MobileNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const navItems = navItemsForRole(role);
 
   async function handleSignOut() {
     setBusy(true);
@@ -114,7 +117,7 @@ export function MobileNav({ userEmail, userName }: MobileNavProps) {
             {/* Nav links */}
             <nav className="flex-1 overflow-y-auto px-3 pb-4">
               {ADMIN_NAV_GROUPS.map((group) => {
-                const items = ADMIN_NAV.filter((n) => n.group === group);
+                const items = navItems.filter((n) => n.group === group);
                 if (items.length === 0) return null;
                 return (
                   <div key={group}>
@@ -172,26 +175,30 @@ export function MobileNav({ userEmail, userName }: MobileNavProps) {
                 </p>
               </div>
               <ul className="space-y-1">
-                <li>
-                  <Link
-                    href="/admin/settings"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-md px-3 py-2.5 font-sans text-sm text-ink-muted transition-colors hover:bg-surface/60 hover:text-ink"
-                  >
-                    <IconSettings className="h-[18px] w-[18px] shrink-0 text-ink-subtle" />
-                    <span className="font-medium">Settings</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/admin/audit"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-md px-3 py-2.5 font-sans text-sm text-ink-muted transition-colors hover:bg-surface/60 hover:text-ink"
-                  >
-                    <IconAudit className="h-[18px] w-[18px] shrink-0 text-ink-subtle" />
-                    <span className="font-medium">Audit log</span>
-                  </Link>
-                </li>
+                {hasCapability(role, 'manage_settings') ? (
+                  <li>
+                    <Link
+                      href="/admin/settings"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 rounded-md px-3 py-2.5 font-sans text-sm text-ink-muted transition-colors hover:bg-surface/60 hover:text-ink"
+                    >
+                      <IconSettings className="h-[18px] w-[18px] shrink-0 text-ink-subtle" />
+                      <span className="font-medium">Settings</span>
+                    </Link>
+                  </li>
+                ) : null}
+                {hasCapability(role, 'manage_team') ? (
+                  <li>
+                    <Link
+                      href="/admin/audit"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 rounded-md px-3 py-2.5 font-sans text-sm text-ink-muted transition-colors hover:bg-surface/60 hover:text-ink"
+                    >
+                      <IconAudit className="h-[18px] w-[18px] shrink-0 text-ink-subtle" />
+                      <span className="font-medium">Audit log</span>
+                    </Link>
+                  </li>
+                ) : null}
               </ul>
             </nav>
 

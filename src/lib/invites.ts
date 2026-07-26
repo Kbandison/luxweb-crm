@@ -2,6 +2,7 @@ import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify } from '@/lib/notifications';
+import type { Role } from '@/lib/auth/permissions';
 
 export type PortalInviteResult =
   | { ok: true; userId: string; resend: boolean }
@@ -107,6 +108,113 @@ export async function sendPortalInvite(opts: {
     return { ok: true, userId: newUserId, resend: isResend };
   } catch (err) {
     console.warn('[sendPortalInvite] failed:', err);
+    return {
+      ok: false,
+      status: 500,
+      error: err instanceof Error ? err.message : 'Invite failed',
+    };
+  }
+}
+
+/**
+ * Provision (or re-link) a team member's auth user, promote their crm.users
+ * row to the access role assigned on the team_members record, and email a
+ * branded staff invite. The team-member analogue of {@link sendPortalInvite}.
+ *
+ * The handle_new_user trigger creates the crm.users row defaulting to
+ * 'client'; we immediately overwrite the role from team_members.role so the
+ * member lands in the right area (proxy routes by role). Re-invites also
+ * re-sync the role in case it changed since the first send. Never throws.
+ */
+export async function sendStaffInvite(opts: {
+  teamMemberId: string;
+  origin: string;
+  actorId: string | null;
+}): Promise<PortalInviteResult> {
+  try {
+    const sb = supabaseAdmin();
+    const { data: member } = await sb
+      .from('team_members')
+      .select('id, email, full_name, user_id, role')
+      .eq('id', opts.teamMemberId)
+      .single();
+
+    if (!member) return { ok: false, status: 404, error: 'Team member not found' };
+    if (!member.email) {
+      return { ok: false, status: 400, error: 'Team member has no email on file.' };
+    }
+
+    const memberRole = (member.role as Role) ?? 'contractor';
+    let isResend = Boolean(member.user_id);
+
+    const genLink = (type: 'invite' | 'magiclink') =>
+      sb.auth.admin.generateLink({
+        type,
+        email: member.email as string,
+        options: {
+          data: { full_name: member.full_name ?? '' },
+          redirectTo: `${opts.origin}/accept-invite`,
+        },
+      });
+
+    let { data, error } = await genLink(isResend ? 'magiclink' : 'invite');
+    if (
+      error &&
+      !isResend &&
+      /already|exists|registered/i.test(error.message ?? '')
+    ) {
+      isResend = true;
+      ({ data, error } = await genLink('magiclink'));
+    }
+
+    if (error || !data?.properties?.hashed_token || !data?.user?.id) {
+      return {
+        ok: false,
+        status: 500,
+        error: error?.message ?? 'Failed to generate invite link',
+      };
+    }
+
+    const inviteType = isResend ? 'magiclink' : 'invite';
+    const inviteUrl = `${opts.origin}/accept-invite?token_hash=${encodeURIComponent(
+      data.properties.hashed_token,
+    )}&type=${inviteType}`;
+    const newUserId = data.user.id;
+
+    // Link the team member to their auth user if not already.
+    if (!member.user_id) {
+      await sb
+        .from('team_members')
+        .update({ user_id: newUserId })
+        .eq('id', member.id as string);
+    }
+
+    // Promote the crm.users row from the trigger's default 'client' to the
+    // assigned access role (and re-sync on resend).
+    await sb
+      .from('users')
+      .update({ role: memberRole })
+      .eq('id', newUserId);
+
+    await notify({
+      type: 'invite',
+      userId: newUserId,
+      email: member.email as string,
+      inviteUrl,
+      audience: 'staff',
+    });
+
+    await writeAudit({
+      actor_id: opts.actorId,
+      action: 'send',
+      entity_type: 'team_member_invite',
+      entity_id: member.id as string,
+      diff: { email: member.email, new_user_id: newUserId, role: memberRole, resend: isResend },
+    });
+
+    return { ok: true, userId: newUserId, resend: isResend };
+  } catch (err) {
+    console.warn('[sendStaffInvite] failed:', err);
     return {
       ok: false,
       status: 500,

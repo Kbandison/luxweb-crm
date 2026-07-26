@@ -1,15 +1,23 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Topbar } from '@/components/admin/topbar';
 import { buttonVariants } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionHead } from '@/components/ui/section-head';
 import { StatCard } from '@/components/ui/stat-card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { getSession } from '@/lib/supabase/session';
+import { hasCapability } from '@/lib/auth/permissions';
 import { getEarningsOverview } from '@/lib/queries/admin';
 import { formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 export default async function AdminEarningsPage() {
+  const session = await getSession();
+  // Financial records require the finance capability (owner / admin / finance).
+  if (!session || !hasCapability(session.role, 'view_finance')) {
+    redirect('/admin/dashboard');
+  }
   const o = await getEarningsOverview();
   const monthDelta = o.lastMonth.paidCents
     ? Math.round(

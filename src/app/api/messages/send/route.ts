@@ -27,6 +27,13 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Unauthenticated' }, { status: 401 });
     }
 
+    // Assignment-scoped messaging for contractors arrives with the staff
+    // portal (Pass 2). Until then fail closed rather than allow a contractor
+    // to post to a project they may not be assigned to.
+    if (session.role === 'contractor') {
+      return Response.json({ error: 'Not found' }, { status: 404 });
+    }
+
     // 30 messages/min per user. Cheap enough to be transparent in normal
     // use; pinches off runaway loops or abuse.
     const limit = limitByKey(`messages:${session.userId}`, {
@@ -95,8 +102,9 @@ export async function POST(req: Request) {
     // emoji aren't cut mid-codepoint into "�".
     const snippet = truncateGraphemes(parsed.data.body, 117);
 
-    if (session.role === 'admin') {
-      // Admin → find the client user for this project's contact
+    if (session.role !== 'client') {
+      // Studio-side sender (any back-office role) → notify the client user
+      // for this project's contact.
       const { data: proj } = await supabaseAdmin()
         .from('projects')
         .select('contact_id')

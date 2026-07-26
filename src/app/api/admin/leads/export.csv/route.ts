@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireCapability } from '@/lib/auth/guards';
 import {
   getContactsForExport,
   getLeadInquiriesByContactId,
@@ -13,7 +13,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export async function GET(req: Request) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('manage_leads');
 
     const limit = limitByKey(`export:leads:admin:${session.userId}`, {
       capacity: 60,

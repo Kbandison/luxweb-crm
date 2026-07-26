@@ -1,7 +1,13 @@
 import 'server-only';
 import { getSession, type Session } from '@/lib/supabase/session';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import {
+  hasCapability,
+  isBackOffice,
+  type Capability,
+} from '@/lib/auth/permissions';
 
+/** Owner-only (the internal `admin` role). Guards the most sensitive routes. */
 export async function requireAdmin(): Promise<Session> {
   const s = await getSession();
   if (!s || s.role !== 'admin') {
@@ -16,6 +22,63 @@ export async function requireClient(): Promise<Session> {
     throw new Response('Forbidden', { status: 403 });
   }
   return s;
+}
+
+/** Any back-office role (owner / scoped-admin / finance) — the /admin area. */
+export async function requireBackOffice(): Promise<Session> {
+  const s = await getSession();
+  if (!s || !isBackOffice(s.role)) {
+    throw new Response('Forbidden', { status: 403 });
+  }
+  return s;
+}
+
+/**
+ * Require a specific capability. Preferred guard for graduated access — a
+ * route protected by `requireCapability('view_finance')` admits any role
+ * granted that capability (owner, manager, finance) without naming them.
+ */
+export async function requireCapability(cap: Capability): Promise<Session> {
+  const s = await getSession();
+  if (!s || !hasCapability(s.role, cap)) {
+    throw new Response('Forbidden', { status: 403 });
+  }
+  return s;
+}
+
+/** Assignment-scoped staff (the `contractor` role) — the /staff portal. */
+export async function requireContractor(): Promise<Session> {
+  const s = await getSession();
+  if (!s || s.role !== 'contractor') {
+    throw new Response('Forbidden', { status: 403 });
+  }
+  return s;
+}
+
+/**
+ * Verify a contractor is actually assigned to the requested project. Returns
+ * 404 (not 403) on failure so we don't leak the existence of projects they
+ * aren't on — same pattern as requireProjectAccess for clients.
+ */
+export async function requireAssignedProject(projectId: string) {
+  const session = await requireContractor();
+  const { data: member } = await supabaseAdmin()
+    .from('team_members')
+    .select('id')
+    .eq('user_id', session.userId)
+    .maybeSingle();
+  const teamMemberId = (member as { id: string } | null)?.id ?? null;
+  if (!teamMemberId) throw new Response('Not found', { status: 404 });
+
+  const { data: assignment } = await supabaseAdmin()
+    .from('project_assignments')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('team_member_id', teamMemberId)
+    .maybeSingle();
+  if (!assignment) throw new Response('Not found', { status: 404 });
+
+  return { session, teamMemberId };
 }
 
 /**

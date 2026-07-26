@@ -5,9 +5,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Wordmark } from '@/components/brand/wordmark';
 import { supabaseBrowser } from '@/lib/supabase/browser';
 import { cn } from '@/lib/utils';
+import { hasCapability, ROLE_LABELS, type Role } from '@/lib/auth/permissions';
 import {
-  ADMIN_NAV,
   ADMIN_NAV_GROUPS,
+  navItemsForRole,
   IconAudit,
   IconLogout,
   IconSettings,
@@ -16,11 +17,13 @@ import {
 export type SidebarProps = {
   userEmail: string;
   userName?: string | null;
+  role: Role;
 };
 
-export function Sidebar({ userEmail, userName }: SidebarProps) {
+export function Sidebar({ userEmail, userName, role }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const navItems = navItemsForRole(role);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -39,14 +42,14 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
       }
       const digit = Number(e.key);
       if (!Number.isInteger(digit)) return;
-      const item = ADMIN_NAV.find((n) => n.shortcut === digit);
+      const item = navItems.find((n) => n.shortcut === digit);
       if (!item) return;
       e.preventDefault();
       router.push(item.href);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [router]);
+  }, [router, navItems]);
 
   return (
     <aside className="relative isolate hidden md:flex md:h-dvh md:w-64 md:flex-col md:self-start md:border-r md:border-border md:bg-gradient-to-b md:from-surface md:via-surface md:to-surface-2 md:sticky md:top-0">
@@ -79,7 +82,7 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
       {/* Nav */}
       <div className="flex-1 overflow-y-auto">
         {ADMIN_NAV_GROUPS.map((group) => {
-          const items = ADMIN_NAV.filter((n) => n.group === group);
+          const items = navItems.filter((n) => n.group === group);
           if (items.length === 0) return null;
           return (
             <div key={group}>
@@ -130,17 +133,19 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
                       <span className={cn('font-medium', active && 'tracking-tight')}>
                         {item.label}
                       </span>
-                      <kbd
-                        className={cn(
-                          'ml-auto hidden rounded border border-border bg-surface/70 px-1.5 py-0.5 font-mono text-[10px] tabular-nums transition-all lg:inline',
-                          active
-                            ? 'border-copper/30 bg-surface text-copper/80'
-                            : 'text-ink-subtle group-hover:border-border-strong group-hover:text-ink-muted',
-                        )}
-                        aria-hidden
-                      >
-                        ⌥{item.shortcut}
-                      </kbd>
+                      {item.shortcut !== undefined ? (
+                        <kbd
+                          className={cn(
+                            'ml-auto hidden rounded border border-border bg-surface/70 px-1.5 py-0.5 font-mono text-[10px] tabular-nums transition-all lg:inline',
+                            active
+                              ? 'border-copper/30 bg-surface text-copper/80'
+                              : 'text-ink-subtle group-hover:border-border-strong group-hover:text-ink-muted',
+                          )}
+                          aria-hidden
+                        >
+                          ⌥{item.shortcut}
+                        </kbd>
+                      ) : null}
                     </Link>
                   );
                 })}
@@ -152,7 +157,7 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
       </div>
 
       {/* User card with menu */}
-      <UserCard userEmail={userEmail} userName={userName} />
+      <UserCard userEmail={userEmail} userName={userName} role={role} />
     </aside>
   );
 }
@@ -160,7 +165,7 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
 /* -------------------------------------------------------------------------
  * User card + dropdown menu
  * ------------------------------------------------------------------------- */
-function UserCard({ userEmail, userName }: SidebarProps) {
+function UserCard({ userEmail, userName, role }: SidebarProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -203,24 +208,28 @@ function UserCard({ userEmail, userName }: SidebarProps) {
           role="menu"
           className="absolute inset-x-4 bottom-full mb-2 overflow-hidden rounded-xl border border-border bg-surface shadow-[0_8px_32px_-12px_rgba(0,0,0,0.12)]"
         >
-          <Link
-            role="menuitem"
-            href="/admin/settings"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 font-sans text-sm text-ink transition-colors hover:bg-surface-2"
-          >
-            <IconSettings className="h-4 w-4 text-ink-subtle" />
-            <span className="font-medium">Settings</span>
-          </Link>
-          <Link
-            role="menuitem"
-            href="/admin/audit"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 font-sans text-sm text-ink transition-colors hover:bg-surface-2"
-          >
-            <IconAudit className="h-4 w-4 text-ink-subtle" />
-            <span className="font-medium">Audit log</span>
-          </Link>
+          {hasCapability(role, 'manage_settings') ? (
+            <Link
+              role="menuitem"
+              href="/admin/settings"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 font-sans text-sm text-ink transition-colors hover:bg-surface-2"
+            >
+              <IconSettings className="h-4 w-4 text-ink-subtle" />
+              <span className="font-medium">Settings</span>
+            </Link>
+          ) : null}
+          {hasCapability(role, 'manage_team') ? (
+            <Link
+              role="menuitem"
+              href="/admin/audit"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 font-sans text-sm text-ink transition-colors hover:bg-surface-2"
+            >
+              <IconAudit className="h-4 w-4 text-ink-subtle" />
+              <span className="font-medium">Audit log</span>
+            </Link>
+          ) : null}
           <div aria-hidden className="h-px bg-border" />
           <button
             role="menuitem"
@@ -267,7 +276,7 @@ function UserCard({ userEmail, userName }: SidebarProps) {
               <span className="relative inline-block h-1.5 w-1.5 rounded-full bg-success" />
             </span>
             <p className="truncate font-mono text-[10px] uppercase tracking-meta text-ink-muted">
-              Admin · active
+              {ROLE_LABELS[role]} · active
             </p>
           </div>
         </div>

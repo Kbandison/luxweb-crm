@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireBackOffice } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { flattenJoin } from '@/lib/array-join';
 
@@ -53,7 +53,7 @@ function sanitize(input: string): string {
 
 export async function GET(req: Request) {
   try {
-    await requireAdmin();
+    await requireBackOffice();
     const url = new URL(req.url);
     const raw = (url.searchParams.get('q') ?? '').trim();
     if (!raw) {

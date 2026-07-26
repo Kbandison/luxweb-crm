@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { Topbar } from '@/components/admin/topbar';
 import { PageHeader } from '@/components/ui/page-header';
 import { getSession } from '@/lib/supabase/session';
+import { hasCapability } from '@/lib/auth/permissions';
 import { getClientProfile } from '@/lib/queries/client';
 import { AdminSettingsTabs } from '@/components/admin/settings/settings-tabs';
 
@@ -13,6 +14,10 @@ export default async function AdminSettingsPage({
   const { tab } = await searchParams;
   const session = await getSession();
   if (!session) redirect('/login');
+  // Studio settings are owner-only; scoped-admin / finance are bounced.
+  if (!hasCapability(session.role, 'manage_settings')) {
+    redirect('/admin/dashboard');
+  }
 
   const profile = await getClientProfile(session.userId);
   const integrations = readIntegrationStatus();
