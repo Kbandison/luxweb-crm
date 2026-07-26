@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireBackOffice } from '@/lib/auth/guards';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
@@ -18,7 +18,7 @@ const CreateSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const session = await requireAdmin();
+    const session = await requireBackOffice();
     const limit = limitByKey(`admin/notes:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
     if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const raw = await req.json().catch(() => ({}));

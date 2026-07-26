@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireCapability } from '@/lib/auth/guards';
 import { writeAudit } from '@/lib/audit';
 import { decryptSecret } from '@/lib/credentials/crypto';
 import { getCredentialSecret } from '@/lib/queries/admin';
@@ -12,7 +12,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('manage_projects');
 
     // 30 reveals/min per admin. Stops a runaway script from siphoning
     // every secret in the DB at once.

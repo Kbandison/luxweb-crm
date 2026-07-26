@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireCapability } from '@/lib/auth/guards';
 import { getContactsForExport } from '@/lib/queries/admin';
 import { toCsv, csvFilename, csvResponse } from '@/lib/csv';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -10,7 +10,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export async function GET(req: Request) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('manage_clients');
 
     // 60 exports / 60s per admin — generous, but stops an accidental loop.
     const limit = limitByKey(`export:clients:admin:${session.userId}`, {

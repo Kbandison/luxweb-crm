@@ -1,6 +1,6 @@
 import type Stripe from 'stripe';
 import { z } from 'zod';
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireCapability } from '@/lib/auth/guards';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
@@ -25,7 +25,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('manage_care_plans');
     const limit = limitByKey(`admin/projects/[id]/care-plan/enroll:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
     if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id: projectId } = await params;

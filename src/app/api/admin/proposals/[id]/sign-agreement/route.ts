@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireCapability } from '@/lib/auth/guards';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
@@ -36,7 +36,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('manage_proposals');
     const limit = limitByKey(`admin/proposals/[id]/sign-agreement:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
     if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;

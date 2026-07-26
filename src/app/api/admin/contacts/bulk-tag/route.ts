@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireCapability } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -15,7 +15,7 @@ const BodySchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('manage_leads');
 
     // 10 batches / 60s per admin. A single batch may touch up to 500 rows.
     const limit = limitByKey(`bulk-tag:admin:${session.userId}`, {

@@ -142,6 +142,8 @@ export type NotifyEvent =
       /** email the invite was sent to (used for deduping in logs) */
       email: string;
       inviteUrl: string;
+      /** 'client' (default) → portal copy; 'staff' → team workspace copy */
+      audience?: 'client' | 'staff';
     }
   | {
       type: 'new_lead';
@@ -573,12 +575,14 @@ function renderTemplate(
       };
     }
     case 'invite': {
+      const audience = event.audience ?? 'client';
       const props = {
         recipientName,
         inviteUrl: event.inviteUrl,
+        audience,
       };
       return {
-        subject: inviteSubject(),
+        subject: inviteSubject(audience),
         react: createElement(InviteEmail, props),
       };
     }
@@ -722,19 +726,23 @@ function renderTemplate(
  * every admin receives the event. This helper remains for callers that
  * genuinely need a single id (e.g. "the admin" of a scoped concept) and
 /**
- * Resolve every admin user id. Returns `[]` if the lookup fails or no
- * admin exists. Use this for notification fan-out so multi-admin setups
- * route events to all staff, not just the Postgres-ordered first row.
+ * Resolve every back-office user id (owner / manager / finance). Returns `[]`
+ * if the lookup fails or none exist. Use this for internal notification
+ * fan-out so events route to everyone who works the back office, not just the
+ * Postgres-ordered first row.
  *
- * Single-admin case still works: the array has one element and callers
- * loop over it once with no behavior change.
+ * Contractors are intentionally excluded — their notifications are scoped to
+ * their assignments, not studio-wide alerts.
+ *
+ * Single-admin case still works: the array has one element and callers loop
+ * over it once with no behavior change.
  */
 export async function getAdminUserIds(): Promise<string[]> {
   try {
     const { data } = await supabaseAdmin()
       .from('users')
       .select('id')
-      .eq('role', 'admin');
+      .in('role', ['admin', 'manager', 'finance']);
     const rows = (data ?? []) as Array<{ id: string }>;
     return rows.map((r) => r.id).filter((id): id is string => !!id);
   } catch {

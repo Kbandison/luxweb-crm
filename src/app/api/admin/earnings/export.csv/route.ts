@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireCapability } from '@/lib/auth/guards';
 import { getEarningsOverview } from '@/lib/queries/admin';
 import { toCsv, csvFilename, csvResponse } from '@/lib/csv';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 
 export async function GET(_req: Request) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('view_finance');
 
     const limit = limitByKey(`export:earnings:admin:${session.userId}`, {
       capacity: 60,

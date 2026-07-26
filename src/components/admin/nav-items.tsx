@@ -3,6 +3,11 @@
  * Keep icons inline and side-effect-free so this module stays tree-shakable.
  */
 import type { ComponentType, SVGProps } from 'react';
+import {
+  hasCapability,
+  type Capability,
+  type Role,
+} from '@/lib/auth/permissions';
 
 export type AdminNavGroup = 'Pipeline' | 'Delivery' | 'Lifecycle' | 'Money';
 
@@ -17,8 +22,11 @@ export type AdminNavItem = {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
-  shortcut: number;
+  /** Alt+digit shortcut. Omitted for overflow items (only 10 digits exist). */
+  shortcut?: number;
   group: AdminNavGroup;
+  /** Capability required to see this item. Nav filters by role via this. */
+  capability: Capability;
 };
 
 function IconGauge(props: SVGProps<SVGSVGElement>) {
@@ -139,15 +147,32 @@ function IconContract(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconTeam(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...props}>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
 export const ADMIN_NAV: AdminNavItem[] = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: IconGauge, shortcut: 1, group: 'Pipeline' },
-  { href: '/admin/leads', label: 'Leads', icon: IconInbox, shortcut: 2, group: 'Pipeline' },
-  { href: '/admin/pipeline', label: 'Pipeline', icon: IconKanban, shortcut: 3, group: 'Pipeline' },
-  { href: '/admin/clients', label: 'Clients', icon: IconUsers, shortcut: 4, group: 'Delivery' },
-  { href: '/admin/projects', label: 'Projects', icon: IconBriefcase, shortcut: 5, group: 'Delivery' },
-  { href: '/admin/contracts', label: 'Contracts', icon: IconContract, shortcut: 6, group: 'Delivery' },
-  { href: '/admin/care-plans', label: 'Care Plans', icon: IconRefresh, shortcut: 7, group: 'Lifecycle' },
-  { href: '/admin/revisions', label: 'Revisions', icon: IconMessageSquare, shortcut: 8, group: 'Lifecycle' },
-  { href: '/admin/reviews', label: 'Reviews', icon: IconStar, shortcut: 9, group: 'Lifecycle' },
-  { href: '/admin/earnings', label: 'Earnings', icon: IconCoins, shortcut: 0, group: 'Money' },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: IconGauge, shortcut: 1, group: 'Pipeline', capability: 'view_dashboard' },
+  { href: '/admin/leads', label: 'Leads', icon: IconInbox, shortcut: 2, group: 'Pipeline', capability: 'manage_leads' },
+  { href: '/admin/pipeline', label: 'Pipeline', icon: IconKanban, shortcut: 3, group: 'Pipeline', capability: 'manage_leads' },
+  { href: '/admin/clients', label: 'Clients', icon: IconUsers, shortcut: 4, group: 'Delivery', capability: 'manage_clients' },
+  { href: '/admin/projects', label: 'Projects', icon: IconBriefcase, shortcut: 5, group: 'Delivery', capability: 'manage_projects' },
+  { href: '/admin/contracts', label: 'Contracts', icon: IconContract, shortcut: 6, group: 'Delivery', capability: 'manage_contracts' },
+  { href: '/admin/team', label: 'Team', icon: IconTeam, group: 'Delivery', capability: 'manage_team' },
+  { href: '/admin/care-plans', label: 'Care Plans', icon: IconRefresh, shortcut: 7, group: 'Lifecycle', capability: 'manage_care_plans' },
+  { href: '/admin/revisions', label: 'Revisions', icon: IconMessageSquare, shortcut: 8, group: 'Lifecycle', capability: 'manage_revisions' },
+  { href: '/admin/reviews', label: 'Reviews', icon: IconStar, shortcut: 9, group: 'Lifecycle', capability: 'manage_reviews' },
+  { href: '/admin/earnings', label: 'Earnings', icon: IconCoins, shortcut: 0, group: 'Money', capability: 'view_finance' },
 ];
+
+/** The nav items a given role is allowed to see, in declaration order. */
+export function navItemsForRole(role: Role): AdminNavItem[] {
+  return ADMIN_NAV.filter((item) => hasCapability(role, item.capability));
+}

@@ -2,11 +2,12 @@ import 'server-only';
 import { cache } from 'react';
 import { supabaseServer } from './server';
 import { supabaseAdmin } from './admin';
+import type { Role } from '@/lib/auth/permissions';
 
 export type Session = {
   userId: string;
   email: string;
-  role: 'admin' | 'client';
+  role: Role;
 };
 
 /**
@@ -26,7 +27,7 @@ const fetchProfile = cache(async (userId: string) => {
     .eq('id', userId)
     .single();
   if (error || !data) return null;
-  return data as { id: string; email: string; role: 'admin' | 'client' };
+  return data as { id: string; email: string; role: Role };
 });
 
 /**

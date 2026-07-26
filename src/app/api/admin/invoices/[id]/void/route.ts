@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireCapability } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { writeAudit } from '@/lib/audit';
@@ -16,7 +16,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('manage_billing');
     const limit = limitByKey(`admin/invoices/[id]/void:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
     if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const { id } = await params;

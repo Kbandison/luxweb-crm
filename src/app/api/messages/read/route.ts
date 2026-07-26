@@ -13,6 +13,11 @@ export async function PATCH(req: Request) {
   if (!session) {
     return Response.json({ error: 'Unauthenticated' }, { status: 401 });
   }
+  // Contractor messaging is assignment-scoped and lands with the staff portal
+  // (Pass 2); fail closed until then.
+  if (session.role === 'contractor') {
+    return Response.json({ error: 'Not found' }, { status: 404 });
+  }
 
   const raw = await req.json().catch(() => ({}));
   const parsed = Schema.safeParse(raw);

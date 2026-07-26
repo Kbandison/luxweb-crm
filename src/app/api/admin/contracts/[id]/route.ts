@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireCapability } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
@@ -21,7 +21,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('manage_contracts');
     const { id } = await params;
 
     const limit = limitByKey(`contract-void:${session.userId}`, {

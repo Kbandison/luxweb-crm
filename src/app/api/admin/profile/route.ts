@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireBackOffice } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -23,7 +23,7 @@ const UpdateSchema = z.object({
 
 export async function PATCH(req: Request) {
   try {
-    const session = await requireAdmin();
+    const session = await requireBackOffice();
     const limit = limitByKey(`admin/profile:${session.userId}`, { capacity: 60, refillPerSec: 60 / 60 });
     if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
     const raw = await req.json().catch(() => ({}));

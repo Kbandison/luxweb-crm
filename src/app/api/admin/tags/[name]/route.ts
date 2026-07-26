@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requireAdmin } from '@/lib/auth/guards';
+import { requireCapability } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -26,7 +26,7 @@ export async function PATCH(
   { params }: { params: Promise<{ name: string }> },
 ) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('manage_settings');
     const limit = limitByKey(`admin/tags:${session.userId}`, {
       capacity: 30,
       refillPerSec: 30 / 60,
@@ -83,7 +83,7 @@ export async function DELETE(
   { params }: { params: Promise<{ name: string }> },
 ) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCapability('manage_settings');
     const limit = limitByKey(`admin/tags:${session.userId}`, {
       capacity: 30,
       refillPerSec: 30 / 60,

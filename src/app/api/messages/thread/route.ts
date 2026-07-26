@@ -19,6 +19,11 @@ export async function GET(req: NextRequest) {
   if (!session) {
     return Response.json({ error: 'Unauthenticated' }, { status: 401 });
   }
+  // Contractor messaging is assignment-scoped and lands with the staff portal
+  // (Pass 2); fail closed until then.
+  if (session.role === 'contractor') {
+    return Response.json({ error: 'Not found' }, { status: 404 });
+  }
   const projectId = req.nextUrl.searchParams.get('project_id');
   if (!projectId) {
     return Response.json({ error: 'Missing project_id' }, { status: 400 });
