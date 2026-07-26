@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/supabase/session';
 import { PageHeader } from '@/components/ui/page-header';
@@ -31,7 +32,7 @@ export default async function StaffDashboardPage() {
       <PageHeader
         eyebrow="Workspace"
         title={`Welcome, ${firstName}`}
-        description="The projects you're assigned to. Time tracking, your leads, and messaging are coming soon."
+        description="The projects you're assigned to — open one to see milestones, files, and messages. Time tracking and your leads are coming soon."
       />
 
       {projects.length === 0 ? (
@@ -43,21 +44,26 @@ export default async function StaffDashboardPage() {
         <ul className="space-y-3">
           {projects.map((p) => (
             <li key={p.projectId}>
-              <Card padding="md" className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium text-ink">{p.projectName}</p>
-                  {p.roleOnProject ? (
-                    <p className="mt-0.5 font-sans text-xs text-ink-subtle">
-                      {p.roleOnProject}
-                    </p>
-                  ) : null}
-                </div>
-                <StatusPill
-                  label={p.status.replace(/_/g, ' ')}
-                  tone="bg-surface-2 text-ink-muted"
-                  size="sm"
-                />
-              </Card>
+              <Link href={`/staff/projects/${p.projectId}`} className="block">
+                <Card
+                  padding="md"
+                  className="flex items-center justify-between gap-3 transition-colors hover:border-copper/40 hover:bg-surface-2/40"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-ink">{p.projectName}</p>
+                    {p.roleOnProject ? (
+                      <p className="mt-0.5 font-sans text-xs text-ink-subtle">
+                        {p.roleOnProject}
+                      </p>
+                    ) : null}
+                  </div>
+                  <StatusPill
+                    label={p.status.replace(/_/g, ' ')}
+                    tone="bg-surface-2 text-ink-muted"
+                    size="sm"
+                  />
+                </Card>
+              </Link>
             </li>
           ))}
         </ul>

@@ -6,6 +6,7 @@ import {
   getThreadMessages,
 } from '@/lib/queries/messages';
 import { flattenJoin } from '@/lib/array-join';
+import { isContractorAssigned } from '@/lib/staff/access';
 
 export const runtime = 'nodejs';
 
@@ -19,14 +20,16 @@ export async function GET(req: NextRequest) {
   if (!session) {
     return Response.json({ error: 'Unauthenticated' }, { status: 401 });
   }
-  // Contractor messaging is assignment-scoped and lands with the staff portal
-  // (Pass 2); fail closed until then.
-  if (session.role === 'contractor') {
-    return Response.json({ error: 'Not found' }, { status: 404 });
-  }
   const projectId = req.nextUrl.searchParams.get('project_id');
   if (!projectId) {
     return Response.json({ error: 'Missing project_id' }, { status: 400 });
+  }
+  // Contractors may only read threads for projects they're assigned to.
+  if (
+    session.role === 'contractor' &&
+    !(await isContractorAssigned(session.userId, projectId))
+  ) {
+    return Response.json({ error: 'Not found' }, { status: 404 });
   }
 
   // Verify ownership BEFORE materializing a thread row. Otherwise polling
