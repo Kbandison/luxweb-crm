@@ -11,6 +11,7 @@ const TABS: ReadonlyArray<{ slug: string; label: string }> = [
   { slug: '', label: 'Overview' },
   { slug: 'files', label: 'Files' },
   { slug: 'messages', label: 'Messages' },
+  { slug: 'time', label: 'Time' },
 ];
 
 export function StaffProjectNav({ projectId }: { projectId: string }) {

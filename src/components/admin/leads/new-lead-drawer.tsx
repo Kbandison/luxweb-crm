@@ -7,7 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 
-export function NewLeadDrawer() {
+export function NewLeadDrawer({
+  endpoint = '/api/admin/contacts',
+}: {
+  /** Create endpoint. Staff pass '/api/staff/leads' to own the lead. */
+  endpoint?: string;
+} = {}) {
   const router = useRouter();
   const toast = useToast();
   const headingId = useId();
@@ -54,7 +59,7 @@ export function NewLeadDrawer() {
         .filter(Boolean);
       const score = Number(leadScore) || 0;
 
-      const res = await fetch('/api/admin/contacts', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/toast';
 export function EditContactDrawer({
   contactId,
   initial,
+  apiBase = '/api/admin/contacts',
 }: {
   contactId: string;
   initial: {
@@ -26,6 +27,8 @@ export function EditContactDrawer({
     tags: string[];
     leadScore: number;
   };
+  /** PATCH base; the contact id is appended. Staff pass '/api/staff/leads'. */
+  apiBase?: string;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -78,7 +81,7 @@ export function EditContactDrawer({
         Math.min(100, Math.floor(Number(leadScore) || 0)),
       );
 
-      const res = await fetch(`/api/admin/contacts/${contactId}`, {
+      const res = await fetch(`${apiBase}/${contactId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
