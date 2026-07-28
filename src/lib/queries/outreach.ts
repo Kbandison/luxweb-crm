@@ -161,6 +161,115 @@ export async function getProspect(id: string): Promise<ProspectRow | null> {
   }
 }
 
+/* -------------------------------------------------------------------------
+ * Scorecard — Daily Numbers / weekly stats from prospect_calls.
+ *   Dial = any logged call · Conversation = spoke_with_dm · Booked = disposition 'booked'
+ * ------------------------------------------------------------------------- */
+
+export type PeriodStats = {
+  dials: number;
+  conversations: number;
+  booked: number;
+  contactRate: number; // conversations / dials
+  bookRate: number; // booked / conversations
+};
+
+type CallRow = {
+  setter_id: string | null;
+  spoke_with_dm: boolean;
+  disposition: string;
+};
+
+function startOfTodayUtc(): string {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+function startOfWeekUtc(): string {
+  const d = new Date();
+  const day = d.getUTCDay(); // 0=Sun..6=Sat
+  const diff = day === 0 ? -6 : 1 - day; // back to Monday
+  d.setUTCDate(d.getUTCDate() + diff);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+function tally(rows: CallRow[]): PeriodStats {
+  const dials = rows.length;
+  const conversations = rows.filter((r) => r.spoke_with_dm).length;
+  const booked = rows.filter((r) => r.disposition === 'booked').length;
+  return {
+    dials,
+    conversations,
+    booked,
+    contactRate: dials > 0 ? conversations / dials : 0,
+    bookRate: conversations > 0 ? booked / conversations : 0,
+  };
+}
+
+async function fetchCalls(fromIso: string, setterId?: string): Promise<CallRow[]> {
+  try {
+    let q = supabaseAdmin()
+      .from('prospect_calls')
+      .select('setter_id, spoke_with_dm, disposition')
+      .gte('called_at', fromIso);
+    if (setterId) q = q.eq('setter_id', setterId);
+    const { data } = await q;
+    return (data ?? []) as CallRow[];
+  } catch {
+    return [];
+  }
+}
+
+/** Today + this-week stats for one setter (their own dashboard). */
+export async function getSetterScorecard(
+  setterId: string,
+): Promise<{ today: PeriodStats; week: PeriodStats }> {
+  const [today, week] = await Promise.all([
+    fetchCalls(startOfTodayUtc(), setterId).then(tally),
+    fetchCalls(startOfWeekUtc(), setterId).then(tally),
+  ]);
+  return { today, week };
+}
+
+export type SetterScoreRow = {
+  setterId: string;
+  name: string;
+} & PeriodStats;
+
+/** Owner scorecard: studio totals + this-week per-setter breakdown + targets. */
+export async function getOwnerScorecard(): Promise<{
+  today: PeriodStats;
+  week: PeriodStats;
+  perSetter: SetterScoreRow[];
+  settings: OutreachSettings;
+}> {
+  const [todayRows, weekRows, settings, setters] = await Promise.all([
+    fetchCalls(startOfTodayUtc()),
+    fetchCalls(startOfWeekUtc()),
+    getOutreachSettings(),
+    getSetterOptions(),
+  ]);
+  const nameById = new Map(setters.map((s) => [s.userId, s.name]));
+  const bySetter = new Map<string, CallRow[]>();
+  for (const r of weekRows) {
+    if (!r.setter_id) continue;
+    const list = bySetter.get(r.setter_id) ?? [];
+    list.push(r);
+    bySetter.set(r.setter_id, list);
+  }
+  const perSetter: SetterScoreRow[] = [...bySetter.entries()]
+    .map(([setterId, rows]) => ({
+      setterId,
+      name: nameById.get(setterId) ?? 'Unknown',
+      ...tally(rows),
+    }))
+    .sort((a, b) => b.dials - a.dials);
+
+  return { today: tally(todayRows), week: tally(weekRows), perSetter, settings };
+}
+
 export type SetterOption = { userId: string; name: string };
 
 /** Setters (for the owner's per-setter filter). */
