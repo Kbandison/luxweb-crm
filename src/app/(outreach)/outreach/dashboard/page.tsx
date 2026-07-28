@@ -6,9 +6,11 @@ import {
   getOutreachSettings,
 } from '@/lib/queries/outreach';
 import { PageHeader } from '@/components/ui/page-header';
+import { buttonVariants } from '@/components/ui/button';
 import { ProspectDrawer } from '@/components/outreach/prospect-drawer';
 import { ProspectList } from '@/components/outreach/prospect-list';
 import { Scorecard } from '@/components/outreach/scorecard';
+import { OutreachImportButton } from '@/components/outreach/import-button';
 
 export default async function OutreachDashboardPage() {
   const session = await getSession();
@@ -27,7 +29,18 @@ export default async function OutreachDashboardPage() {
         eyebrow="Outreach"
         title="Your call list"
         description="Callbacks due first. Log every dial — tap the number to call, pick an outcome."
-        actions={<ProspectDrawer />}
+        actions={
+          <>
+            <OutreachImportButton />
+            <a
+              href="/api/outreach/prospects/export.csv"
+              className={buttonVariants({ variant: 'secondary', size: 'sm' })}
+            >
+              Export
+            </a>
+            <ProspectDrawer />
+          </>
+        }
       />
       <div className="mt-6">
         <Scorecard
