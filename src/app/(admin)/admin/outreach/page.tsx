@@ -11,6 +11,7 @@ import {
 import { ProspectList } from '@/components/outreach/prospect-list';
 import { Scorecard } from '@/components/outreach/scorecard';
 import { SectionHead } from '@/components/ui/section-head';
+import { buttonVariants } from '@/components/ui/button';
 import { OutreachSetterFilter } from '@/components/admin/outreach/setter-filter';
 
 export default async function AdminOutreachPage({
@@ -42,9 +43,17 @@ export default async function AdminOutreachPage({
           title="Outreach"
           description="Your setters' call lists. The live scorecard and appointments land here next."
           actions={
-            setters.length > 0 ? (
-              <OutreachSetterFilter setters={setters} current={setterId ?? ''} />
-            ) : undefined
+            <>
+              {setters.length > 0 ? (
+                <OutreachSetterFilter setters={setters} current={setterId ?? ''} />
+              ) : null}
+              <a
+                href={`/api/outreach/prospects/export.csv${setterId ? `?setter=${setterId}` : ''}`}
+                className={buttonVariants({ variant: 'secondary', size: 'sm' })}
+              >
+                Export
+              </a>
+            </>
           }
         />
 
