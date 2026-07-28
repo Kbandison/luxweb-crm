@@ -214,6 +214,51 @@ export async function createCalendarEvent(
   }
 }
 
+export type BusyInterval = { start: number; end: number };
+
+/**
+ * Busy intervals on `userId`'s primary calendar in [timeMin, timeMax].
+ * Returns [] when they aren't connected or the call fails (callers then treat
+ * every business-hour slot as open).
+ */
+export async function freeBusy(
+  userId: string,
+  timeMinIso: string,
+  timeMaxIso: string,
+): Promise<BusyInterval[]> {
+  try {
+    const token = await accessTokenFor(userId);
+    if (!token) return [];
+    const res = await fetch(`${CAL_BASE}/freeBusy`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        timeMin: timeMinIso,
+        timeMax: timeMaxIso,
+        items: [{ id: 'primary' }],
+      }),
+    });
+    if (!res.ok) {
+      console.warn('[google] freeBusy failed:', res.status);
+      return [];
+    }
+    const data = (await res.json()) as {
+      calendars?: { primary?: { busy?: { start: string; end: string }[] } };
+    };
+    const busy = data.calendars?.primary?.busy ?? [];
+    return busy.map((b) => ({
+      start: new Date(b.start).getTime(),
+      end: new Date(b.end).getTime(),
+    }));
+  } catch (err) {
+    console.warn('[google] freeBusy error:', err);
+    return [];
+  }
+}
+
 /** Delete a previously-created event (best-effort). */
 export async function deleteCalendarEvent(
   userId: string,
