@@ -64,10 +64,12 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/portal') || pathname.startsWith('/api/client');
   const isStaffPath =
     pathname.startsWith('/staff') || pathname.startsWith('/api/staff');
+  const isOutreachPath =
+    pathname.startsWith('/outreach') || pathname.startsWith('/api/outreach');
 
   // Unauthenticated
   if (!user) {
-    if (isAdminPath || isClientPath || isStaffPath) {
+    if (isAdminPath || isClientPath || isStaffPath || isOutreachPath) {
       const dest = new URL('/login', request.url);
       dest.searchParams.set('next', pathname);
       return NextResponse.redirect(dest);
@@ -131,6 +133,9 @@ export async function proxy(request: NextRequest) {
     }
   }
   if (isStaffPath && role !== 'contractor') {
+    return NextResponse.redirect(new URL(portalHomeFor(role), request.url));
+  }
+  if (isOutreachPath && role !== 'setter') {
     return NextResponse.redirect(new URL(portalHomeFor(role), request.url));
   }
   if (isClientPath && role !== 'client') {

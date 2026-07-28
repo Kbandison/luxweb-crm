@@ -16,6 +16,7 @@ export const ROLE_TONE: Record<Role, string> = {
   finance: 'bg-warning/15 text-warning',
   accountant: 'bg-surface-2 text-warning',
   contractor: 'bg-surface-2 text-ink-muted',
+  setter: 'bg-surface-2 text-copper',
   client: 'bg-surface-2 text-ink-subtle',
 };
 
