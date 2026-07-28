@@ -7,12 +7,19 @@ import {
   getProspects,
   getSetterOptions,
   getOwnerScorecard,
+  getAppointments,
+  getCommissionSummary,
+  getOwnerUserId,
 } from '@/lib/queries/outreach';
+import { getGoogleConnection, googleConfigured } from '@/lib/google/calendar';
+import { formatUSD } from '@/lib/formatters';
 import { ProspectList } from '@/components/outreach/prospect-list';
+import { AppointmentList } from '@/components/outreach/appointment-list';
 import { Scorecard } from '@/components/outreach/scorecard';
 import { SectionHead } from '@/components/ui/section-head';
 import { buttonVariants } from '@/components/ui/button';
 import { OutreachSetterFilter } from '@/components/admin/outreach/setter-filter';
+import { GoogleConnect } from '@/components/admin/outreach/google-connect';
 
 export default async function AdminOutreachPage({
   searchParams,
@@ -27,12 +34,18 @@ export default async function AdminOutreachPage({
   const sp = await searchParams;
   const setterId = typeof sp.setter === 'string' && sp.setter ? sp.setter : undefined;
 
-  const [prospects, setters, scorecard] = await Promise.all([
-    getProspects({ setterId }),
-    getSetterOptions(),
-    getOwnerScorecard(),
-  ]);
+  const ownerId = await getOwnerUserId();
+  const [prospects, setters, scorecard, appointments, commissions, gcal] =
+    await Promise.all([
+      getProspects({ setterId }),
+      getSetterOptions(),
+      getOwnerScorecard(),
+      getAppointments({ setterId }),
+      getCommissionSummary(),
+      ownerId ? getGoogleConnection(ownerId) : Promise.resolve({ connected: false, email: null }),
+    ]);
   const pctFmt = (n: number) => `${Math.round(n * 100)}%`;
+  const totalCommission = commissions.reduce((s, c) => s + c.commissionCents, 0);
 
   return (
     <>
@@ -55,6 +68,13 @@ export default async function AdminOutreachPage({
               </a>
             </>
           }
+        />
+
+        <GoogleConnect
+          connected={gcal.connected}
+          email={gcal.email}
+          configured={googleConfigured()}
+          canConnect={session.role === 'admin'}
         />
 
         <Scorecard
@@ -95,7 +115,48 @@ export default async function AdminOutreachPage({
           </section>
         ) : null}
 
-        <SectionHead number="02" title="Call list" size="md" />
+        <section className="space-y-3">
+          <SectionHead
+            number="02"
+            title="Appointments"
+            description="Mark showed + result to record commission."
+            size="md"
+            right={
+              totalCommission > 0 ? (
+                <span className="font-mono text-sm tabular-nums text-success">
+                  {formatUSD(totalCommission)} commission
+                </span>
+              ) : undefined
+            }
+          />
+          <AppointmentList appointments={appointments} mode="owner" />
+          {commissions.length > 0 ? (
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+                    <th className="px-4 py-2.5 font-medium">Setter</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Won</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Deal value</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Commission</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {commissions.map((c) => (
+                    <tr key={c.setterId} className="border-b border-border/60">
+                      <td className="px-4 py-2.5 font-medium text-ink">{c.name}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-ink-muted">{c.wonCount}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-ink-muted">{formatUSD(c.dealValueCents)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-success">{formatUSD(c.commissionCents)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </section>
+
+        <SectionHead number="03" title="Call list" size="md" />
         <ProspectList prospects={prospects} mode="owner" />
       </main>
     </>

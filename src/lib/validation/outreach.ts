@@ -54,3 +54,24 @@ export const LogCallSchema = z.object({
 });
 
 export type CreateProspectInput = z.infer<typeof CreateProspectSchema>;
+
+export const APPOINTMENT_STATUSES = ['scheduled', 'showed', 'no_show', 'canceled'] as const;
+export const APPOINTMENT_RESULTS = ['pending', 'won', 'lost'] as const;
+
+export const BookAppointmentSchema = z.object({
+  prospect_id: z.string().uuid().optional().nullable(),
+  business_name: z.string().max(200).optional().nullable(),
+  contact_name: z.string().min(1).max(200),
+  phone: z.string().max(60).optional().nullable(),
+  email: z.string().email().max(200).optional().nullable(),
+  scheduled_at: isoish,
+  duration_min: z.number().int().min(5).max(600).optional(),
+  notes: z.string().max(2000).optional().nullable(),
+});
+
+export const UpdateAppointmentSchema = z.object({
+  status: z.enum(APPOINTMENT_STATUSES).optional(),
+  result: z.enum(APPOINTMENT_RESULTS).optional(),
+  deal_value_cents: z.number().int().min(0).max(1_000_000_000).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+});
