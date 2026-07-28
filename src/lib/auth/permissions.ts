@@ -30,6 +30,7 @@ export type Role =
   | 'finance'
   | 'accountant'
   | 'contractor'
+  | 'setter'
   | 'client';
 
 export type Capability =
@@ -48,6 +49,7 @@ export type Capability =
   | 'manage_team' // add/edit team members, assign roles + project assignments
   | 'assign_owner_role' // grant the owner-level (admin) role to a member
   | 'manage_settings'
+  | 'manage_outreach' // setter call list + prospects (owner/manager see all)
   | 'view_assigned_projects' // contractor: only projects they're assigned to
   | 'log_time'
   | 'message_assigned'; // read + post on assigned/relevant project threads
@@ -68,6 +70,7 @@ export const ALL_CAPABILITIES: Capability[] = [
   'manage_team',
   'assign_owner_role',
   'manage_settings',
+  'manage_outreach',
   'view_assigned_projects',
   'log_time',
   'message_assigned',
@@ -95,6 +98,7 @@ export const ROLE_CAPABILITIES: Record<Role, Capability[]> = {
     'manage_revisions',
     'view_finance',
     'manage_team',
+    'manage_outreach',
     'log_time',
     'message_assigned',
   ],
@@ -143,6 +147,9 @@ export const ROLE_CAPABILITIES: Record<Role, Capability[]> = {
     'message_assigned',
   ],
 
+  // Setter / SDR — outreach only: their own call list at /outreach.
+  setter: ['manage_outreach'],
+
   client: [],
 };
 
@@ -168,15 +175,16 @@ export function isContractor(role: Role | null | undefined): boolean {
 }
 
 /** Back-office roles use the /admin area — every internal role except the
- *  assignment-scoped contractor (who uses /staff). */
+ *  portal-scoped contractor (/staff) and setter (/outreach). */
 export function isBackOffice(role: Role | null | undefined): boolean {
-  return isInternal(role) && role !== 'contractor';
+  return isInternal(role) && role !== 'contractor' && role !== 'setter';
 }
 
 /** Where a freshly-authenticated user of this role should land. */
 export function portalHomeFor(role: Role | null | undefined): string {
   if (isBackOffice(role)) return '/admin/dashboard';
   if (role === 'contractor') return '/staff/dashboard';
+  if (role === 'setter') return '/outreach/dashboard';
   return '/portal/dashboard';
 }
 
@@ -199,6 +207,7 @@ const ADMIN_PAGE_CAPABILITY: Array<[string, Capability]> = [
   ['/admin/revisions', 'manage_revisions'],
   ['/admin/reviews', 'manage_reviews'],
   ['/admin/earnings', 'view_finance'],
+  ['/admin/outreach', 'manage_outreach'],
   ['/admin/settings', 'manage_settings'],
   ['/admin/audit', 'manage_team'],
 ];
@@ -234,6 +243,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   finance: 'Finance',
   accountant: 'Accountant',
   contractor: 'Team member',
+  setter: 'Setter',
   client: 'Client',
 };
 
@@ -249,6 +259,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   accountant: 'Read-only financials — view earnings and invoices, no edits.',
   contractor:
     'Only their assigned projects, their own leads, time, and messages.',
+  setter: 'Outreach only — works their own call list and books appointments.',
   client: 'External client portal.',
 };
 
@@ -266,4 +277,5 @@ export const ASSIGNABLE_ROLES: Role[] = [
   'finance',
   'accountant',
   'contractor',
+  'setter',
 ];
