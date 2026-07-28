@@ -272,6 +272,121 @@ export async function getOwnerScorecard(): Promise<{
 
 export type SetterOption = { userId: string; name: string };
 
+/** The studio owner (first admin) — whose calendar appointments land on. */
+export async function getOwnerUserId(): Promise<string | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('users')
+      .select('id')
+      .eq('role', 'admin')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    return (data as { id: string } | null)?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export type AppointmentRow = {
+  id: string;
+  prospectId: string | null;
+  setterId: string | null;
+  setterName: string | null;
+  businessName: string | null;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  scheduledAt: string;
+  durationMin: number;
+  status: 'scheduled' | 'showed' | 'no_show' | 'canceled';
+  result: 'pending' | 'won' | 'lost';
+  dealValueCents: number | null;
+  commissionCents: number | null;
+  googleEventId: string | null;
+  notes: string | null;
+};
+
+const APPT_COLUMNS =
+  'id, prospect_id, setter_id, business_name, contact_name, phone, email, scheduled_at, duration_min, status, result, deal_value_cents, commission_cents, google_event_id, notes';
+
+/** Appointments, soonest first. Scope to one setter when given. */
+export async function getAppointments(opts: {
+  setterId?: string;
+} = {}): Promise<AppointmentRow[]> {
+  try {
+    let q = supabaseAdmin().from('appointments').select(APPT_COLUMNS);
+    if (opts.setterId) q = q.eq('setter_id', opts.setterId);
+    const { data } = await q.order('scheduled_at', { ascending: true });
+    const rows = (data ?? []) as Array<Record<string, unknown>>;
+    const names = await resolveSetterNames(rows.map((r) => r.setter_id as string | null));
+    return rows.map((r) => ({
+      id: r.id as string,
+      prospectId: (r.prospect_id as string | null) ?? null,
+      setterId: (r.setter_id as string | null) ?? null,
+      setterName: r.setter_id ? names.get(r.setter_id as string) ?? null : null,
+      businessName: (r.business_name as string | null) ?? null,
+      contactName: (r.contact_name as string | null) ?? null,
+      phone: (r.phone as string | null) ?? null,
+      email: (r.email as string | null) ?? null,
+      scheduledAt: r.scheduled_at as string,
+      durationMin: (r.duration_min as number | null) ?? 30,
+      status: r.status as AppointmentRow['status'],
+      result: r.result as AppointmentRow['result'],
+      dealValueCents: (r.deal_value_cents as number | null) ?? null,
+      commissionCents: (r.commission_cents as number | null) ?? null,
+      googleEventId: (r.google_event_id as string | null) ?? null,
+      notes: (r.notes as string | null) ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export type CommissionRow = {
+  setterId: string;
+  name: string;
+  wonCount: number;
+  dealValueCents: number;
+  commissionCents: number;
+};
+
+/** Commission owed per setter, from 'won' appointments. */
+export async function getCommissionSummary(): Promise<CommissionRow[]> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('appointments')
+      .select('setter_id, deal_value_cents, commission_cents')
+      .eq('result', 'won');
+    const rows = (data ?? []) as {
+      setter_id: string | null;
+      deal_value_cents: number | null;
+      commission_cents: number | null;
+    }[];
+    const byId = new Map<string, CommissionRow>();
+    const names = await resolveSetterNames(rows.map((r) => r.setter_id));
+    for (const r of rows) {
+      if (!r.setter_id) continue;
+      const cur =
+        byId.get(r.setter_id) ??
+        {
+          setterId: r.setter_id,
+          name: names.get(r.setter_id) ?? 'Unknown',
+          wonCount: 0,
+          dealValueCents: 0,
+          commissionCents: 0,
+        };
+      cur.wonCount += 1;
+      cur.dealValueCents += r.deal_value_cents ?? 0;
+      cur.commissionCents += r.commission_cents ?? 0;
+      byId.set(r.setter_id, cur);
+    }
+    return [...byId.values()].sort((a, b) => b.commissionCents - a.commissionCents);
+  } catch {
+    return [];
+  }
+}
+
 /** Setters (for the owner's per-setter filter). */
 export async function getSetterOptions(): Promise<SetterOption[]> {
   try {

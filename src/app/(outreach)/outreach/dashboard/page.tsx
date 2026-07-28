@@ -4,11 +4,14 @@ import {
   getProspects,
   getSetterScorecard,
   getOutreachSettings,
+  getAppointments,
 } from '@/lib/queries/outreach';
 import { PageHeader } from '@/components/ui/page-header';
 import { buttonVariants } from '@/components/ui/button';
+import { SectionHead } from '@/components/ui/section-head';
 import { ProspectDrawer } from '@/components/outreach/prospect-drawer';
 import { ProspectList } from '@/components/outreach/prospect-list';
+import { AppointmentList } from '@/components/outreach/appointment-list';
 import { Scorecard } from '@/components/outreach/scorecard';
 import { OutreachImportButton } from '@/components/outreach/import-button';
 
@@ -17,10 +20,11 @@ export default async function OutreachDashboardPage() {
   if (!session) redirect('/login');
 
   // The working queue — callbacks due first, dead/converted hidden.
-  const [prospects, scorecard, settings] = await Promise.all([
+  const [prospects, scorecard, settings, appointments] = await Promise.all([
     getProspects({ setterId: session.userId, activeOnly: true }),
     getSetterScorecard(session.userId),
     getOutreachSettings(),
+    getAppointments({ setterId: session.userId }),
   ]);
 
   return (
@@ -49,7 +53,15 @@ export default async function OutreachDashboardPage() {
           settings={settings}
         />
       </div>
-      <div className="mt-8">
+      {appointments.length > 0 ? (
+        <div className="mt-8 space-y-3">
+          <SectionHead number="01" title="Your appointments" size="md" />
+          <AppointmentList appointments={appointments} mode="setter" />
+        </div>
+      ) : null}
+
+      <div className="mt-8 space-y-3">
+        <SectionHead number={appointments.length > 0 ? '02' : '01'} title="Call list" size="md" />
         <ProspectList prospects={prospects} mode="setter" />
       </div>
     </div>

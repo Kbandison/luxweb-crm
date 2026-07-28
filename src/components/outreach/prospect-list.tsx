@@ -11,6 +11,7 @@ import { formatDate } from '@/lib/formatters';
 import { LOG_DISPOSITIONS, STATUS_LABEL, STATUS_TONE } from '@/lib/outreach/meta';
 import type { ProspectRow } from '@/lib/queries/outreach';
 import { ProspectDrawer } from './prospect-drawer';
+import { BookAppointmentButton } from './book-appointment-button';
 
 export function ProspectList({
   prospects,
@@ -98,6 +99,7 @@ export function ProspectList({
                 ) : null}
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                {mode === 'setter' ? <BookAppointmentButton prospect={p} /> : null}
                 <ProspectDrawer prospect={p} triggerLabel="Edit" triggerVariant="secondary" />
                 <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmId(p.id)}>
                   Delete
