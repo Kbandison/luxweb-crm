@@ -4,6 +4,7 @@ import { writeAudit } from '@/lib/audit';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 import { LogCallSchema } from '@/lib/validation/outreach';
+import { promoteProspectToLead } from '@/lib/outreach/promote';
 
 export const runtime = 'nodejs';
 
@@ -83,7 +84,14 @@ export async function POST(
       diff: { disposition: parsed.data.disposition },
     });
 
-    return Response.json({ ok: true });
+    // A booked prospect is qualified — promote it into the real pipeline
+    // (creates a contact + deal, notifies the owner). Idempotent + best-effort.
+    let convertedContactId: string | null = null;
+    if (parsed.data.disposition === 'booked') {
+      convertedContactId = await promoteProspectToLead(id, session.userId);
+    }
+
+    return Response.json({ ok: true, converted_contact_id: convertedContactId });
   } catch (err) {
     if (err instanceof Response) return err;
     return safeError('outreach/prospects/[id]/log POST', err);
