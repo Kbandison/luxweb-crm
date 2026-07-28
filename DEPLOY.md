@@ -133,6 +133,39 @@ In Supabase Dashboard → **Authentication → URL Configuration**:
 
 Google OAuth client in Google Cloud Console: make sure its redirect URI = the Supabase callback already configured; no changes needed here.
 
+> This "Sign in with Google" client uses only **basic scopes** (email/profile) — non-sensitive, so it needs **no verification** and shows **no warning**. Keep it **External + In production**. It is a *separate* OAuth client from the Calendar one below (§6b) — do not merge them.
+
+---
+
+## 6b. Google Calendar — outreach appointment sync
+
+Powers the outreach module: the **owner connects their Google Calendar once**, then booked appointments create events on that calendar (prospect invited) and free/busy drives the slot picker. This is **owner-only** — clients and setters never touch this OAuth flow.
+
+**This is a DIFFERENT Google OAuth client than the Supabase "Sign in with Google" one (§6).** The `calendar.events` scope is *sensitive*, and the OAuth consent screen's **User type (Internal/External)** and **Publishing status (Testing/In production)** are **per Google Cloud project** — they apply to *every* OAuth client in that project. So how you set them up matters:
+
+1. **Prereq:** apply `crm-master/crm_outreach.sql` (two parts — enum first, then tables). Tokens are encrypted with the already-set `CREDS_ENCRYPTION_KEY`.
+
+2. **In the Calendar OAuth client** (Google Cloud Console → Credentials):
+   - Authorized **redirect URI**: `https://portal.luxwebstudio.dev/api/admin/google/callback`
+   - Scopes requested by the app: `https://www.googleapis.com/auth/calendar.events` and `https://www.googleapis.com/auth/calendar.freebusy`
+
+3. **Consent screen** — leave it **External + "In production."**
+   - The owner sees a one-time **"Google hasn't verified this app"** screen (sensitive scope) → **Advanced → Continue**. That's fine — only the owner ever sees it.
+   - **Clients are never affected**: the connect flow is `requireAdmin`, and clients have no path to it. Their "Continue with Google" login (§6) is untouched.
+   - ⚠️ **Do NOT set this consent screen to "Internal" or "Testing" if the Calendar client shares a project with the login client (§6)** — both would block external clients from "Continue with Google." If you ever want Internal (to drop the owner's warning), first move the Calendar client into its **own dedicated project**, then set that project Internal.
+   - ⚠️ **Avoid "Testing" publishing status** regardless — it expires the refresh token every **7 days** (weekly re-auth). "In production" keeps the connection alive.
+
+4. **Env vars** (production; degrade gracefully — without them, booking still saves locally, just no calendar sync):
+   ```bash
+   vercel env add GOOGLE_CLIENT_ID      production
+   vercel env add GOOGLE_CLIENT_SECRET  production
+   vercel --prod                        # redeploy so functions pick them up
+   ```
+
+5. **Connect:** `/admin/outreach` → **Connect** → choose the owner's Google account → approve. The widget shows "Connected as …".
+
+Business hours for the slot picker are a constant (Eastern, Mon–Fri 9–5, 30-min) in `src/lib/outreach/availability.ts` — lift into `outreach_settings` if hours differ or you add setters in other time zones.
+
 ---
 
 ## 7. Smoke test in production
