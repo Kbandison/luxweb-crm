@@ -8,6 +8,7 @@ import { z } from 'zod';
  * requires the `assign_owner_role` capability, enforced in the route.
  */
 
+// Keep in sync with ASSIGNABLE_ROLES in @/lib/auth/permissions.
 export const TEAM_MEMBER_ROLE_VALUES = [
   'admin',
   'manager',
@@ -17,6 +18,7 @@ export const TEAM_MEMBER_ROLE_VALUES = [
   'finance',
   'accountant',
   'contractor',
+  'setter',
 ] as const;
 
 export const EMPLOYMENT_TYPE_VALUES = ['employee', 'contractor'] as const;

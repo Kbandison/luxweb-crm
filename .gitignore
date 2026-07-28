@@ -48,3 +48,5 @@ next-env.d.ts
 # Claude Code per-project state
 .claude/
 .env*.local
+
+certificates
