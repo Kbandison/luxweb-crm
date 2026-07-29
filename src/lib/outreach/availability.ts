@@ -67,9 +67,7 @@ export async function getAvailableSlots(opts: {
 
   const settings = await getOutreachSettings();
   const tz = settings.slotTimezone;
-  const startH = settings.slotStartHour;
-  const endH = settings.slotEndHour;
-  const openDays = new Set(settings.slotDays);
+  const slotHours = settings.slotHours;
 
   const ownerId = await getOwnerUserId();
   const busy = ownerId
@@ -102,14 +100,15 @@ export async function getAvailableSlots(opts: {
     for (const p of dateFmt.formatToParts(new Date(now + dayOffset * 86_400_000))) {
       if (p.type !== 'literal') parts[p.type] = p.value;
     }
-    if (!openDays.has(WEEKDAY_NUM[parts.weekday])) continue;
+    const dayHours = slotHours[WEEKDAY_NUM[parts.weekday]];
+    if (!dayHours) continue; // closed that day
     const y = +parts.year;
     const mo = +parts.month - 1;
     const d = +parts.day;
 
-    for (let h = startH; h < endH; h++) {
+    for (let h = dayHours.start; h < dayHours.end; h++) {
       for (let mm = 0; mm < 60; mm += STEP_MIN) {
-        if (h * 60 + mm + durationMin > endH * 60) continue;
+        if (h * 60 + mm + durationMin > dayHours.end * 60) continue;
         const startUtc = zonedWallToUtc(y, mo, d, h, mm, tz);
         if (startUtc < now + LEAD_MS) continue;
         const endUtc = startUtc + durationMin * 60_000;

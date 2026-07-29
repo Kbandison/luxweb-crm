@@ -43,15 +43,15 @@ export async function PATCH(req: Request) {
     if (d.slot_timezone && !validTimeZone(d.slot_timezone)) {
       return Response.json({ error: 'Unknown time zone.' }, { status: 400 });
     }
-    if (
-      d.slot_start_hour != null &&
-      d.slot_end_hour != null &&
-      d.slot_end_hour <= d.slot_start_hour
-    ) {
-      return Response.json(
-        { error: 'End hour must be after start hour.' },
-        { status: 400 },
-      );
+    if (d.slot_hours) {
+      for (const [day, hrs] of Object.entries(d.slot_hours)) {
+        if (hrs.end <= hrs.start) {
+          return Response.json(
+            { error: `End must be after start (day ${day}).` },
+            { status: 400 },
+          );
+        }
+      }
     }
 
     const patch: Record<string, unknown> = {};
@@ -60,9 +60,7 @@ export async function PATCH(req: Request) {
       'weekly_booked_target',
       'commission_rate',
       'slot_timezone',
-      'slot_days',
-      'slot_start_hour',
-      'slot_end_hour',
+      'slot_hours',
     ] as const) {
       if (key in d) patch[key] = d[key];
     }

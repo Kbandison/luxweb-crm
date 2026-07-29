@@ -4,14 +4,23 @@ import type { ProspectStatus } from '@/lib/outreach/meta';
 
 /** Read queries for the outreach module. All fail soft. */
 
+export type DayHours = { start: number; end: number };
+
 export type OutreachSettings = {
   dailyDialTarget: number;
   weeklyBookedTarget: number;
   commissionRate: number;
   slotTimezone: string;
-  slotDays: number[]; // 0=Sun … 6=Sat
-  slotStartHour: number;
-  slotEndHour: number;
+  /** day (0=Sun … 6=Sat) → open hours. Absent day = closed. */
+  slotHours: Record<number, DayHours>;
+};
+
+const DEFAULT_SLOT_HOURS: Record<number, DayHours> = {
+  1: { start: 9, end: 17 },
+  2: { start: 9, end: 17 },
+  3: { start: 9, end: 17 },
+  4: { start: 9, end: 17 },
+  5: { start: 9, end: 17 },
 };
 
 const DEFAULT_SETTINGS: OutreachSettings = {
@@ -19,17 +28,38 @@ const DEFAULT_SETTINGS: OutreachSettings = {
   weeklyBookedTarget: 4,
   commissionRate: 0.1,
   slotTimezone: 'America/New_York',
-  slotDays: [1, 2, 3, 4, 5],
-  slotStartHour: 9,
-  slotEndHour: 17,
+  slotHours: DEFAULT_SLOT_HOURS,
 };
+
+function parseSlotHours(raw: unknown): Record<number, DayHours> {
+  const out: Record<number, DayHours> = {};
+  if (raw && typeof raw === 'object') {
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      const day = Number(k);
+      if (!Number.isInteger(day) || day < 0 || day > 6) continue;
+      const dv = v as { start?: unknown; end?: unknown };
+      const start = Number(dv?.start);
+      const end = Number(dv?.end);
+      if (
+        Number.isInteger(start) &&
+        Number.isInteger(end) &&
+        start >= 0 &&
+        end <= 24 &&
+        end > start
+      ) {
+        out[day] = { start, end };
+      }
+    }
+  }
+  return Object.keys(out).length ? out : { ...DEFAULT_SLOT_HOURS };
+}
 
 export async function getOutreachSettings(): Promise<OutreachSettings> {
   try {
     const { data } = await supabaseAdmin()
       .from('outreach_settings')
       .select(
-        'daily_dial_target, weekly_booked_target, commission_rate, slot_timezone, slot_days, slot_start_hour, slot_end_hour',
+        'daily_dial_target, weekly_booked_target, commission_rate, slot_timezone, slot_hours',
       )
       .maybeSingle();
     if (!data) return DEFAULT_SETTINGS;
@@ -38,9 +68,7 @@ export async function getOutreachSettings(): Promise<OutreachSettings> {
       weeklyBookedTarget: (data.weekly_booked_target as number | null) ?? 4,
       commissionRate: Number(data.commission_rate ?? 0.1),
       slotTimezone: (data.slot_timezone as string | null) ?? 'America/New_York',
-      slotDays: (data.slot_days as number[] | null) ?? [1, 2, 3, 4, 5],
-      slotStartHour: (data.slot_start_hour as number | null) ?? 9,
-      slotEndHour: (data.slot_end_hour as number | null) ?? 17,
+      slotHours: parseSlotHours(data.slot_hours),
     };
   } catch {
     return DEFAULT_SETTINGS;

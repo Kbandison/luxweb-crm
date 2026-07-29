@@ -6,8 +6,7 @@ import { Drawer } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
-import { cn } from '@/lib/utils';
-import type { OutreachSettings } from '@/lib/queries/outreach';
+import type { DayHours, OutreachSettings } from '@/lib/queries/outreach';
 
 const TIMEZONES = [
   'America/New_York',
@@ -42,9 +41,7 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
   const [busy, setBusy] = useState(false);
 
   const [tz, setTz] = useState(settings.slotTimezone);
-  const [days, setDays] = useState<number[]>(settings.slotDays);
-  const [startH, setStartH] = useState(String(settings.slotStartHour));
-  const [endH, setEndH] = useState(String(settings.slotEndHour));
+  const [hours, setHours] = useState<Record<number, DayHours>>(() => ({ ...settings.slotHours }));
   const [dialTarget, setDialTarget] = useState(String(settings.dailyDialTarget));
   const [bookedTarget, setBookedTarget] = useState(String(settings.weeklyBookedTarget));
   const [commission, setCommission] = useState(String(Math.round(settings.commissionRate * 100)));
@@ -52,16 +49,24 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
   const tzOptions = TIMEZONES.includes(tz) ? TIMEZONES : [tz, ...TIMEZONES];
 
   function toggleDay(n: number) {
-    setDays((cur) => (cur.includes(n) ? cur.filter((x) => x !== n) : [...cur, n].sort()));
+    setHours((cur) => {
+      const next = { ...cur };
+      if (next[n]) delete next[n];
+      else next[n] = { start: 9, end: 17 };
+      return next;
+    });
+  }
+  function setDay(n: number, field: 'start' | 'end', val: number) {
+    setHours((cur) => ({ ...cur, [n]: { ...cur[n], [field]: val } }));
   }
 
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const start = Number(startH);
-    const end = Number(endH);
-    if (end <= start) {
-      toast.error('Check the hours', 'End time must be after start time.');
-      return;
+    for (const [day, hrs] of Object.entries(hours)) {
+      if (hrs.end <= hrs.start) {
+        toast.error('Check the hours', `End must be after start on ${DAYS[+day].label}.`);
+        return;
+      }
     }
     setBusy(true);
     try {
@@ -70,9 +75,7 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           slot_timezone: tz,
-          slot_days: days,
-          slot_start_hour: start,
-          slot_end_hour: end,
+          slot_hours: hours,
           daily_dial_target: Math.max(0, Math.round(Number(dialTarget) || 0)),
           weekly_booked_target: Math.max(0, Math.round(Number(bookedTarget) || 0)),
           commission_rate: Math.max(0, Math.min(100, Number(commission) || 0)) / 100,
@@ -94,7 +97,8 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
   }
 
   const selCls =
-    'flex h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink focus-visible:border-copper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/30';
+    'h-9 rounded-md border border-border bg-surface px-2 text-sm text-ink focus-visible:border-copper focus-visible:outline-none';
+  const openCount = Object.keys(hours).length;
 
   return (
     <>
@@ -119,7 +123,12 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="s_tz">Time zone</Label>
-                  <select id="s_tz" value={tz} onChange={(e) => setTz(e.target.value)} className={selCls}>
+                  <select
+                    id="s_tz"
+                    value={tz}
+                    onChange={(e) => setTz(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink focus-visible:border-copper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/30"
+                  >
                     {tzOptions.map((z) => (
                       <option key={z} value={z}>
                         {z.replace('America/', '').replace('_', ' ')}
@@ -129,47 +138,56 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Days you take calls</Label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {DAYS.map((day) => (
-                      <button
-                        key={day.n}
-                        type="button"
-                        onClick={() => toggleDay(day.n)}
-                        className={cn(
-                          'rounded-md border px-3 py-1.5 font-sans text-xs font-medium transition-colors',
-                          days.includes(day.n)
-                            ? 'border-copper bg-copper-soft/40 text-ink'
-                            : 'border-border bg-surface text-ink-muted hover:border-border-strong',
-                        )}
-                      >
-                        {day.label}
-                      </button>
-                    ))}
+                  <Label>Hours you take calls</Label>
+                  <div className="divide-y divide-border/60 rounded-lg border border-border">
+                    {DAYS.map((day) => {
+                      const dh = hours[day.n];
+                      return (
+                        <div key={day.n} className="flex items-center gap-3 px-3 py-2">
+                          <label className="flex w-20 shrink-0 items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={!!dh}
+                              onChange={() => toggleDay(day.n)}
+                              className="h-4 w-4 accent-copper"
+                            />
+                            <span className="font-sans text-sm text-ink">{day.label}</span>
+                          </label>
+                          {dh ? (
+                            <div className="flex items-center gap-2">
+                              <select
+                                aria-label={`${day.label} start`}
+                                value={dh.start}
+                                onChange={(e) => setDay(day.n, 'start', Number(e.target.value))}
+                                className={selCls}
+                              >
+                                {Array.from({ length: 24 }, (_, h) => (
+                                  <option key={h} value={h}>{hourLabel(h)}</option>
+                                ))}
+                              </select>
+                              <span className="font-sans text-xs text-ink-subtle">to</span>
+                              <select
+                                aria-label={`${day.label} end`}
+                                value={dh.end}
+                                onChange={(e) => setDay(day.n, 'end', Number(e.target.value))}
+                                className={selCls}
+                              >
+                                {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
+                                  <option key={h} value={h}>{hourLabel(h)}</option>
+                                ))}
+                              </select>
+                            </div>
+                          ) : (
+                            <span className="font-sans text-xs text-ink-subtle">Closed</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
+                  <p className="font-sans text-xs text-ink-subtle">
+                    Setters only see open slots inside these hours (and your calendar&apos;s free times).
+                  </p>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="s_start">Earliest</Label>
-                    <select id="s_start" value={startH} onChange={(e) => setStartH(e.target.value)} className={selCls}>
-                      {Array.from({ length: 24 }, (_, h) => (
-                        <option key={h} value={h}>{hourLabel(h)}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="s_end">Latest</Label>
-                    <select id="s_end" value={endH} onChange={(e) => setEndH(e.target.value)} className={selCls}>
-                      {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
-                        <option key={h} value={h}>{hourLabel(h)}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <p className="font-sans text-xs text-ink-subtle">
-                  Setters only see open slots inside this window (and your calendar&apos;s free times).
-                </p>
               </div>
             </div>
 
@@ -195,7 +213,7 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
           </div>
           <footer className="flex items-center justify-end gap-2 border-t border-border bg-surface px-6 py-4">
             <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
-            <Button type="submit" size="sm" disabled={busy || days.length === 0}>{busy ? 'Saving…' : 'Save'}</Button>
+            <Button type="submit" size="sm" disabled={busy || openCount === 0}>{busy ? 'Saving…' : 'Save'}</Button>
           </footer>
         </form>
       </Drawer>
