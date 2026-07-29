@@ -8,21 +8,42 @@ export type OutreachSettings = {
   dailyDialTarget: number;
   weeklyBookedTarget: number;
   commissionRate: number;
+  slotTimezone: string;
+  slotDays: number[]; // 0=Sun … 6=Sat
+  slotStartHour: number;
+  slotEndHour: number;
+};
+
+const DEFAULT_SETTINGS: OutreachSettings = {
+  dailyDialTarget: 25,
+  weeklyBookedTarget: 4,
+  commissionRate: 0.1,
+  slotTimezone: 'America/New_York',
+  slotDays: [1, 2, 3, 4, 5],
+  slotStartHour: 9,
+  slotEndHour: 17,
 };
 
 export async function getOutreachSettings(): Promise<OutreachSettings> {
   try {
     const { data } = await supabaseAdmin()
       .from('outreach_settings')
-      .select('daily_dial_target, weekly_booked_target, commission_rate')
+      .select(
+        'daily_dial_target, weekly_booked_target, commission_rate, slot_timezone, slot_days, slot_start_hour, slot_end_hour',
+      )
       .maybeSingle();
+    if (!data) return DEFAULT_SETTINGS;
     return {
-      dailyDialTarget: (data?.daily_dial_target as number | null) ?? 25,
-      weeklyBookedTarget: (data?.weekly_booked_target as number | null) ?? 4,
-      commissionRate: Number(data?.commission_rate ?? 0.1),
+      dailyDialTarget: (data.daily_dial_target as number | null) ?? 25,
+      weeklyBookedTarget: (data.weekly_booked_target as number | null) ?? 4,
+      commissionRate: Number(data.commission_rate ?? 0.1),
+      slotTimezone: (data.slot_timezone as string | null) ?? 'America/New_York',
+      slotDays: (data.slot_days as number[] | null) ?? [1, 2, 3, 4, 5],
+      slotStartHour: (data.slot_start_hour as number | null) ?? 9,
+      slotEndHour: (data.slot_end_hour as number | null) ?? 17,
     };
   } catch {
-    return { dailyDialTarget: 25, weeklyBookedTarget: 4, commissionRate: 0.1 };
+    return DEFAULT_SETTINGS;
   }
 }
 

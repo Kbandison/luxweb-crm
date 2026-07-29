@@ -20,6 +20,7 @@ import { SectionHead } from '@/components/ui/section-head';
 import { buttonVariants } from '@/components/ui/button';
 import { OutreachSetterFilter } from '@/components/admin/outreach/setter-filter';
 import { GoogleConnect } from '@/components/admin/outreach/google-connect';
+import { OutreachSettingsDrawer } from '@/components/admin/outreach/outreach-settings-drawer';
 
 export default async function AdminOutreachPage({
   searchParams,
@@ -60,6 +61,7 @@ export default async function AdminOutreachPage({
               {setters.length > 0 ? (
                 <OutreachSetterFilter setters={setters} current={setterId ?? ''} />
               ) : null}
+              <OutreachSettingsDrawer settings={scorecard.settings} />
               <a
                 href={`/api/outreach/prospects/export.csv${setterId ? `?setter=${setterId}` : ''}`}
                 className={buttonVariants({ variant: 'secondary', size: 'sm' })}
