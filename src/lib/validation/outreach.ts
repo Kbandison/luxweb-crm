@@ -76,12 +76,16 @@ export const UpdateAppointmentSchema = z.object({
   notes: z.string().max(2000).optional().nullable(),
 });
 
+const DayHoursSchema = z.object({
+  start: z.number().int().min(0).max(23),
+  end: z.number().int().min(1).max(24),
+});
+
 export const UpdateOutreachSettingsSchema = z.object({
   daily_dial_target: z.number().int().min(0).max(1000).optional(),
   weekly_booked_target: z.number().int().min(0).max(1000).optional(),
   commission_rate: z.number().min(0).max(1).optional(), // fraction, e.g. 0.10
   slot_timezone: z.string().min(1).max(64).optional(),
-  slot_days: z.array(z.number().int().min(0).max(6)).max(7).optional(),
-  slot_start_hour: z.number().int().min(0).max(23).optional(),
-  slot_end_hour: z.number().int().min(1).max(24).optional(),
+  // { "0".."6": { start, end } } — a day absent means closed.
+  slot_hours: z.record(z.string().regex(/^[0-6]$/), DayHoursSchema).optional(),
 });
