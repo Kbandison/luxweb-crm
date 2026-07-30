@@ -54,7 +54,17 @@ export async function PATCH(
       );
     }
 
+    // Reassignment is an owner/manager call — a setter can't move a prospect
+    // off their list or pull one onto it.
+    if ('owner_id' in parsed.data && session.role === 'setter') {
+      return Response.json(
+        { error: 'Only the owner can reassign a prospect.' },
+        { status: 403 },
+      );
+    }
+
     const patch: Record<string, unknown> = {};
+    if ('owner_id' in parsed.data) patch.owner_id = parsed.data.owner_id ?? null;
     for (const key of [
       'full_name',
       'company',
