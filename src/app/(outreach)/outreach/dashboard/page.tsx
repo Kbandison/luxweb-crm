@@ -16,6 +16,7 @@ import { ProspectLookup } from '@/components/outreach/prospect-lookup';
 import { AppointmentList } from '@/components/outreach/appointment-list';
 import { Scorecard } from '@/components/outreach/scorecard';
 import { EarningsCard } from '@/components/outreach/earnings-card';
+import { ScriptPanel } from '@/components/outreach/script-panel';
 import { OutreachImportButton } from '@/components/outreach/import-button';
 
 export default async function OutreachDashboardPage() {
@@ -42,6 +43,11 @@ export default async function OutreachDashboardPage() {
         description="Callbacks due first. Log every dial — tap the number to call, pick an outcome."
         actions={
           <>
+            {prospects.length > 0 ? (
+              <a href="/outreach/dial" className={buttonVariants({ size: 'sm' })}>
+                Dial mode
+              </a>
+            ) : null}
             <OutreachImportButton />
             <a
               href="/api/outreach/prospects/export.csv"
@@ -60,6 +66,7 @@ export default async function OutreachDashboardPage() {
           settings={settings}
         />
         <EarningsCard earnings={earnings} commissionRate={settings.commissionRate} />
+        <ScriptPanel script={settings.callScript} objections={settings.objectionNotes} />
       </div>
       {appointments.length > 0 ? (
         <div className="mt-8 space-y-3">

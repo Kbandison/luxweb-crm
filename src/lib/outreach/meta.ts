@@ -11,7 +11,8 @@ export type ProspectStatus =
   | 'converted'
   | 'not_interested'
   | 'bad_number'
-  | 'dnc';
+  | 'dnc'
+  | 'unreachable';
 
 export const STATUS_LABEL: Record<ProspectStatus, string> = {
   new: 'New',
@@ -23,6 +24,7 @@ export const STATUS_LABEL: Record<ProspectStatus, string> = {
   not_interested: 'Not interested',
   bad_number: 'Bad number',
   dnc: 'Do not call',
+  unreachable: 'Unreachable',
 };
 
 export const STATUS_TONE: Record<ProspectStatus, string> = {
@@ -35,6 +37,7 @@ export const STATUS_TONE: Record<ProspectStatus, string> = {
   not_interested: 'bg-surface-2 text-ink-subtle',
   bad_number: 'bg-danger/10 text-danger',
   dnc: 'bg-danger/10 text-danger',
+  unreachable: 'bg-surface-2 text-ink-subtle',
 };
 
 export type DueState = 'overdue' | 'today' | 'upcoming';

@@ -13,6 +13,11 @@ export type OutreachSettings = {
   slotTimezone: string;
   /** day (0=Sun … 6=Sat) → open hours. Absent day = closed. */
   slotHours: Record<number, DayHours>;
+  /** Pitch + objection handling, shown to the setter while dialing. */
+  callScript: string;
+  objectionNotes: string;
+  /** No-answer dials before a prospect retires itself. 0 = off. */
+  autoRetireAfter: number;
 };
 
 const DEFAULT_SLOT_HOURS: Record<number, DayHours> = {
@@ -29,6 +34,9 @@ const DEFAULT_SETTINGS: OutreachSettings = {
   commissionRate: 0.1,
   slotTimezone: 'America/New_York',
   slotHours: DEFAULT_SLOT_HOURS,
+  callScript: '',
+  objectionNotes: '',
+  autoRetireAfter: 0,
 };
 
 function parseSlotHours(raw: unknown): Record<number, DayHours> {
@@ -56,11 +64,12 @@ function parseSlotHours(raw: unknown): Record<number, DayHours> {
 
 export async function getOutreachSettings(): Promise<OutreachSettings> {
   try {
+    // select('*') rather than a column list: a column added by a migration
+    // that hasn't been applied yet simply comes back absent and falls back to
+    // its default, instead of erroring and silently resetting every setting.
     const { data } = await supabaseAdmin()
       .from('outreach_settings')
-      .select(
-        'daily_dial_target, weekly_booked_target, commission_rate, slot_timezone, slot_hours',
-      )
+      .select('*')
       .maybeSingle();
     if (!data) return DEFAULT_SETTINGS;
     return {
@@ -69,6 +78,9 @@ export async function getOutreachSettings(): Promise<OutreachSettings> {
       commissionRate: Number(data.commission_rate ?? 0.1),
       slotTimezone: (data.slot_timezone as string | null) ?? 'America/New_York',
       slotHours: parseSlotHours(data.slot_hours),
+      callScript: (data.call_script as string | null) ?? '',
+      objectionNotes: (data.objection_notes as string | null) ?? '',
+      autoRetireAfter: (data.auto_retire_after as number | null) ?? 0,
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -253,6 +265,9 @@ export async function getProspects(opts: {
     let q = supabaseAdmin().from('prospects').select(COLUMNS);
     if (opts.setterId) q = q.eq('owner_id', opts.setterId);
     if (opts.activeOnly) {
+      // 'unreachable' is filtered client-side below, not here: naming an enum
+      // label the database doesn't have yet errors the whole query, which
+      // would blank the call list until crm_outreach_qol.sql is applied.
       q = q.not(
         'status',
         'in',
@@ -263,7 +278,10 @@ export async function getProspects(opts: {
     const { data } = await q
       .order('next_action_at', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
-    const rows = (data ?? []) as DbRow[];
+    const all = (data ?? []) as DbRow[];
+    const rows = opts.activeOnly
+      ? all.filter((r) => r.status !== 'unreachable')
+      : all;
     const names = await resolveSetterNames(rows.map((r) => r.owner_id));
     const history = opts.withHistory
       ? await getCallHistory(rows.map((r) => r.id), names)
