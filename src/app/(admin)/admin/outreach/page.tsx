@@ -39,13 +39,15 @@ export default async function AdminOutreachPage({
   const ownerId = await getOwnerUserId();
   const [prospects, setters, scorecard, appointments, commissions, gcal] =
     await Promise.all([
-      getProspects({ setterId }),
+      getProspects({ setterId, withHistory: true }),
       getSetterOptions(),
       getOwnerScorecard(),
       getAppointments({ setterId }),
       getCommissionSummary(),
       ownerId ? getGoogleConnection(ownerId) : Promise.resolve({ connected: false, email: null }),
     ]);
+  // Server-rendered so due badges and prospect local times stay hydration-safe.
+  const nowIso = new Date().toISOString();
   const pctFmt = (n: number) => `${Math.round(n * 100)}%`;
   const totalCommission = commissions.reduce((s, c) => s + c.commissionCents, 0);
 
@@ -161,7 +163,12 @@ export default async function AdminOutreachPage({
 
         <SectionHead number="03" title="Call list" size="md" />
         <ProspectLookup />
-        <ProspectList prospects={prospects} mode="owner" />
+        <ProspectList
+          prospects={prospects}
+          mode="owner"
+          nowIso={nowIso}
+          setters={setters}
+        />
       </main>
     </>
   );

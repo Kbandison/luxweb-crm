@@ -75,6 +75,17 @@ export async function getOutreachSettings(): Promise<OutreachSettings> {
   }
 }
 
+/** One logged dial — the history behind a prospect's attempt count. */
+export type ProspectCall = {
+  id: string;
+  disposition: ProspectStatus;
+  spokeWithDm: boolean;
+  note: string | null;
+  calledAt: string;
+  setterId: string | null;
+  setterName: string | null;
+};
+
 export type ProspectRow = {
   id: string;
   ownerId: string | null;
@@ -93,6 +104,8 @@ export type ProspectRow = {
   nextActionAt: string | null;
   notes: string | null;
   createdAt: string;
+  /** Most recent dials first. Empty unless the caller asked for history. */
+  history: ProspectCall[];
 };
 
 const COLUMNS =
@@ -142,11 +155,16 @@ export async function resolveSetterNames(
   return map;
 }
 
-function mapRow(r: DbRow, ownerName: string | null): ProspectRow {
+function mapRow(
+  r: DbRow,
+  ownerName: string | null,
+  history: ProspectCall[] = [],
+): ProspectRow {
   return {
     id: r.id,
     ownerId: r.owner_id,
     ownerName,
+    history,
     fullName: r.full_name,
     company: r.company,
     phone: r.phone,
@@ -164,14 +182,72 @@ function mapRow(r: DbRow, ownerName: string | null): ProspectRow {
   };
 }
 
+/** How many past dials we attach per prospect — enough context, no wall of text. */
+const HISTORY_PER_PROSPECT = 6;
+
+/**
+ * Recent dials for a set of prospects, newest first, capped per prospect.
+ * One query for the whole page rather than one per card.
+ */
+async function getCallHistory(
+  prospectIds: string[],
+  names: Map<string, string>,
+): Promise<Map<string, ProspectCall[]>> {
+  const byProspect = new Map<string, ProspectCall[]>();
+  if (prospectIds.length === 0) return byProspect;
+  try {
+    const { data } = await supabaseAdmin()
+      .from('prospect_calls')
+      .select('id, prospect_id, setter_id, disposition, spoke_with_dm, note, called_at')
+      .in('prospect_id', prospectIds)
+      .order('called_at', { ascending: false });
+    const rows = (data ?? []) as Array<{ setter_id: string | null }>;
+    // A dial may have been logged by someone who no longer owns the prospect.
+    const unknown = rows
+      .map((r) => r.setter_id)
+      .filter((id): id is string => !!id && !names.has(id));
+    if (unknown.length > 0) {
+      for (const [k, v] of await resolveSetterNames(unknown)) names.set(k, v);
+    }
+    for (const r of (data ?? []) as Array<{
+      id: string;
+      prospect_id: string;
+      setter_id: string | null;
+      disposition: ProspectStatus;
+      spoke_with_dm: boolean | null;
+      note: string | null;
+      called_at: string;
+    }>) {
+      const list = byProspect.get(r.prospect_id) ?? [];
+      if (list.length >= HISTORY_PER_PROSPECT) continue;
+      list.push({
+        id: r.id,
+        disposition: r.disposition,
+        spokeWithDm: !!r.spoke_with_dm,
+        note: r.note,
+        calledAt: r.called_at,
+        setterId: r.setter_id,
+        setterName: r.setter_id ? names.get(r.setter_id) ?? null : null,
+      });
+      byProspect.set(r.prospect_id, list);
+    }
+  } catch {
+    /* no history rather than no list */
+  }
+  return byProspect;
+}
+
 /**
  * List prospects. `setterId` scopes to one setter's list (used by the setter
  * portal and the owner's per-setter filter). `activeOnly` hides dead entries
  * (converted / not-interested / bad-number / dnc) for the working queue.
+ * `withHistory` attaches recent dials so a setter can see what happened on the
+ * last three attempts before making the fourth.
  */
 export async function getProspects(opts: {
   setterId?: string;
   activeOnly?: boolean;
+  withHistory?: boolean;
 } = {}): Promise<ProspectRow[]> {
   try {
     let q = supabaseAdmin().from('prospects').select(COLUMNS);
@@ -189,7 +265,16 @@ export async function getProspects(opts: {
       .order('created_at', { ascending: false });
     const rows = (data ?? []) as DbRow[];
     const names = await resolveSetterNames(rows.map((r) => r.owner_id));
-    return rows.map((r) => mapRow(r, r.owner_id ? names.get(r.owner_id) ?? null : null));
+    const history = opts.withHistory
+      ? await getCallHistory(rows.map((r) => r.id), names)
+      : new Map<string, ProspectCall[]>();
+    return rows.map((r) =>
+      mapRow(
+        r,
+        r.owner_id ? names.get(r.owner_id) ?? null : null,
+        history.get(r.id) ?? [],
+      ),
+    );
   } catch {
     return [];
   }
@@ -205,7 +290,12 @@ export async function getProspect(id: string): Promise<ProspectRow | null> {
     if (!data) return null;
     const r = data as DbRow;
     const names = await resolveSetterNames([r.owner_id]);
-    return mapRow(r, r.owner_id ? names.get(r.owner_id) ?? null : null);
+    const history = await getCallHistory([r.id], names);
+    return mapRow(
+      r,
+      r.owner_id ? names.get(r.owner_id) ?? null : null,
+      history.get(r.id) ?? [],
+    );
   } catch {
     return null;
   }
@@ -434,6 +524,57 @@ export async function getCommissionSummary(): Promise<CommissionRow[]> {
     return [...byId.values()].sort((a, b) => b.commissionCents - a.commissionCents);
   } catch {
     return [];
+  }
+}
+
+export type SetterEarnings = {
+  monthCents: number;
+  allTimeCents: number;
+  wonCount: number;
+  /** Booked or showed, outcome not decided yet — commission still in play. */
+  pendingCount: number;
+};
+
+/**
+ * What a setter has actually earned. The scorecard tracks activity; this is
+ * the number that matters to someone on commission.
+ */
+export async function getSetterEarnings(setterId: string): Promise<SetterEarnings> {
+  const empty: SetterEarnings = {
+    monthCents: 0,
+    allTimeCents: 0,
+    wonCount: 0,
+    pendingCount: 0,
+  };
+  try {
+    const { data } = await supabaseAdmin()
+      .from('appointments')
+      .select('scheduled_at, status, result, commission_cents')
+      .eq('setter_id', setterId);
+    const rows = (data ?? []) as {
+      scheduled_at: string;
+      status: AppointmentRow['status'];
+      result: AppointmentRow['result'];
+      commission_cents: number | null;
+    }[];
+    const monthStart = new Date();
+    monthStart.setUTCDate(1);
+    monthStart.setUTCHours(0, 0, 0, 0);
+
+    const out = { ...empty };
+    for (const r of rows) {
+      if (r.result === 'won') {
+        const cents = r.commission_cents ?? 0;
+        out.wonCount += 1;
+        out.allTimeCents += cents;
+        if (new Date(r.scheduled_at) >= monthStart) out.monthCents += cents;
+      } else if (r.result === 'pending' && r.status !== 'canceled' && r.status !== 'no_show') {
+        out.pendingCount += 1;
+      }
+    }
+    return out;
+  } catch {
+    return empty;
   }
 }
 

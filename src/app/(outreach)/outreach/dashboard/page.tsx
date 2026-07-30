@@ -5,6 +5,7 @@ import {
   getSetterScorecard,
   getOutreachSettings,
   getAppointments,
+  getSetterEarnings,
 } from '@/lib/queries/outreach';
 import { PageHeader } from '@/components/ui/page-header';
 import { buttonVariants } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { ProspectList } from '@/components/outreach/prospect-list';
 import { ProspectLookup } from '@/components/outreach/prospect-lookup';
 import { AppointmentList } from '@/components/outreach/appointment-list';
 import { Scorecard } from '@/components/outreach/scorecard';
+import { EarningsCard } from '@/components/outreach/earnings-card';
 import { OutreachImportButton } from '@/components/outreach/import-button';
 
 export default async function OutreachDashboardPage() {
@@ -21,12 +23,16 @@ export default async function OutreachDashboardPage() {
   if (!session) redirect('/login');
 
   // The working queue — callbacks due first, dead/converted hidden.
-  const [prospects, scorecard, settings, appointments] = await Promise.all([
-    getProspects({ setterId: session.userId, activeOnly: true }),
+  const [prospects, scorecard, settings, appointments, earnings] = await Promise.all([
+    getProspects({ setterId: session.userId, activeOnly: true, withHistory: true }),
     getSetterScorecard(session.userId),
     getOutreachSettings(),
     getAppointments({ setterId: session.userId }),
+    getSetterEarnings(session.userId),
   ]);
+  // Rendered once on the server so due badges and local times don't drift
+  // between the server and client render.
+  const nowIso = new Date().toISOString();
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 pb-16 pt-10 md:px-10">
@@ -47,12 +53,13 @@ export default async function OutreachDashboardPage() {
           </>
         }
       />
-      <div className="mt-6">
+      <div className="mt-6 space-y-4">
         <Scorecard
           today={scorecard.today}
           week={scorecard.week}
           settings={settings}
         />
+        <EarningsCard earnings={earnings} commissionRate={settings.commissionRate} />
       </div>
       {appointments.length > 0 ? (
         <div className="mt-8 space-y-3">
@@ -64,7 +71,7 @@ export default async function OutreachDashboardPage() {
       <div className="mt-8 space-y-3">
         <SectionHead number={appointments.length > 0 ? '02' : '01'} title="Call list" size="md" />
         <ProspectLookup />
-        <ProspectList prospects={prospects} mode="setter" />
+        <ProspectList prospects={prospects} mode="setter" nowIso={nowIso} />
       </div>
     </div>
   );

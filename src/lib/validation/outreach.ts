@@ -43,6 +43,18 @@ export const CreateProspectSchema = z.object({
 
 export const UpdateProspectSchema = CreateProspectSchema.partial().extend({
   status: z.enum(PROSPECT_STATUSES).optional(),
+  // Reassign to another setter. Only the owner/manager may set this — a setter
+  // can't hand their own prospects away or take someone else's.
+  owner_id: z.string().uuid().nullable().optional(),
+});
+
+export const BULK_PROSPECT_ACTIONS = ['dnc', 'not_interested', 'delete', 'reassign'] as const;
+
+export const BulkProspectSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
+  action: z.enum(BULK_PROSPECT_ACTIONS),
+  /** Required for 'reassign'. */
+  owner_id: z.string().uuid().optional(),
 });
 
 export const LogCallSchema = z.object({
