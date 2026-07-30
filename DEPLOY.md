@@ -164,7 +164,20 @@ Powers the outreach module: the **owner connects their Google Calendar once**, t
 
 5. **Connect:** `/admin/outreach` → **Connect** → choose the owner's Google account → approve. The widget shows "Connected as …".
 
-Business hours for the slot picker are a constant (Eastern, Mon–Fri 9–5, 30-min) in `src/lib/outreach/availability.ts` — lift into `outreach_settings` if hours differ or you add setters in other time zones.
+Booking availability (time zone + per-day hours), targets, and commission rate are owner-editable in **Settings** on `/admin/outreach`.
+
+---
+
+## 6c. Outreach — setter quality-of-life migration
+
+`crm-master/crm_outreach_qol.sql` adds the call script, objection notes, and the auto-retire threshold. **Two parts** — the new `unreachable` enum value must be committed before the columns that use it:
+
+1. Run **PART 1** alone (`alter type crm.prospect_status add value …`).
+2. Run **PART 2** (the `outreach_settings` columns).
+
+Everything degrades gracefully until it's applied: `getOutreachSettings` reads with `select('*')`, so missing columns fall back to defaults (auto-retire `0` = off, empty script), and `unreachable` is filtered in JS rather than SQL so the call list can't blank out. Saving the script from the Settings drawer is what fails first if you skip it.
+
+The daily callback reminder (`/api/cron/outreach-callbacks`, 12:00 UTC) reuses the existing `CRON_SECRET` — no new env var. Emails go to each setter with callbacks due or overdue.
 
 ---
 

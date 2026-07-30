@@ -24,6 +24,8 @@ export const PROSPECT_STATUSES = [
   'not_interested',
   'bad_number',
   'dnc',
+  // System-set: dialed `auto_retire_after` times with no answer.
+  'unreachable',
 ] as const;
 
 const isoish = z.string().datetime({ offset: true }).or(z.string().min(1));
@@ -100,4 +102,8 @@ export const UpdateOutreachSettingsSchema = z.object({
   slot_timezone: z.string().min(1).max(64).optional(),
   // { "0".."6": { start, end } } — a day absent means closed.
   slot_hours: z.record(z.string().regex(/^[0-6]$/), DayHoursSchema).optional(),
+  call_script: z.string().max(8000).optional().nullable(),
+  objection_notes: z.string().max(8000).optional().nullable(),
+  // No-answer dials before a prospect retires itself. 0 = off.
+  auto_retire_after: z.number().int().min(0).max(50).optional(),
 });

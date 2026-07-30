@@ -61,6 +61,9 @@ export async function PATCH(req: Request) {
       'commission_rate',
       'slot_timezone',
       'slot_hours',
+      'call_script',
+      'objection_notes',
+      'auto_retire_after',
     ] as const) {
       if (key in d) patch[key] = d[key];
     }

@@ -5,6 +5,7 @@ import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 import { LogCallSchema } from '@/lib/validation/outreach';
 import { promoteProspectToLead } from '@/lib/outreach/promote';
+import { getOutreachSettings } from '@/lib/queries/outreach';
 
 export const runtime = 'nodejs';
 
@@ -63,9 +64,24 @@ export async function POST(
       return Response.json({ error: callErr.message }, { status: 500 });
     }
 
+    const attempts = ((prospect as { attempts: number }).attempts ?? 0) + 1;
+
+    // Auto-retire: N dials with nobody picking up and the prospect drops out
+    // of the working queue. The call row still records what actually happened
+    // ('no_answer'); only the prospect's standing changes.
+    let status: string = parsed.data.disposition;
+    let retired = false;
+    if (parsed.data.disposition === 'no_answer') {
+      const { autoRetireAfter } = await getOutreachSettings();
+      if (autoRetireAfter > 0 && attempts >= autoRetireAfter) {
+        status = 'unreachable';
+        retired = true;
+      }
+    }
+
     const update: Record<string, unknown> = {
-      status: parsed.data.disposition,
-      attempts: ((prospect as { attempts: number }).attempts ?? 0) + 1,
+      status,
+      attempts,
       last_contacted_at: nowIso,
     };
     if ('next_action' in parsed.data) update.next_action = parsed.data.next_action ?? null;
@@ -81,7 +97,7 @@ export async function POST(
       action: 'update',
       entity_type: 'prospect',
       entity_id: id,
-      diff: { disposition: parsed.data.disposition },
+      diff: { disposition: parsed.data.disposition, ...(retired ? { auto_retired: true } : {}) },
     });
 
     // A booked prospect is qualified — promote it into the real pipeline
@@ -91,7 +107,11 @@ export async function POST(
       convertedContactId = await promoteProspectToLead(id, session.userId);
     }
 
-    return Response.json({ ok: true, converted_contact_id: convertedContactId });
+    return Response.json({
+      ok: true,
+      converted_contact_id: convertedContactId,
+      retired,
+    });
   } catch (err) {
     if (err instanceof Response) return err;
     return safeError('outreach/prospects/[id]/log POST', err);

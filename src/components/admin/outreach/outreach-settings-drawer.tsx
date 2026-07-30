@@ -45,6 +45,9 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
   const [dialTarget, setDialTarget] = useState(String(settings.dailyDialTarget));
   const [bookedTarget, setBookedTarget] = useState(String(settings.weeklyBookedTarget));
   const [commission, setCommission] = useState(String(Math.round(settings.commissionRate * 100)));
+  const [retireAfter, setRetireAfter] = useState(String(settings.autoRetireAfter));
+  const [script, setScript] = useState(settings.callScript);
+  const [objections, setObjections] = useState(settings.objectionNotes);
 
   const tzOptions = TIMEZONES.includes(tz) ? TIMEZONES : [tz, ...TIMEZONES];
 
@@ -79,6 +82,9 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
           daily_dial_target: Math.max(0, Math.round(Number(dialTarget) || 0)),
           weekly_booked_target: Math.max(0, Math.round(Number(bookedTarget) || 0)),
           commission_rate: Math.max(0, Math.min(100, Number(commission) || 0)) / 100,
+          auto_retire_after: Math.max(0, Math.min(50, Math.round(Number(retireAfter) || 0))),
+          call_script: script.trim() || null,
+          objection_notes: objections.trim() || null,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -208,6 +214,46 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
                   <Label htmlFor="s_comm">Commission rate (%)</Label>
                   <Input id="s_comm" type="number" min={0} max={100} step="0.5" value={commission} onChange={(e) => setCommission(e.target.value)} />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="s_retire">Retire after N no-answers</Label>
+                  <Input id="s_retire" type="number" min={0} max={50} value={retireAfter} onChange={(e) => setRetireAfter(e.target.value)} />
+                  <p className="font-sans text-xs text-ink-subtle">0 = never retire.</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-3 font-mono text-[10px] uppercase tracking-meta text-ink-muted">
+                Script &amp; objections
+              </p>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="s_script">Call script</Label>
+                  <textarea
+                    id="s_script"
+                    value={script}
+                    onChange={(e) => setScript(e.target.value)}
+                    rows={8}
+                    maxLength={8000}
+                    placeholder={'Hi, is this the owner?\n\nI build websites for [industry] and noticed…'}
+                    className="flex w-full rounded-md border border-border bg-surface px-3 py-2 font-sans text-sm text-ink focus-visible:border-copper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/30"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="s_objections">Objection handling</Label>
+                  <textarea
+                    id="s_objections"
+                    value={objections}
+                    onChange={(e) => setObjections(e.target.value)}
+                    rows={6}
+                    maxLength={8000}
+                    placeholder={'"Not interested" → Totally fair. Can I ask…\n"Send me an email" → Happy to…'}
+                    className="flex w-full rounded-md border border-border bg-surface px-3 py-2 font-sans text-sm text-ink focus-visible:border-copper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/30"
+                  />
+                </div>
+                <p className="font-sans text-xs text-ink-subtle">
+                  Both show on the setter&apos;s dashboard and stay pinned in dial mode.
+                </p>
               </div>
             </div>
           </div>
