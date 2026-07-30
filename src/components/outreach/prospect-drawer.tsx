@@ -52,12 +52,16 @@ export function ProspectDrawer({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set when the phone/email already exists on someone's list — the setter can
+  // confirm and add anyway (wrong number, second contact at the same business).
+  const [duplicate, setDuplicate] = useState<string | null>(null);
   const [f, setF] = useState<Fields>(() => fromProspect(prospect));
 
   useEffect(() => {
     if (!open) return;
     setF(fromProspect(prospect));
     setError(null);
+    setDuplicate(null);
     const t = window.setTimeout(() => firstRef.current?.focus(), 0);
     return () => window.clearTimeout(t);
   }, [open, prospect]);
@@ -65,8 +69,7 @@ export function ProspectDrawer({
   const set = (k: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setF((prev) => ({ ...prev, [k]: e.target.value }));
 
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function save(allowDuplicate: boolean) {
     setBusy(true);
     setError(null);
     try {
@@ -79,6 +82,7 @@ export function ProspectDrawer({
         website_problem: f.website_problem.trim() || null,
         source: f.source.trim() || null,
         notes: f.notes.trim() || null,
+        ...(allowDuplicate ? { allow_duplicate: true } : {}),
       };
       const res = await fetch(
         mode === 'create'
@@ -91,11 +95,17 @@ export function ProspectDrawer({
         },
       );
       const body = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        // Someone already has this number — offer to add anyway.
+        setDuplicate(body.error ?? 'This number is already on the call list.');
+        return;
+      }
       if (!res.ok) {
         setError(body.error ?? 'Failed to save.');
         toast.error("Couldn't save", body.error ?? 'Try again.');
         return;
       }
+      setDuplicate(null);
       setOpen(false);
       toast.success(mode === 'create' ? 'Prospect added' : 'Prospect updated', f.full_name);
       router.refresh();
@@ -104,6 +114,11 @@ export function ProspectDrawer({
     } finally {
       setBusy(false);
     }
+  }
+
+  function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    void save(false);
   }
 
   return (
@@ -176,10 +191,30 @@ export function ProspectDrawer({
                 className="flex w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink focus-visible:border-copper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/30"
               />
             </div>
+            {duplicate ? (
+              <div role="alert" className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5">
+                <p className="font-sans text-xs font-medium text-warning">{duplicate}</p>
+                <p className="mt-0.5 font-sans text-xs text-ink-muted">
+                  Skip it to avoid a double-dial, or add anyway if this is a
+                  different contact or the other number is wrong.
+                </p>
+              </div>
+            ) : null}
             {error ? <p role="alert" className="font-sans text-xs text-danger">{error}</p> : null}
           </div>
           <footer className="flex items-center justify-end gap-2 border-t border-border bg-surface px-6 py-4">
             <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
+            {duplicate ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={busy}
+                onClick={() => void save(true)}
+              >
+                {busy ? 'Adding…' : 'Add anyway'}
+              </Button>
+            ) : null}
             <Button type="submit" size="sm" disabled={busy || !f.full_name.trim()}>
               {busy ? 'Saving…' : mode === 'create' ? 'Add prospect' : 'Save'}
             </Button>

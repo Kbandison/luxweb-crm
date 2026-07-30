@@ -4,6 +4,7 @@ import { writeAudit } from '@/lib/audit';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 import { CreateProspectSchema } from '@/lib/validation/outreach';
+import { findProspectConflict } from '@/lib/outreach/dedupe';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +12,11 @@ export const runtime = 'nodejs';
  * POST /api/outreach/prospects — add a prospect to the call list. Requires
  * `manage_outreach` (setter/owner/manager). The creator owns it, so a setter's
  * prospects stay on their list and the owner sees everyone's.
+ *
+ * The phone/email is checked against the whole list (every setter, plus real
+ * contacts) so two setters don't dial the same business. A collision returns
+ * 409 with who holds it; `allow_duplicate: true` overrides — a wrong number or
+ * a second contact at the same business is a legitimate re-add.
  */
 export async function POST(req: Request) {
   try {
@@ -28,6 +34,38 @@ export async function POST(req: Request) {
         { error: 'Invalid payload', issues: parsed.error.issues },
         { status: 400 },
       );
+    }
+
+    if (raw?.allow_duplicate !== true) {
+      const clash = await findProspectConflict(
+        parsed.data.phone,
+        parsed.data.email,
+        session.userId,
+      );
+      if (clash) {
+        const where =
+          clash.kind === 'contact'
+            ? 'already a lead in the pipeline'
+            : clash.mine
+              ? 'already on your call list'
+              : `already on ${clash.ownerName ?? 'another setter'}'s call list`;
+        return Response.json(
+          {
+            error: `${clash.company ?? clash.fullName} is ${where}.`,
+            conflict: {
+              kind: clash.kind,
+              company: clash.company,
+              fullName: clash.fullName,
+              status: clash.status,
+              attempts: clash.attempts,
+              lastContactedAt: clash.lastContactedAt,
+              ownerName: clash.ownerName,
+              mine: clash.mine,
+            },
+          },
+          { status: 409 },
+        );
+      }
     }
 
     const { data, error } = await supabaseAdmin()
