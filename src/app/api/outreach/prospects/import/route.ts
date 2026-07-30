@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { loadProspectIndex } from '@/lib/outreach/dedupe';
 
 export const runtime = 'nodejs';
 
@@ -22,14 +23,12 @@ const RowSchema = z.object({
 
 const Schema = z.object({ rows: z.array(RowSchema).max(MAX_ROWS) });
 
-const normPhone = (v?: string | null) => (v ?? '').replace(/[^\d]/g, '');
-const normEmail = (v?: string | null) => (v ?? '').trim().toLowerCase();
-
 /**
  * POST /api/outreach/prospects/import — bulk-add prospects from a parsed CSV.
- * Rows are deduped (by phone or email) against the importer's existing
- * prospects AND the real contacts table, so a sheet import won't re-add
- * someone already in the pipeline. The importer owns the new prospects.
+ * Rows are deduped (by phone or email) against EVERY setter's call list and the
+ * real contacts table, so a sheet import won't re-add someone already in the
+ * pipeline or hand a second setter a business the first one is already
+ * dialing. The importer owns the new prospects.
  */
 export async function POST(req: Request) {
   try {
@@ -49,36 +48,24 @@ export async function POST(req: Request) {
       );
     }
 
-    const sb = supabaseAdmin();
-    // Build dedupe sets from existing prospects (this owner) + all contacts.
-    const [{ data: existingP }, { data: contacts }] = await Promise.all([
-      sb.from('prospects').select('phone, email').eq('owner_id', session.userId),
-      sb.from('contacts').select('phone, email'),
-    ]);
-    const seenPhone = new Set<string>();
-    const seenEmail = new Set<string>();
-    for (const r of [
-      ...((existingP ?? []) as { phone: string | null; email: string | null }[]),
-      ...((contacts ?? []) as { phone: string | null; email: string | null }[]),
-    ]) {
-      const p = normPhone(r.phone);
-      const e = normEmail(r.email);
-      if (p) seenPhone.add(p);
-      if (e) seenEmail.add(e);
-    }
+    const index = await loadProspectIndex(session.userId);
 
     let skipped = 0;
+    let skippedOther = 0; // held by a different setter — worth naming in the UI
+    const heldBy = new Set<string>();
     const toInsert: Record<string, unknown>[] = [];
     for (const row of parsed.data.rows) {
-      const p = normPhone(row.phone);
-      const e = normEmail(row.email);
-      if ((p && seenPhone.has(p)) || (e && seenEmail.has(e))) {
+      const clash = index.find(row.phone, row.email);
+      if (clash) {
         skipped += 1;
+        if (clash.kind === 'prospect' && !clash.mine) {
+          skippedOther += 1;
+          if (clash.ownerName) heldBy.add(clash.ownerName);
+        }
         continue;
       }
-      // Also dedupe within this batch.
-      if (p) seenPhone.add(p);
-      if (e) seenEmail.add(e);
+      // Claim the keys so one CSV can't duplicate itself.
+      index.reserve(row.phone, row.email);
       toInsert.push({
         owner_id: session.userId,
         full_name: row.full_name,
@@ -94,7 +81,7 @@ export async function POST(req: Request) {
 
     let imported = 0;
     if (toInsert.length > 0) {
-      const { error, count } = await sb
+      const { error, count } = await supabaseAdmin()
         .from('prospects')
         .insert(toInsert, { count: 'exact' });
       if (error) return Response.json({ error: error.message }, { status: 500 });
@@ -105,10 +92,15 @@ export async function POST(req: Request) {
       actor_id: session.userId,
       action: 'create',
       entity_type: 'prospect_import',
-      diff: { imported, skipped },
+      diff: { imported, skipped, skippedOther },
     });
 
-    return Response.json({ imported, skipped });
+    return Response.json({
+      imported,
+      skipped,
+      skippedOther,
+      heldBy: [...heldBy].slice(0, 4),
+    });
   } catch (err) {
     if (err instanceof Response) return err;
     return safeError('outreach/prospects/import', err);

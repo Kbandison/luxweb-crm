@@ -117,7 +117,8 @@ type DbRow = {
   created_at: string;
 };
 
-async function resolveSetterNames(
+/** userId → display name, preferring the team-member record. */
+export async function resolveSetterNames(
   ids: Array<string | null>,
 ): Promise<Map<string, string>> {
   const unique = [...new Set(ids.filter((v): v is string => !!v))];

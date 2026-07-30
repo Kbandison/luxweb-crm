@@ -14,6 +14,7 @@ import {
 import { getGoogleConnection, googleConfigured } from '@/lib/google/calendar';
 import { formatUSD } from '@/lib/formatters';
 import { ProspectList } from '@/components/outreach/prospect-list';
+import { ProspectLookup } from '@/components/outreach/prospect-lookup';
 import { AppointmentList } from '@/components/outreach/appointment-list';
 import { Scorecard } from '@/components/outreach/scorecard';
 import { SectionHead } from '@/components/ui/section-head';
@@ -159,6 +160,7 @@ export default async function AdminOutreachPage({
         </section>
 
         <SectionHead number="03" title="Call list" size="md" />
+        <ProspectLookup />
         <ProspectList prospects={prospects} mode="owner" />
       </main>
     </>

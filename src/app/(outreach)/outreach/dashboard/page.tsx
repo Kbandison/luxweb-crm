@@ -11,6 +11,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { SectionHead } from '@/components/ui/section-head';
 import { ProspectDrawer } from '@/components/outreach/prospect-drawer';
 import { ProspectList } from '@/components/outreach/prospect-list';
+import { ProspectLookup } from '@/components/outreach/prospect-lookup';
 import { AppointmentList } from '@/components/outreach/appointment-list';
 import { Scorecard } from '@/components/outreach/scorecard';
 import { OutreachImportButton } from '@/components/outreach/import-button';
@@ -62,6 +63,7 @@ export default async function OutreachDashboardPage() {
 
       <div className="mt-8 space-y-3">
         <SectionHead number={appointments.length > 0 ? '02' : '01'} title="Call list" size="md" />
+        <ProspectLookup />
         <ProspectList prospects={prospects} mode="setter" />
       </div>
     </div>

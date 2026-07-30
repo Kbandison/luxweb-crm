@@ -61,6 +61,22 @@ function mapHeaders(headers: string[]): (string | null)[] {
   });
 }
 
+type ImportResult = {
+  imported: number;
+  skipped: number;
+  skippedOther: number;
+  heldBy?: string[];
+};
+
+/** Name the setters whose lists caused skips — that's the useful part. */
+function skipMessage(r: ImportResult): string | undefined {
+  if (!r.skipped) return undefined;
+  const base = `${r.skipped} skipped as duplicates`;
+  if (!r.skippedOther) return `${base}.`;
+  const who = r.heldBy?.length ? ` — already on ${r.heldBy.join(', ')}'s list` : '';
+  return `${base} (${r.skippedOther} already being called${who}).`;
+}
+
 export function OutreachImportButton() {
   const router = useRouter();
   const toast = useToast();
@@ -110,10 +126,7 @@ export function OutreachImportButton() {
         toast.error("Couldn't import", body.error ?? 'Try again.');
         return;
       }
-      toast.success(
-        `Imported ${body.imported}`,
-        body.skipped > 0 ? `${body.skipped} skipped as duplicates.` : undefined,
-      );
+      toast.success(`Imported ${body.imported}`, skipMessage(body));
       router.refresh();
     } catch {
       toast.error("Couldn't import", 'Could not read the file.');
