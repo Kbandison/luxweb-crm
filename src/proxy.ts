@@ -24,7 +24,19 @@ const AUTH_PATHS = new Set([
   '/accept-invite',
 ]);
 
+/**
+ * Machine-to-machine endpoints under a gated prefix. These authenticate with a
+ * shared key rather than a session cookie, so the session gate below would
+ * bounce them to /login before the handler ever runs. Each one does its own
+ * auth — see the OUTREACH_INGEST_KEY check in the ingest route.
+ */
+const API_KEY_PATHS = new Set(['/api/outreach/ingest']);
+
 export async function proxy(request: NextRequest) {
+  if (API_KEY_PATHS.has(request.nextUrl.pathname)) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
