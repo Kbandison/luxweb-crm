@@ -36,6 +36,7 @@ export const CreateProspectSchema = z.object({
   phone: z.string().max(60).optional().nullable(),
   email: z.string().email().max(200).optional().nullable(),
   industry: z.string().max(120).optional().nullable(),
+  website: z.string().max(500).optional().nullable(),
   website_problem: z.string().max(1000).optional().nullable(),
   source: z.string().max(120).optional().nullable(),
   notes: z.string().max(4000).optional().nullable(),

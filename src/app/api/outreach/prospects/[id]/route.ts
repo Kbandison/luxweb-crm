@@ -71,6 +71,7 @@ export async function PATCH(
       'phone',
       'email',
       'industry',
+      'website',
       'website_problem',
       'source',
       'notes',

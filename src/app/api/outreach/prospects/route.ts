@@ -77,6 +77,9 @@ export async function POST(req: Request) {
         phone: parsed.data.phone ?? null,
         email: parsed.data.email ?? null,
         industry: parsed.data.industry ?? null,
+        // Only sent when filled in, so adding a prospect still works on a CRM
+        // that hasn't run crm_prospects_external.sql yet.
+        ...(parsed.data.website ? { website: parsed.data.website } : {}),
         website_problem: parsed.data.website_problem ?? null,
         source: parsed.data.source ?? null,
         notes: parsed.data.notes ?? null,
