@@ -14,6 +14,7 @@ type Fields = {
   phone: string;
   email: string;
   industry: string;
+  website: string;
   website_problem: string;
   source: string;
   notes: string;
@@ -26,6 +27,7 @@ function fromProspect(p?: ProspectRow | null): Fields {
     phone: p?.phone ?? '',
     email: p?.email ?? '',
     industry: p?.industry ?? '',
+    website: p?.website ?? '',
     website_problem: p?.websiteProblem ?? '',
     source: p?.source ?? '',
     notes: p?.notes ?? '',
@@ -82,6 +84,8 @@ export function ProspectDrawer({
         website_problem: f.website_problem.trim() || null,
         source: f.source.trim() || null,
         notes: f.notes.trim() || null,
+        // Sent only when filled — see the note in the create route.
+        ...(f.website.trim() ? { website: f.website.trim() } : {}),
         ...(allowDuplicate ? { allow_duplicate: true } : {}),
       };
       const res = await fetch(
@@ -166,6 +170,10 @@ export function ProspectDrawer({
                 <Label htmlFor="p_source">Source</Label>
                 <Input id="p_source" value={f.source} onChange={set('source')} placeholder="Google Maps, referral…" />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="p_website">Website</Label>
+              <Input id="p_website" value={f.website} onChange={set('website')} placeholder="apexauto.com" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p_problem">Website problem spotted</Label>

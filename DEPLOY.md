@@ -181,6 +181,42 @@ The daily callback reminder (`/api/cron/outreach-callbacks`, 12:00 UTC) reuses t
 
 ---
 
+## 6d. ByteBoundless → CRM lead push
+
+ByteBoundless (the lead-finding tool) pushes businesses straight onto a setter's call list — no CSV round trip. **The CRM is the system of record for calls**: ByteBoundless finds and qualifies, the CRM logs every dial.
+
+1. **Migration:** apply `crm-master/crm_prospects_external.sql` (single step). Adds `website`, `external_source`, `external_id` to `crm.prospects` plus a partial unique index so re-sending the same business is a no-op.
+
+2. **Shared key** — generate one and set it on *both* apps:
+   ```bash
+   openssl rand -base64 32
+   vercel env add OUTREACH_INGEST_KEY production   # this repo
+   ```
+   In ByteBoundless set the same value as `LUXWEB_CRM_INGEST_KEY`, plus `LUXWEB_CRM_URL=https://portal.luxwebstudio.dev`.
+
+3. **Endpoint:** `POST /api/outreach/ingest`, `Authorization: Bearer <key>` (or `x-api-key`). Body:
+   ```json
+   {
+     "source": "byteboundless",
+     "assign_to": "setter@example.com",
+     "leads": [{
+       "external_id": "<byteboundless business id>",
+       "business_name": "Apex Auto Repair",
+       "phone": "(770) 555-0142",
+       "email": "rob@apexauto.com",
+       "website": "https://apexauto.com",
+       "industry": "Auto repair",
+       "angle": "7s load, no phone above the fold",
+       "notes": "Wix · score 82 · 3.9★ (41 reviews)"
+     }]
+   }
+   ```
+   `assign_to` must be a CRM user with `manage_outreach`; omit it and the leads go to the studio owner. Returns `{ imported, skipped, conflicts }` — the same duplicate check as the CSV importer, so a business another setter is already calling is skipped, not handed out twice.
+
+4. **Verify:** `curl -s -o /dev/null -w '%{http_code}' -X POST https://portal.luxwebstudio.dev/api/outreach/ingest` → `401` (key required, endpoint live).
+
+---
+
 ## 7. Smoke test in production
 
 Sign in as admin (`kbandison@gmail.com`) and walk these in order:

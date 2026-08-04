@@ -89,6 +89,16 @@ export function ProspectCard({
                   {local.label} local{local.offHours ? ' · off hours' : ''}
                 </span>
               ) : null}
+              {p.website ? (
+                <a
+                  href={p.website.startsWith('http') ? p.website : `https://${p.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-copper hover:underline"
+                >
+                  {p.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                </a>
+              ) : null}
               {p.email ? <span>{p.email}</span> : null}
               {p.industry ? <span>{p.industry}</span> : null}
               {mode === 'owner' && p.ownerName ? (

@@ -107,6 +107,8 @@ export type ProspectRow = {
   phone: string | null;
   email: string | null;
   industry: string | null;
+  /** The business's site — the whole pitch angle for a web studio. */
+  website: string | null;
   websiteProblem: string | null;
   source: string | null;
   status: ProspectStatus;
@@ -120,10 +122,13 @@ export type ProspectRow = {
   history: ProspectCall[];
 };
 
-const COLUMNS =
-  'id, owner_id, full_name, company, phone, email, industry, website_problem, source, status, attempts, last_contacted_at, next_action, next_action_at, notes, created_at';
+// '*' rather than a column list: columns added by a migration that hasn't run
+// yet come back absent instead of erroring the whole query (see the same
+// reasoning on getOutreachSettings).
+const COLUMNS = '*';
 
 type DbRow = {
+  website: string | null;
   id: string;
   owner_id: string | null;
   full_name: string;
@@ -182,6 +187,7 @@ function mapRow(
     phone: r.phone,
     email: r.email,
     industry: r.industry,
+    website: r.website ?? null,
     websiteProblem: r.website_problem,
     source: r.source,
     status: r.status,

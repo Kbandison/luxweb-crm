@@ -171,6 +171,21 @@ export function DialMode({
         ) : null}
 
         <dl className="mt-4 space-y-1.5 font-sans text-sm">
+          {p.website ? (
+            <div>
+              <dt className="inline text-ink-subtle">Site · </dt>
+              <dd className="inline">
+                <a
+                  href={p.website.startsWith('http') ? p.website : `https://${p.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-copper hover:underline"
+                >
+                  {p.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                </a>
+              </dd>
+            </div>
+          ) : null}
           {p.websiteProblem ? (
             <div>
               <dt className="inline text-ink-subtle">Angle · </dt>
