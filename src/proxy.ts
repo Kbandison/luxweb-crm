@@ -30,7 +30,10 @@ const AUTH_PATHS = new Set([
  * bounce them to /login before the handler ever runs. Each one does its own
  * auth — see the OUTREACH_INGEST_KEY check in the ingest route.
  */
-const API_KEY_PATHS = new Set(['/api/outreach/ingest']);
+const API_KEY_PATHS = new Set([
+  '/api/outreach/ingest',
+  '/api/outreach/setters',
+]);
 
 export async function proxy(request: NextRequest) {
   if (API_KEY_PATHS.has(request.nextUrl.pathname)) {

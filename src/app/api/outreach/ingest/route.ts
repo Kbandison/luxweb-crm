@@ -1,4 +1,3 @@
-import { timingSafeEqual } from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { safeError } from '@/lib/safe-error';
@@ -7,6 +6,7 @@ import { IngestSchema, type IngestLead } from '@/lib/validation/ingest';
 import { loadProspectIndex } from '@/lib/outreach/dedupe';
 import { getOwnerUserId } from '@/lib/queries/outreach';
 import { hasCapability, type Role } from '@/lib/auth/permissions';
+import { requireIngestKey } from '@/lib/outreach/ingest-auth';
 
 export const runtime = 'nodejs';
 
@@ -20,22 +20,6 @@ export const runtime = 'nodejs';
  * duplicate check as the CSV importer, so a business already being called
  * won't be handed to a second setter.
  */
-
-function keyMatches(provided: string, expected: string): boolean {
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  // timingSafeEqual throws on length mismatch — check first, and still compare
-  // so an attacker learns nothing from response timing on a same-length guess.
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
-
-/** Bearer token, or the x-api-key header for callers that prefer it. */
-function providedKey(req: Request): string | null {
-  const auth = req.headers.get('authorization');
-  if (auth?.startsWith('Bearer ')) return auth.slice(7).trim();
-  return req.headers.get('x-api-key');
-}
 
 /** Who ends up owning these leads. */
 async function resolveOwner(
@@ -95,17 +79,8 @@ function buildRow(
 
 export async function POST(req: Request) {
   try {
-    const expected = process.env.OUTREACH_INGEST_KEY;
-    if (!expected) {
-      return Response.json(
-        { error: 'OUTREACH_INGEST_KEY not configured' },
-        { status: 500 },
-      );
-    }
-    const provided = providedKey(req);
-    if (!provided || !keyMatches(provided, expected)) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const denied = requireIngestKey(req);
+    if (denied) return denied;
 
     const limit = limitByKey('outreach/ingest', { capacity: 30, refillPerSec: 30 / 60 });
     if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
