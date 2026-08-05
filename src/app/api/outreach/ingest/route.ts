@@ -40,22 +40,24 @@ function providedKey(req: Request): string | null {
 /** Who ends up owning these leads. */
 async function resolveOwner(
   assignTo: string | null | undefined,
-): Promise<{ userId: string } | { error: string }> {
+): Promise<{ userId: string; email: string | null } | { error: string }> {
   if (!assignTo) {
     const ownerId = await getOwnerUserId();
-    return ownerId ? { userId: ownerId } : { error: 'No studio owner to assign to.' };
+    return ownerId
+      ? { userId: ownerId, email: null }
+      : { error: 'No studio owner to assign to.' };
   }
   const { data } = await supabaseAdmin()
     .from('users')
-    .select('id, role')
+    .select('id, email, role')
     .ilike('email', assignTo)
     .maybeSingle();
-  const user = data as { id: string; role: Role } | null;
+  const user = data as { id: string; email: string; role: Role } | null;
   if (!user) return { error: `No CRM user with the email ${assignTo}.` };
   if (!hasCapability(user.role, 'manage_outreach')) {
     return { error: `${assignTo} isn't on the outreach team.` };
   }
-  return { userId: user.id };
+  return { userId: user.id, email: user.email };
 }
 
 /** Fields that only exist once crm_prospects_external.sql has been applied. */
@@ -192,7 +194,13 @@ export async function POST(req: Request) {
       diff: { source, imported, skipped },
     });
 
-    return Response.json({ imported, skipped, conflicts: conflicts.slice(0, 20) });
+    return Response.json({
+      imported,
+      skipped,
+      // So the sender can confirm whose list these landed on.
+      assigned_to: owner.email,
+      conflicts: conflicts.slice(0, 20),
+    });
   } catch (err) {
     if (err instanceof Response) return err;
     return safeError('outreach/ingest', err);

@@ -76,8 +76,12 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/portal') || pathname.startsWith('/api/client');
   const isStaffPath =
     pathname.startsWith('/staff') || pathname.startsWith('/api/staff');
-  const isOutreachPath =
-    pathname.startsWith('/outreach') || pathname.startsWith('/api/outreach');
+  // The setter's own workspace vs. the outreach API. They gate differently:
+  // only setters live at /outreach, but the owner drives the same API from
+  // /admin/outreach (reassign, bulk actions, lookup, CSV) — see below.
+  const isOutreachPage = pathname.startsWith('/outreach');
+  const isOutreachApi = pathname.startsWith('/api/outreach');
+  const isOutreachPath = isOutreachPage || isOutreachApi;
 
   // Unauthenticated
   if (!user) {
@@ -147,7 +151,16 @@ export async function proxy(request: NextRequest) {
   if (isStaffPath && role !== 'contractor') {
     return NextResponse.redirect(new URL(portalHomeFor(role), request.url));
   }
-  if (isOutreachPath && role !== 'setter') {
+  // The setter portal itself is setter-only — the owner has /admin/outreach.
+  if (isOutreachPage && role !== 'setter') {
+    return NextResponse.redirect(new URL(portalHomeFor(role), request.url));
+  }
+  // The outreach API is shared: the owner's page calls it to reassign, run
+  // bulk actions, look up duplicates, and export/import CSV. Gating it to
+  // setters silently broke all of those — a redirected fetch follows to a 200
+  // HTML page, so the UI reported success while nothing was written. Each
+  // route still enforces `manage_outreach` itself (layer 2).
+  if (isOutreachApi && !hasCapability(role, 'manage_outreach')) {
     return NextResponse.redirect(new URL(portalHomeFor(role), request.url));
   }
   if (isClientPath && role !== 'client') {
