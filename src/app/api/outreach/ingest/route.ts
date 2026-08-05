@@ -3,7 +3,7 @@ import { writeAudit } from '@/lib/audit';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 import { IngestSchema, type IngestLead } from '@/lib/validation/ingest';
-import { loadProspectIndex } from '@/lib/outreach/dedupe';
+import { loadProspectIndex, type ProspectMatch } from '@/lib/outreach/dedupe';
 import { getOwnerUserId } from '@/lib/queries/outreach';
 import { hasCapability, type Role } from '@/lib/auth/permissions';
 import { requireIngestKey } from '@/lib/outreach/ingest-auth';
@@ -142,6 +142,61 @@ async function recordExternalHistory(
   }
 }
 
+/**
+ * Whether an existing prospect should take the sender's outcome.
+ *
+ * Only when the CRM row is genuinely untouched — status still 'new' with no
+ * logged dials. The CRM is the system of record for calls, so anything a
+ * setter has actually done here outranks whatever the other tool believes.
+ * That means a re-push can fill in a blank but can never walk back real work.
+ */
+function backfillable(clash: ProspectMatch, lead: IngestLead): boolean {
+  if (clash.kind !== 'prospect' || !clash.id) return false;
+  if (clash.status !== 'new' || clash.attempts > 0) return false;
+  return mapExternalStatus(lead.status) !== 'new';
+}
+
+/** Apply the outcomes collected above. Returns how many rows changed. */
+async function applyBackfills(
+  backfills: Array<{ prospectId: string; lead: IngestLead }>,
+  setterId: string,
+  source: string,
+): Promise<number> {
+  if (backfills.length === 0) return 0;
+  const sb = supabaseAdmin();
+  let updated = 0;
+
+  for (const { prospectId, lead } of backfills) {
+    const mapped = mapExternalStatus(lead.status);
+    const when = parseWhen(lead.contacted_at);
+    const worked = isWorkedStatus(mapped);
+    const patch: Record<string, unknown> = { status: mapped };
+    if (worked) {
+      patch.attempts = 1;
+      patch.last_contacted_at = when;
+    }
+    let { error } = await sb.from('prospects').update(patch).eq('id', prospectId);
+    if (error?.message.includes('invalid input value for enum')) {
+      ({ error } = await sb
+        .from('prospects')
+        .update({ ...patch, status: degradeStatus(mapped) })
+        .eq('id', prospectId));
+    }
+    if (error) continue; // one bad row shouldn't sink the batch
+    updated += 1;
+  }
+
+  // Same history treatment a fresh import gets.
+  await recordExternalHistory(
+    backfills.map((b) => b.lead),
+    backfills.map((b) => b.prospectId),
+    setterId,
+    source,
+    false,
+  );
+  return updated;
+}
+
 export async function POST(req: Request) {
   try {
     const denied = requireIngestKey(req);
@@ -169,41 +224,88 @@ export async function POST(req: Request) {
     const index = await loadProspectIndex(owner.userId);
 
     // Anything already pushed from this tool, so a re-send is a no-op even for
-    // a business with no phone number to match on.
+    // a business with no phone number to match on. Carries status/attempts so
+    // an untouched row can still take a newer outcome (see backfillable).
     const externalIds = leads
       .map((l) => l.external_id)
       .filter((v): v is string => !!v);
-    const alreadySent = new Set<string>();
+    const alreadySent = new Map<string, ProspectMatch>();
     if (externalIds.length > 0) {
       const { data } = await sb
         .from('prospects')
-        .select('external_id')
+        .select('id, external_id, status, attempts')
         .eq('external_source', source)
         .in('external_id', externalIds);
-      for (const r of (data ?? []) as { external_id: string | null }[]) {
-        if (r.external_id) alreadySent.add(r.external_id);
+      for (const r of (data ?? []) as {
+        id: string;
+        external_id: string | null;
+        status: ProspectMatch['status'];
+        attempts: number | null;
+      }[]) {
+        if (!r.external_id) continue;
+        alreadySent.set(r.external_id, {
+          kind: 'prospect',
+          id: r.id,
+          fullName: '',
+          company: null,
+          phone: null,
+          email: null,
+          status: r.status,
+          attempts: r.attempts ?? 0,
+          lastContactedAt: null,
+          ownerId: null,
+          ownerName: null,
+          mine: true,
+        });
       }
     }
 
     let skipped = 0;
     const conflicts: Array<{ business: string; heldBy: string | null }> = [];
     const accepted: IngestLead[] = [];
+    const backfills: Array<{ prospectId: string; lead: IngestLead }> = [];
     for (const lead of leads) {
-      if (lead.external_id && alreadySent.has(lead.external_id)) {
+      const seen = lead.external_id ? alreadySent.get(lead.external_id) : undefined;
+      if (seen) {
+        if (backfillable(seen, lead)) backfills.push({ prospectId: seen.id, lead });
         skipped += 1;
         continue;
       }
       const clash = index.find(lead.phone, lead.email);
       if (clash) {
+        // Already here. If the CRM row is untouched and the sender knows more
+        // about it than we do, backfill rather than silently dropping the
+        // outcome — the usual case is a lead pushed cold earlier that has
+        // since been worked in the other tool.
+        if (backfillable(clash, lead)) {
+          backfills.push({ prospectId: clash.id, lead });
+        } else {
+          conflicts.push({
+            business: lead.business_name,
+            heldBy: clash.kind === 'contact' ? 'pipeline' : clash.ownerName,
+          });
+        }
         skipped += 1;
-        conflicts.push({
-          business: lead.business_name,
-          heldBy: clash.kind === 'contact' ? 'pipeline' : clash.ownerName,
-        });
         continue;
       }
       index.reserve(lead.phone, lead.email);
-      if (lead.external_id) alreadySent.add(lead.external_id);
+      // Mark it claimed so a duplicate row inside this same batch is skipped.
+      if (lead.external_id) {
+        alreadySent.set(lead.external_id, {
+          kind: 'prospect',
+          id: '',
+          fullName: '',
+          company: null,
+          phone: null,
+          email: null,
+          status: null,
+          attempts: 0,
+          lastContactedAt: null,
+          ownerId: null,
+          ownerName: null,
+          mine: true,
+        });
+      }
       accepted.push(lead);
     }
 
@@ -247,16 +349,19 @@ export async function POST(req: Request) {
       );
     }
 
+    const updated = await applyBackfills(backfills, owner.userId, source);
+
     await writeAudit({
       actor_id: owner.userId,
       action: 'create',
       entity_type: 'prospect_ingest',
-      diff: { source, imported, skipped },
+      diff: { source, imported, skipped, updated },
     });
 
     return Response.json({
       imported,
       skipped,
+      updated,
       // So the sender can confirm whose list these landed on.
       assigned_to: owner.email,
       conflicts: conflicts.slice(0, 20),
