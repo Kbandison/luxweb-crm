@@ -44,6 +44,7 @@ export function ProspectList({
   prospects,
   mode,
   nowIso,
+  homeZone,
   setters,
 }: {
   prospects: ProspectRow[];
@@ -51,6 +52,8 @@ export function ProspectList({
   mode: 'setter' | 'owner';
   /** Server-rendered timestamp — keeps due state and local times stable. */
   nowIso: string;
+  /** Studio timezone — prospects in it don't get a local-clock chip. */
+  homeZone?: string;
   /** Owner only: reassign targets. */
   setters?: SetterOption[];
 }) {
@@ -257,6 +260,7 @@ export function ProspectList({
               prospect={p}
               mode={mode}
               now={now}
+              homeZone={homeZone}
               selected={selected.has(p.id)}
               onToggleSelect={() => toggle(p.id)}
               setters={setters}

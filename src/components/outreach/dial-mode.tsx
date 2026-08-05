@@ -32,11 +32,14 @@ const PRIMARY: string[] = ['no_answer', 'callback', 'interested', 'booked'];
 export function DialMode({
   prospects,
   nowIso,
+  homeZone,
   script,
   objections,
 }: {
   prospects: ProspectRow[];
   nowIso: string;
+  /** Studio timezone — prospects in it don't get a local-clock chip. */
+  homeZone?: string;
   script: string;
   objections: string;
 }) {
@@ -115,7 +118,7 @@ export function DialMode({
   }
 
   const due = dueState(p.nextActionAt, now);
-  const local = localTimeForPhone(p.phone, now);
+  const local = localTimeForPhone(p.phone, now, homeZone);
   const position = prospects.length - queue.length + 1;
 
   return (

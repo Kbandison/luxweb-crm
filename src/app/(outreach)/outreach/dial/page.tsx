@@ -26,6 +26,7 @@ export default async function OutreachDialPage() {
         <DialMode
           prospects={prospects}
           nowIso={nowIso}
+          homeZone={settings.slotTimezone}
           script={settings.callScript}
           objections={settings.objectionNotes}
         />

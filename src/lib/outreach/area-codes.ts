@@ -150,13 +150,19 @@ export type LocalTime = {
 /**
  * Wall-clock time at the prospect's end. `now` is passed in (server-rendered)
  * so the value matches between server and client render.
+ *
+ * Returns null when the prospect shares `homeZone` with the studio — a setter
+ * in Georgia calling a Georgia business doesn't need to be told their own
+ * clock, and the off-hours warning only means something across zones.
  */
 export function localTimeForPhone(
   phone: string | null | undefined,
   now: Date,
+  homeZone?: string,
 ): LocalTime | null {
   const zone = timeZoneForPhone(phone);
   if (!zone) return null;
+  if (homeZone && zone === homeZone) return null;
   try {
     const label = new Intl.DateTimeFormat('en-US', {
       timeZone: zone,
