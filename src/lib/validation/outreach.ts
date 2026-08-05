@@ -17,6 +17,8 @@ export const LOG_DISPOSITIONS = [
 export const PROSPECT_STATUSES = [
   'new',
   'no_answer',
+  // Set by an inbound push — outreach that happened outside the CRM.
+  'contacted',
   'callback',
   'interested',
   'booked',

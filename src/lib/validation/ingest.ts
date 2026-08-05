@@ -19,6 +19,14 @@ export const IngestLeadSchema = z.object({
   /** Why they need a rebuild — lands in the setter's "Angle" field. */
   angle: z.string().max(1000).optional().nullable(),
   notes: z.string().max(4000).optional().nullable(),
+  /**
+   * How far the sending tool already got with this business, in ITS
+   * vocabulary — mapped to a CRM status on arrival. Work done before the
+   * lead reached the CRM still counts.
+   */
+  status: z.string().max(40).optional().nullable(),
+  /** When that outreach happened, so the history lands on the right date. */
+  contacted_at: z.string().min(1).max(40).optional().nullable(),
 });
 
 export const IngestSchema = z.object({

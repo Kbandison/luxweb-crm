@@ -142,41 +142,54 @@ export function ProspectCard({
   );
 }
 
-/** Past dials — what was said on attempts 1–3 before you make the fourth. */
+/**
+ * Past dials — what was said on attempts 1–3 before you make the fourth.
+ *
+ * The most recent call is always on screen; older ones fold away. Hiding all
+ * of it behind a toggle meant the log form was visible but the log wasn't,
+ * which is backwards — the last thing someone said is the most useful thing
+ * on the card.
+ */
 function CallHistory({ calls }: { calls: ProspectRow['history'] }) {
-  const [open, setOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? calls : calls.slice(0, 1);
+  const hidden = calls.length - visible.length;
+
   return (
     <div className="mt-3 border-t border-border/60 pt-3">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle hover:text-copper"
-        aria-expanded={open}
-      >
-        {open ? '▾' : '▸'} History · {calls.length} logged
-      </button>
-      {open ? (
-        <ul className="mt-2 space-y-1.5">
-          {calls.map((c) => (
-            <li key={c.id} className="flex flex-wrap items-baseline gap-x-2 font-sans text-xs">
-              <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
-                {formatDate(c.calledAt)}
+      <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+        {calls.length === 1 ? 'Last call' : `Last call · ${calls.length} logged`}
+      </p>
+      <ul className="mt-1.5 space-y-1.5">
+        {visible.map((c) => (
+          <li key={c.id} className="flex flex-wrap items-baseline gap-x-2 font-sans text-xs">
+            <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+              {formatDate(c.calledAt)}
+            </span>
+            <span className="text-ink-muted">{STATUS_LABEL[c.disposition]}</span>
+            {c.spokeWithDm ? (
+              <span className="font-mono text-[10px] uppercase tracking-meta text-copper">
+                spoke w/ DM
               </span>
-              <span className="text-ink-muted">{STATUS_LABEL[c.disposition]}</span>
-              {c.spokeWithDm ? (
-                <span className="font-mono text-[10px] uppercase tracking-meta text-copper">
-                  spoke w/ DM
-                </span>
-              ) : null}
-              {c.note ? <span className="text-ink">— {c.note}</span> : null}
-              {c.setterName ? (
-                <span className="ml-auto font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
-                  {c.setterName}
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+            ) : null}
+            {c.note ? <span className="text-ink">— {c.note}</span> : null}
+            {c.setterName ? (
+              <span className="ml-auto font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+                {c.setterName}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {calls.length > 1 ? (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="mt-1.5 font-mono text-[10px] uppercase tracking-meta text-ink-subtle hover:text-copper"
+          aria-expanded={showAll}
+        >
+          {showAll ? '▾ Show less' : `▸ ${hidden} earlier ${hidden === 1 ? 'call' : 'calls'}`}
+        </button>
       ) : null}
     </div>
   );
