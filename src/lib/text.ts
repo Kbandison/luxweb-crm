@@ -18,3 +18,13 @@ export function truncateGraphemes(s: string, max: number): string {
   }
   return out;
 }
+
+/**
+ * A website rendered as a label: protocol and trailing slash dropped, then
+ * capped so a long path can't blow out the row it sits in. Pair it with a
+ * `title` carrying the full URL.
+ */
+export function displayUrl(url: string, max = 34): string {
+  const bare = url.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  return truncateGraphemes(bare, max);
+}

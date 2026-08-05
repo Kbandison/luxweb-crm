@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { StatusPill } from '@/components/ui/status-pill';
 import { useToast } from '@/components/ui/toast';
 import { formatDate, formatDateTime } from '@/lib/formatters';
+import { displayUrl } from '@/lib/text';
 import {
   DUE_LABEL,
   DUE_TONE,
@@ -97,9 +98,10 @@ export function ProspectCard({
                   href={p.website.startsWith('http') ? p.website : `https://${p.website}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-copper hover:underline"
+                  title={p.website}
+                  className="max-w-[16rem] truncate text-copper hover:underline"
                 >
-                  {p.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                  {displayUrl(p.website)}
                 </a>
               ) : null}
               {p.email ? <span>{p.email}</span> : null}
