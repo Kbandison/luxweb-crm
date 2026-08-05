@@ -8,6 +8,7 @@ import { StatusPill } from '@/components/ui/status-pill';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/components/ui/toast';
 import { formatDate } from '@/lib/formatters';
+import { displayUrl } from '@/lib/text';
 import {
   DUE_LABEL,
   DUE_TONE,
@@ -182,9 +183,10 @@ export function DialMode({
                   href={p.website.startsWith('http') ? p.website : `https://${p.website}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  title={p.website}
                   className="text-copper hover:underline"
                 >
-                  {p.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                  {displayUrl(p.website, 44)}
                 </a>
               </dd>
             </div>
