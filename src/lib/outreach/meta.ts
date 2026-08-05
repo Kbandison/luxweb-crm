@@ -5,6 +5,7 @@
 export type ProspectStatus =
   | 'new'
   | 'no_answer'
+  | 'contacted'
   | 'callback'
   | 'interested'
   | 'booked'
@@ -17,6 +18,7 @@ export type ProspectStatus =
 export const STATUS_LABEL: Record<ProspectStatus, string> = {
   new: 'New',
   no_answer: 'No answer',
+  contacted: 'Contacted',
   callback: 'Callback',
   interested: 'Interested',
   booked: 'Booked',
@@ -30,6 +32,7 @@ export const STATUS_LABEL: Record<ProspectStatus, string> = {
 export const STATUS_TONE: Record<ProspectStatus, string> = {
   new: 'bg-surface-2 text-ink-muted',
   no_answer: 'bg-surface-2 text-ink-subtle',
+  contacted: 'bg-copper-soft text-copper',
   callback: 'bg-warning/15 text-warning',
   interested: 'bg-copper-soft text-copper',
   booked: 'bg-success/15 text-success',
