@@ -78,7 +78,12 @@ export default async function OutreachDashboardPage() {
       <div className="mt-8 space-y-3">
         <SectionHead number={appointments.length > 0 ? '02' : '01'} title="Call list" size="md" />
         <ProspectLookup />
-        <ProspectList prospects={prospects} mode="setter" nowIso={nowIso} />
+        <ProspectList
+          prospects={prospects}
+          mode="setter"
+          nowIso={nowIso}
+          homeZone={settings.slotTimezone}
+        />
       </div>
     </div>
   );

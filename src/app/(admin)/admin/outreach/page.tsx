@@ -167,6 +167,7 @@ export default async function AdminOutreachPage({
           prospects={prospects}
           mode="owner"
           nowIso={nowIso}
+          homeZone={scorecard.settings.slotTimezone}
           setters={setters}
         />
       </main>

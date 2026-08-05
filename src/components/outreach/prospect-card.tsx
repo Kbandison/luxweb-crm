@@ -23,6 +23,7 @@ export function ProspectCard({
   prospect: p,
   mode,
   now,
+  homeZone,
   selected,
   onToggleSelect,
   setters,
@@ -32,6 +33,8 @@ export function ProspectCard({
   mode: 'setter' | 'owner';
   /** Server-rendered "now" — keeps local time + due state hydration-stable. */
   now: Date;
+  /** The studio's own timezone; prospects in it don't need a local clock. */
+  homeZone?: string;
   selected: boolean;
   onToggleSelect: () => void;
   /** Owner only: reassign target list. */
@@ -39,7 +42,7 @@ export function ProspectCard({
   onDelete: () => void;
 }) {
   const due = dueState(p.nextActionAt, now);
-  const local = localTimeForPhone(p.phone, now);
+  const local = localTimeForPhone(p.phone, now, homeZone);
 
   return (
     <li className="rounded-xl border border-border bg-surface p-5">
@@ -107,11 +110,7 @@ export function ProspectCard({
                 </span>
               ) : null}
             </div>
-            {p.websiteProblem ? (
-              <p className="mt-1.5 font-sans text-xs text-ink">
-                <span className="text-ink-subtle">Angle:</span> {p.websiteProblem}
-              </p>
-            ) : null}
+            {p.websiteProblem ? <Angle text={p.websiteProblem} /> : null}
             {p.nextAction || p.nextActionAt ? (
               <p
                 className={`mt-1 font-mono text-[10px] uppercase tracking-meta ${
@@ -139,6 +138,29 @@ export function ProspectCard({
       {p.history.length > 0 ? <CallHistory calls={p.history} /> : null}
       {mode === 'setter' ? <LogCallForm prospectId={p.id} /> : null}
     </li>
+  );
+}
+
+/**
+ * The pitch angle, clamped to two lines. The AI writes a paragraph; the card
+ * stays scannable and the full text is one click away.
+ */
+function Angle({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-1.5">
+      <p className={`font-sans text-xs text-ink ${open ? '' : 'line-clamp-2'}`}>
+        <span className="text-ink-subtle">Angle:</span> {text}
+      </p>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-subtle hover:text-copper"
+      >
+        {open ? 'Less' : 'More'}
+      </button>
+    </div>
   );
 }
 
@@ -173,11 +195,6 @@ function CallHistory({ calls }: { calls: ProspectRow['history'] }) {
               </span>
             ) : null}
             {c.note ? <span className="text-ink">— {c.note}</span> : null}
-            {c.setterName ? (
-              <span className="ml-auto font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
-                {c.setterName}
-              </span>
-            ) : null}
           </li>
         ))}
       </ul>
@@ -321,17 +338,19 @@ function LogCallForm({ prospectId }: { prospectId: string }) {
             className="h-9 w-auto"
           />
         </label>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={4000}
+          placeholder="Notes"
+          className="h-9 flex-1"
+        />
         <Button type="submit" size="sm" disabled={busy || !disposition}>
           {busy ? 'Logging…' : 'Log call'}
         </Button>
       </div>
-      <Input
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        maxLength={4000}
-        placeholder="What they actually said…"
-        className="h-9"
-      />
     </form>
   );
 }
