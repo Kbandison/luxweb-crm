@@ -1,8 +1,9 @@
+import { contractorPartyFor } from '@/lib/contracts/party';
 import { formatDateTime } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 export type SignatureBlockProps = {
-  /** "LuxWeb Studio" or the client's full name */
+  /** The legal entity ("LuxWeb Studio LLC") or the client's full name */
   party: string;
   signerName: string | null;
   signedAt: string | null;
@@ -88,6 +89,7 @@ export function SignatureBlock({
  * below the body so both parties' status is visible at a glance.
  */
 export function SignaturePair({
+  agreementVersion,
   adminSignerName,
   adminSignedAt,
   adminIp,
@@ -99,6 +101,9 @@ export function SignaturePair({
   adminSignerName: string | null;
   adminSignedAt: string | null;
   adminIp?: string | null;
+  /** Which agreement version this contract was executed under — decides
+   *  whether the studio signed as the LLC or under the trading name. */
+  agreementVersion?: string | null;
   clientName: string;
   clientSignerName: string | null;
   clientSignedAt: string | null;
@@ -107,7 +112,7 @@ export function SignaturePair({
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <SignatureBlock
-        party="LuxWeb Studio"
+        party={contractorPartyFor(agreementVersion)}
         signerName={adminSignerName}
         signedAt={adminSignedAt}
         ip={adminIp}

@@ -117,6 +117,7 @@ export default async function AdminSignAgreementPage({
           Signatures
         </h2>
         <SignaturePair
+          agreementVersion={agreementVersion}
           adminSignerName={null}
           adminSignedAt={null}
           clientName={proposal.content.client.name || '—'}

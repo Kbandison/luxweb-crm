@@ -63,6 +63,7 @@ export default async function AdminStandaloneContractPage({
           Signatures
         </h2>
         <SignaturePair
+          agreementVersion={contract.agreementVersion}
           adminSignerName={contract.adminSignedName}
           adminSignedAt={contract.adminSignedAt}
           adminIp={contract.adminSignedIp}
