@@ -121,7 +121,7 @@ export function AdminSignForm({
           className="mt-0.5 h-4 w-4 rounded border-border accent-copper"
         />
         <span className="font-sans text-sm text-ink">
-          I&apos;m signing on behalf of LuxWeb Studio. My typed name above is
+          I&apos;m signing on behalf of LuxWeb Studio LLC. My typed name above is
           my electronic signature on the agreement shown.
         </span>
       </label>

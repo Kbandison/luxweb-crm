@@ -39,6 +39,7 @@ export default async function ClientContractPage({
       <section className="space-y-4">
         <SectionHead title="Signatures" />
         <SignaturePair
+          agreementVersion={contract.agreementVersion}
           adminSignerName={contract.adminSignedName}
           adminSignedAt={contract.adminSignedAt}
           clientName="You"

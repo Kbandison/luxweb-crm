@@ -68,7 +68,7 @@ export function BaseLayout({
 
             <Hr className="my-8 border-border" />
             <Text className="m-0 text-[11px] uppercase tracking-[0.2em] text-ink-subtle">
-              LuxWeb Studio · portal.luxwebstudio.dev
+              LuxWeb Studio LLC · portal.luxwebstudio.dev
             </Text>
           </Container>
         </Body>

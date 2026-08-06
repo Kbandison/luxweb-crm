@@ -247,7 +247,7 @@ export function defaultProposalContent(opts: {
       'Pay the 50% deposit (invoice sent upon signature).',
       'Kick-off call & scheduling — we get to work.',
     ],
-    agreement_version: '1.2',
+    agreement_version: '1.3',
   };
 }
 
