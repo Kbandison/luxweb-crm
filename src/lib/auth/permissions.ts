@@ -207,6 +207,7 @@ const ADMIN_PAGE_CAPABILITY: Array<[string, Capability]> = [
   ['/admin/revisions', 'manage_revisions'],
   ['/admin/reviews', 'manage_reviews'],
   ['/admin/earnings', 'view_finance'],
+  ['/admin/finances', 'view_finance'],
   ['/admin/outreach', 'manage_outreach'],
   ['/admin/settings', 'manage_settings'],
   ['/admin/audit', 'manage_team'],

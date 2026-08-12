@@ -50,6 +50,7 @@ const STATIC_ITEMS: CommandItem[] = [
   { id: 'nav-care-plans', type: 'nav', label: 'Care plans queue', href: '/admin/care-plans' },
   { id: 'nav-reviews', type: 'nav', label: 'Reviews queue', href: '/admin/reviews' },
   { id: 'nav-earnings', type: 'nav', label: 'Earnings', href: '/admin/earnings' },
+  { id: 'nav-finances', type: 'nav', label: 'Finances', href: '/admin/finances' },
   { id: 'nav-audit', type: 'nav', label: 'Audit log', href: '/admin/audit' },
   { id: 'nav-settings', type: 'nav', label: 'Settings', href: '/admin/settings' },
 
