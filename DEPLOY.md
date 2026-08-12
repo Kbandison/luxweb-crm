@@ -246,6 +246,33 @@ Access is gated on `view_finance` — the same capability as Earnings, so owner 
 
 ---
 
+## 6f. Mercury payouts (off by default)
+
+The CRM can queue a payout that **you approve in Mercury** before any money moves. It is hidden until you switch it on.
+
+```bash
+vercel env add MERCURY_PAYMENTS_ENABLED production   # value: true
+vercel --prod
+```
+
+Until that's set: no Payouts section on `/admin/finances`, and `/api/admin/finances/payments` and `/recipients` both return **404** — the same answer as an unknown route, so a probe learns nothing.
+
+**No write token or static IP needed.** This uses Mercury's `request-send-money`, which per [their token policy](https://docs.mercury.com/docs/api-token-security-policies) works **without an IP allowlist** on a read-only token. Your existing `MERCURY_API_TOKEN` is sufficient. `createTransaction` (send immediately, no approval) is deliberately never called — that one *does* require a write token and an allowlist.
+
+If you later add a dedicated write-scoped token, set `MERCURY_WRITE_TOKEN` and it's preferred automatically; nothing else changes.
+
+**Safety properties, by design:**
+- Every payout waits for human approval in Mercury's dashboard, and the approver must be someone other than the token's creator.
+- The `payment_requests` row is written *before* Mercury is called, and its id is the idempotency key — a double-click, retry, or timeout-that-actually-succeeded can't produce two payouts.
+- A Mercury rejection leaves the row as `failed` with the reason. A payment that might have been sent never vanishes from the record.
+- $50,000 ceiling per request (`MAX_PAYOUT_CENTS`); anything larger goes through Mercury directly.
+- Requires `manage_billing` — owner / admin / finance. An accountant can read the books but cannot queue money.
+- Recipients are read live, never mirrored: they carry account and routing numbers the CRM has no reason to store.
+
+**Prereq:** apply `crm-master/crm_payment_requests.sql` (single step).
+
+---
+
 ## 7. Smoke test in production
 
 Sign in as admin (`kbandison@gmail.com`) and walk these in order:

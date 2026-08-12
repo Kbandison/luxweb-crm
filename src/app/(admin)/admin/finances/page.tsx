@@ -11,12 +11,15 @@ import {
   getBankTransactions,
   getCashSummary,
   getMonthlyPnL,
+  getPaymentRequests,
 } from '@/lib/queries/finances';
 import { mercuryConfigured } from '@/lib/mercury/client';
 import { formatUSD, formatDateTime } from '@/lib/formatters';
 import { MercurySyncButton } from '@/components/admin/finances/sync-button';
 import { TransactionList } from '@/components/admin/finances/transaction-list';
 import { PnlTable } from '@/components/admin/finances/pnl-table';
+import { PayoutPanel } from '@/components/admin/finances/payout-panel';
+import { paymentsEnabled } from '@/lib/mercury/payments';
 
 export default async function AdminFinancesPage() {
   const session = await getSession();
@@ -26,11 +29,17 @@ export default async function AdminFinancesPage() {
   }
 
   const connected = mercuryConfigured();
-  const [accounts, summary, transactions, pnl] = await Promise.all([
+  // Payouts stay invisible unless deliberately switched on, and are limited to
+  // roles that can act on money — an accountant reads the books, they don't
+  // queue payments.
+  const canPay = paymentsEnabled() && hasCapability(session.role, 'manage_billing');
+
+  const [accounts, summary, transactions, pnl, payouts] = await Promise.all([
     getBankAccounts(),
     getCashSummary(),
     getBankTransactions({ limit: 250 }),
     getMonthlyPnL(6),
+    canPay ? getPaymentRequests() : Promise.resolve([]),
   ]);
 
   return (
@@ -162,6 +171,18 @@ export default async function AdminFinancesPage() {
               />
               <TransactionList transactions={transactions} />
             </section>
+
+            {canPay ? (
+              <section className="space-y-3">
+                <SectionHead
+                  number={accounts.length > 0 ? '04' : '03'}
+                  title="Payouts"
+                  description="Queue a payment; approve it in Mercury to actually send it."
+                  size="md"
+                />
+                <PayoutPanel accounts={accounts} requests={payouts} />
+              </section>
+            ) : null}
           </>
         )}
       </main>

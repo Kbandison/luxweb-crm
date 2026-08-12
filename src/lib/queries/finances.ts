@@ -298,3 +298,45 @@ export async function getMonthlyPnL(months = 6): Promise<MonthlyPnL[]> {
     return [];
   }
 }
+
+/* -------------------------------------------------------------------------
+ * Payout requests
+ * ------------------------------------------------------------------------- */
+
+export type PaymentRequestRow = {
+  id: string;
+  amountCents: number;
+  recipientName: string | null;
+  paymentMethod: string;
+  status: string;
+  memo: string | null;
+  mercuryRequestId: string | null;
+  error: string | null;
+  submittedAt: string | null;
+  createdAt: string;
+};
+
+/** Payouts queued from the CRM, newest first. */
+export async function getPaymentRequests(limit = 25): Promise<PaymentRequestRow[]> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('payment_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: r.id as string,
+      amountCents: Number(r.amount_cents ?? 0),
+      recipientName: (r.recipient_name as string | null) ?? null,
+      paymentMethod: (r.payment_method as string | null) ?? 'ach',
+      status: (r.status as string | null) ?? 'draft',
+      memo: (r.memo as string | null) ?? null,
+      mercuryRequestId: (r.mercury_request_id as string | null) ?? null,
+      error: (r.error as string | null) ?? null,
+      submittedAt: (r.submitted_at as string | null) ?? null,
+      createdAt: r.created_at as string,
+    }));
+  } catch {
+    return [];
+  }
+}
