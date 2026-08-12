@@ -1,9 +1,15 @@
 import Link from 'next/link';
 import { Wordmark } from '@/components/brand/wordmark';
+import { STUDIO } from '@/lib/brand';
 
 // Split Screen shell: form card left, brand panel right.
 // The brand panel is the page's one decorative copper moment; the form
 // side stays quiet. Brand panel is hidden below md breakpoint.
+//
+// The wordmark shows once per breakpoint, never twice: the form-side one is
+// mobile's only branding and hides at md, where the panel takes over. The
+// invite-only line lives on the form (it's actionable and shows at every
+// width), so the panel doesn't repeat it.
 export default function AuthLayout({
   children,
 }: {
@@ -13,7 +19,7 @@ export default function AuthLayout({
     <div className="grid min-h-dvh grid-cols-1 md:grid-cols-2">
       {/* Form side */}
       <div className="relative flex flex-col px-6 py-10 md:px-12 md:py-12">
-        <Link href="/" className="inline-block">
+        <Link href="/" className="inline-block md:hidden">
           <Wordmark size="sm" />
         </Link>
 
@@ -22,13 +28,15 @@ export default function AuthLayout({
         </div>
 
         <p className="font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
-          © LuxWeb Studio
+          © {STUDIO.legalName}
         </p>
       </div>
 
       {/* Brand panel — the copper moment */}
       <aside className="relative isolate hidden overflow-hidden border-l border-border bg-surface copper-mesh md:flex md:flex-col md:justify-between md:p-12">
-        <Wordmark size="md" />
+        <Link href="/" className="inline-block">
+          <Wordmark size="md" />
+        </Link>
 
         <div className="space-y-5">
           <div className="copper-rule h-px w-24" />
@@ -36,14 +44,10 @@ export default function AuthLayout({
             Proposals, milestones, and invoices
             <span className="text-ink-muted"> — all in one quiet view.</span>
           </p>
-          <p className="max-w-sm font-sans text-sm leading-relaxed text-ink-muted">
-            This portal is invite-only. Access comes from the LuxWeb Studio
-            team — if you don&apos;t have an invite, reach out to the studio.
-          </p>
         </div>
 
         <p className="font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
-          portal.luxwebstudio.dev
+          {STUDIO.portal}
         </p>
       </aside>
     </div>
