@@ -345,9 +345,13 @@ const CATEGORY_BY_TYPE: Record<NotifyEvent['type'], EmailCategory> = {
  * Internal alerts are delivered to the studio's monitored inbox, not the
  * admin's login email (which is a personal Google account). One shared
  * inbox today; per-admin routing would be a multi-admin concern.
+ *
+ * Note this is also the From address for admin-category mail (see
+ * FROM_BY_CATEGORY in lib/resend.ts) — alerts are sent from and to the same
+ * box, so it has to be able to *receive*, not just send.
  */
 const ADMIN_NOTIFICATIONS_TO =
-  process.env.ADMIN_NOTIFICATIONS_EMAIL ?? 'kbandison@luxwebstudio.dev';
+  process.env.ADMIN_NOTIFICATIONS_EMAIL ?? 'alerts@luxwebstudio.dev';
 
 export async function notify(
   event: NotifyEvent,

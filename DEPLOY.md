@@ -59,6 +59,12 @@ vercel env add NEXT_PUBLIC_APP_URL                preview      # leave blank or 
 
 `SENTRY_DSN` can stay unset until the Sentry project exists.
 
+`ADMIN_NOTIFICATIONS_EMAIL` is optional — internal alerts default to `alerts@luxwebstudio.dev`. Set it only to route them somewhere else:
+```bash
+vercel env add ADMIN_NOTIFICATIONS_EMAIL production
+```
+⚠️ Whatever address you use must be able to **receive** mail. `alerts@luxwebstudio.dev` is also the *From* for admin-category email, and a verified Resend sending domain does not by itself create an inbox — you need MX records or forwarding on that address, or the alerts go nowhere.
+
 Verify:
 ```bash
 vercel env ls
