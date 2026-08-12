@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseBrowser } from '@/lib/supabase/browser';
+import { STUDIO, STUDIO_EMAIL_HREF } from '@/lib/brand';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -157,7 +158,11 @@ export function LoginForm() {
       </div>
 
       <p className="border-t border-border pt-6 font-sans text-xs text-ink-subtle">
-        Access is invite-only. Reach out to Kevin if you need one.
+        Access is invite-only. Email{' '}
+        <a href={STUDIO_EMAIL_HREF} className="text-copper hover:underline">
+          {STUDIO.email}
+        </a>{' '}
+        if you need one.
       </p>
     </div>
   );
