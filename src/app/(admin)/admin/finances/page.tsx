@@ -13,6 +13,8 @@ import {
   getMonthlyPnL,
   getPaymentRequests,
   getDepositsToReconcile,
+  getPayoutLedger,
+  getPayableMembers,
 } from '@/lib/queries/finances';
 import { mercuryConfigured } from '@/lib/mercury/client';
 import { formatUSD, formatDateTime } from '@/lib/formatters';
@@ -21,6 +23,7 @@ import { TransactionList } from '@/components/admin/finances/transaction-list';
 import { PnlTable } from '@/components/admin/finances/pnl-table';
 import { PayoutPanel } from '@/components/admin/finances/payout-panel';
 import { ReconcilePanel } from '@/components/admin/finances/reconcile-panel';
+import { PayoutLedger } from '@/components/admin/finances/payout-ledger';
 import { paymentsEnabled } from '@/lib/mercury/payments';
 
 export default async function AdminFinancesPage() {
@@ -36,13 +39,16 @@ export default async function AdminFinancesPage() {
   // queue payments.
   const canPay = paymentsEnabled() && hasCapability(session.role, 'manage_billing');
 
-  const [accounts, summary, transactions, pnl, payouts, deposits] = await Promise.all([
+  const [accounts, summary, transactions, pnl, payouts, deposits, ledger, members] =
+    await Promise.all([
     getBankAccounts(),
     getCashSummary(),
     getBankTransactions({ limit: 250 }),
     getMonthlyPnL(6),
     canPay ? getPaymentRequests() : Promise.resolve([]),
     getDepositsToReconcile(),
+    getPayoutLedger(),
+    getPayableMembers(),
   ]);
 
   return (
@@ -182,13 +188,23 @@ export default async function AdminFinancesPage() {
                 description="Set a category on outgoing money to feed the P&L."
                 size="md"
               />
-              <TransactionList transactions={transactions} />
+              <TransactionList transactions={transactions} members={members} />
+            </section>
+
+            <section className="space-y-3">
+              <SectionHead
+                number={accounts.length > 0 ? '05' : '04'}
+                title="Owed to the team"
+                description="Earned from logged hours and won commissions, against what's actually been paid."
+                size="md"
+              />
+              <PayoutLedger rows={ledger} />
             </section>
 
             {canPay ? (
               <section className="space-y-3">
                 <SectionHead
-                  number={accounts.length > 0 ? '05' : '04'}
+                  number={accounts.length > 0 ? '06' : '05'}
                   title="Payouts"
                   description="Queue a payment; approve it in Mercury to actually send it."
                   size="md"
