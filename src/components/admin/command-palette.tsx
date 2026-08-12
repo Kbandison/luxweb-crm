@@ -51,6 +51,9 @@ const STATIC_ITEMS: CommandItem[] = [
   { id: 'nav-reviews', type: 'nav', label: 'Reviews queue', href: '/admin/reviews' },
   { id: 'nav-earnings', type: 'nav', label: 'Earnings', href: '/admin/earnings' },
   { id: 'nav-finances', type: 'nav', label: 'Finances', href: '/admin/finances' },
+  { id: 'nav-finances-tx', type: 'nav', label: 'Transactions', href: '/admin/finances/transactions' },
+  { id: 'nav-finances-recon', type: 'nav', label: 'Reconciliation', href: '/admin/finances/reconciliation' },
+  { id: 'nav-finances-team', type: 'nav', label: 'Owed to the team', href: '/admin/finances/team' },
   { id: 'nav-audit', type: 'nav', label: 'Audit log', href: '/admin/audit' },
   { id: 'nav-settings', type: 'nav', label: 'Settings', href: '/admin/settings' },
 
