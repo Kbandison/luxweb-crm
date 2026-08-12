@@ -6,11 +6,17 @@ import { StatCard } from '@/components/ui/stat-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { getSession } from '@/lib/supabase/session';
 import { hasCapability } from '@/lib/auth/permissions';
-import { getBankAccounts, getBankTransactions, getCashSummary } from '@/lib/queries/finances';
+import {
+  getBankAccounts,
+  getBankTransactions,
+  getCashSummary,
+  getMonthlyPnL,
+} from '@/lib/queries/finances';
 import { mercuryConfigured } from '@/lib/mercury/client';
 import { formatUSD, formatDateTime } from '@/lib/formatters';
 import { MercurySyncButton } from '@/components/admin/finances/sync-button';
 import { TransactionList } from '@/components/admin/finances/transaction-list';
+import { PnlTable } from '@/components/admin/finances/pnl-table';
 
 export default async function AdminFinancesPage() {
   const session = await getSession();
@@ -20,10 +26,11 @@ export default async function AdminFinancesPage() {
   }
 
   const connected = mercuryConfigured();
-  const [accounts, summary, transactions] = await Promise.all([
+  const [accounts, summary, transactions, pnl] = await Promise.all([
     getBankAccounts(),
     getCashSummary(),
     getBankTransactions({ limit: 250 }),
+    getMonthlyPnL(6),
   ]);
 
   return (
@@ -137,7 +144,22 @@ export default async function AdminFinancesPage() {
             ) : null}
 
             <section className="space-y-3">
-              <SectionHead number={accounts.length > 0 ? '02' : '01'} title="Transactions" size="md" />
+              <SectionHead
+                number={accounts.length > 0 ? '02' : '01'}
+                title="Profit & loss"
+                description="Cash basis, by month. Expand a month for the category breakdown."
+                size="md"
+              />
+              <PnlTable months={pnl} />
+            </section>
+
+            <section className="space-y-3">
+              <SectionHead
+                number={accounts.length > 0 ? '03' : '02'}
+                title="Transactions"
+                description="Set a category on outgoing money to feed the P&L."
+                size="md"
+              />
               <TransactionList transactions={transactions} />
             </section>
           </>

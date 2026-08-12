@@ -1,9 +1,12 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { StatusPill } from '@/components/ui/status-pill';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useToast } from '@/components/ui/toast';
 import { formatUSD, formatDate } from '@/lib/formatters';
+import { EXPENSE_CATEGORIES, isInternalTransfer } from '@/lib/finances/categories';
 import type { BankTransactionRow } from '@/lib/queries/finances';
 
 type Flow = 'all' | 'in' | 'out' | 'pending';
@@ -91,6 +94,7 @@ export function TransactionList({ transactions }: { transactions: BankTransactio
               {visible.map((t) => {
                 const pending = isPending(t);
                 const incoming = t.amountCents >= 0;
+                const internal = isInternalTransfer(t.kind);
                 return (
                   <tr key={t.id} className="border-b border-border/60 align-top">
                     <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-ink-subtle">
@@ -108,14 +112,16 @@ export function TransactionList({ transactions }: { transactions: BankTransactio
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {t.category ? (
-                          <StatusPill label={t.category} tone="bg-copper-soft text-copper" size="sm" />
-                        ) : t.mercuryCategory ? (
-                          <span className="font-sans text-xs text-ink-muted">
-                            {t.mercuryCategory}
-                          </span>
-                        ) : (
+                        {internal ? (
+                          <StatusPill
+                            label="Internal"
+                            tone="bg-surface-2 text-ink-subtle"
+                            size="sm"
+                          />
+                        ) : incoming ? (
                           <span className="font-sans text-xs text-ink-subtle">—</span>
+                        ) : (
+                          <CategoryPicker id={t.id} value={t.category} hint={t.mercuryCategory} />
                         )}
                         {pending ? (
                           <StatusPill label="Pending" tone="bg-warning/15 text-warning" size="sm" />
@@ -138,5 +144,65 @@ export function TransactionList({ transactions }: { transactions: BankTransactio
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Set a studio expense category on one transaction.
+ *
+ * Only offered on outgoing, non-internal money — an internal transfer isn't
+ * spending and a deposit isn't an expense, so neither belongs in the P&L
+ * breakdown. Writes only to CRM-owned columns, which the Mercury sync never
+ * overwrites.
+ */
+function CategoryPicker({
+  id,
+  value,
+  hint,
+}: {
+  id: string;
+  value: string | null;
+  hint: string | null;
+}) {
+  const router = useRouter();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+
+  async function set(next: string) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/finances/transactions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: next || null }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error("Couldn't categorize", body.error ?? 'Try again.');
+        return;
+      }
+      router.refresh();
+    } catch {
+      toast.error("Couldn't categorize", 'Network error.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <select
+      value={value ?? ''}
+      disabled={busy}
+      onChange={(e) => void set(e.target.value)}
+      aria-label="Expense category"
+      className="h-7 rounded-md border border-border bg-surface px-1.5 text-xs text-ink focus-visible:border-copper focus-visible:outline-none disabled:opacity-50"
+    >
+      <option value="">{hint ? `Uncategorized · ${hint}` : 'Uncategorized'}</option>
+      {EXPENSE_CATEGORIES.map((c) => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      ))}
+    </select>
   );
 }
