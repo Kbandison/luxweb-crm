@@ -10,7 +10,7 @@ title: Web Design & Development Agreement
 This Agreement is dated **{{effective_date}}** and is between:
 
 - **{{client_name}}**, contact: **{{client_email}}** ("Client")
-- **LuxWeb Studio LLC**, a Georgia limited liability company, contact: support@luxwebstudio.dev ("Contractor")
+- **LuxWeb Studio LLC**, a Georgia limited liability company, contact: support@luxwebstudio.dev · 718-635-0159 ("Contractor")
 
 ---
 

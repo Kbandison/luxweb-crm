@@ -1,5 +1,6 @@
 'use client';
 import { useEffect } from 'react';
+import { STUDIO, STUDIO_EMAIL_HREF, STUDIO_PHONE_HREF } from '@/lib/brand';
 
 export default function ClientError({
   error,
@@ -23,6 +24,15 @@ export default function ClientError({
       <p className="mt-3 max-w-md font-sans text-sm text-ink-muted">
         Our team was notified. Try again — if the page keeps erroring out,
         reach out to Kevin.
+      </p>
+      <p className="mt-2 font-sans text-sm text-ink-muted">
+        <a href={STUDIO_EMAIL_HREF} className="text-copper hover:underline">
+          {STUDIO.email}
+        </a>
+        <span className="px-2 text-ink-subtle">·</span>
+        <a href={STUDIO_PHONE_HREF} className="text-copper hover:underline">
+          {STUDIO.phone}
+        </a>
       </p>
       {error.digest ? (
         <p className="mt-4 rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[11px] tabular-nums text-ink-subtle">

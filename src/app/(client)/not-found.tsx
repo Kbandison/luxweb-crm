@@ -1,4 +1,20 @@
 import Link from 'next/link';
+import { STUDIO, STUDIO_EMAIL_HREF, STUDIO_PHONE_HREF } from '@/lib/brand';
+
+/** Telling a client to "reach out" is no use without somewhere to reach. */
+function StudioContact() {
+  return (
+    <p className="mt-2 font-sans text-sm text-ink-muted">
+      <a href={STUDIO_EMAIL_HREF} className="text-copper hover:underline">
+        {STUDIO.email}
+      </a>
+      <span className="px-2 text-ink-subtle">·</span>
+      <a href={STUDIO_PHONE_HREF} className="text-copper hover:underline">
+        {STUDIO.phone}
+      </a>
+    </p>
+  );
+}
 
 export default function ClientNotFound() {
   return (
@@ -13,6 +29,7 @@ export default function ClientNotFound() {
         That page doesn&apos;t exist or isn&apos;t visible to you. If you think
         this is wrong, reach out to the LuxWeb team.
       </p>
+      <StudioContact />
       <div className="copper-rule mt-8 h-px w-24" />
       <Link
         href="/portal/dashboard"

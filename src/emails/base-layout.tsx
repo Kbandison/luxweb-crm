@@ -14,6 +14,7 @@ import {
   Tailwind,
   Text,
 } from '@react-email/components';
+import { STUDIO } from '@/lib/brand';
 
 export function BaseLayout({
   preview,
@@ -68,7 +69,7 @@ export function BaseLayout({
 
             <Hr className="my-8 border-border" />
             <Text className="m-0 text-[11px] uppercase tracking-[0.2em] text-ink-subtle">
-              LuxWeb Studio LLC · portal.luxwebstudio.dev
+              {STUDIO.legalName} · {STUDIO.portal} · {STUDIO.phone}
             </Text>
           </Container>
         </Body>
