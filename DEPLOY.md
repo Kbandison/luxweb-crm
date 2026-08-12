@@ -217,6 +217,29 @@ ByteBoundless (the lead-finding tool) pushes businesses straight onto a setter's
 
 ---
 
+## 6e. Mercury — banking & finances
+
+The finance pages mirror your Mercury accounts and transactions into `crm.bank_accounts` / `crm.bank_transactions` so they can report history without hitting the API on every render.
+
+1. **Migration:** apply `crm-master/crm_banking.sql` (single step, no enums).
+
+2. **Token — use READ ONLY.** Mercury dashboard → Settings → Tokens → Create an API Token → **Read Only**.
+   ```bash
+   vercel env add MERCURY_API_TOKEN production
+   vercel --prod        # redeploy so functions pick it up
+   ```
+   Read-only is a deliberate ceiling, not an oversight. Mercury's read-write tokens **require IP allowlisting**, and Vercel only offers static egress IPs via Static IPs ($100/mo per project, Pro+) or Secure Compute (Enterprise). It also keeps a money-moving credential out of an app that contractors and setters sign into. Payments stay in Mercury's dashboard.
+
+3. **First sync:** open `/admin/finances` → **Backfill 365d**. After that the nightly cron (`/api/cron/sync-mercury`, 08:00 UTC, reuses `CRON_SECRET`) keeps a rolling 45-day window current — wide enough that pending transactions are re-synced once they settle.
+
+**What's mirrored:** balances, amounts (converted to integer cents — Mercury returns floats, which are unsafe for money), status, kind, counterparty, memos, category, timestamps. **Not mirrored:** full account and routing numbers. Only the last four are stored, since staff roles can read these tables and the CRM never needs the rest.
+
+Syncs are upserts and safe to re-run. The CRM-owned columns (`category`, `invoice_id`, `team_member_id`, `reconciled_at`, `crm_note`) are left out of the sync payload, so a re-sync can never wipe a categorization or a reconciliation.
+
+Access is gated on `view_finance` — the same capability as Earnings, so owner / admin / finance / accountant.
+
+---
+
 ## 7. Smoke test in production
 
 Sign in as admin (`kbandison@gmail.com`) and walk these in order:
