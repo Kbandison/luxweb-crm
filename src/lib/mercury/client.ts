@@ -12,47 +12,10 @@ import 'server-only';
  * Every request is a plain fetch — Mercury has no SDK worth the dependency.
  */
 
-const BASE_URL = 'https://api.mercury.com/api/v1';
+import { mercuryFetch, mercuryConfigured, toCents } from './http';
 
-export function mercuryConfigured(): boolean {
-  return !!process.env.MERCURY_API_TOKEN;
-}
-
-function token(): string {
-  const t = process.env.MERCURY_API_TOKEN;
-  if (!t) throw new Error('MERCURY_API_TOKEN is not configured');
-  return t;
-}
-
-/** Mercury reports money as dollars with 2dp; we store integer cents. */
-export function toCents(amount: number | null | undefined): number {
-  if (amount == null || !Number.isFinite(amount)) return 0;
-  // Round after scaling — 19.99 * 100 is 1998.9999… in binary floating point.
-  return Math.round(amount * 100);
-}
-
-async function request<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
-  const url = new URL(`${BASE_URL}${path}`);
-  for (const [k, v] of Object.entries(params ?? {})) {
-    if (v !== undefined && v !== '') url.searchParams.set(k, String(v));
-  }
-
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token()}`,
-      Accept: 'application/json',
-    },
-    // Banking data is never served from a cache.
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    // Deliberately not echoing the token or full URL into the error.
-    throw new Error(`Mercury ${path} failed: ${res.status}${body ? ` — ${body.slice(0, 300)}` : ''}`);
-  }
-  return (await res.json()) as T;
-}
+// Re-exported so existing callers don't need to know where these moved.
+export { mercuryConfigured, toCents };
 
 /* -------------------------------------------------------------------------
  * Accounts
@@ -76,7 +39,7 @@ export type MercuryAccount = {
 };
 
 export async function getAccounts(): Promise<MercuryAccount[]> {
-  const data = await request<{ accounts?: MercuryAccount[] }>('/accounts');
+  const data = await mercuryFetch<{ accounts?: MercuryAccount[] }>('/accounts');
   return data.accounts ?? [];
 }
 
@@ -129,13 +92,15 @@ export async function listTransactions(opts: {
   let cursor: string | undefined;
 
   for (let page = 0; page < MAX_PAGES; page++) {
-    const data = await request<TransactionPage>('/transactions', {
-      start: opts.start,
-      end: opts.end,
-      accountId: opts.accountId,
-      limit: PAGE_LIMIT,
-      order: 'desc',
-      start_after: cursor,
+    const data = await mercuryFetch<TransactionPage>('/transactions', {
+      params: {
+        start: opts.start,
+        end: opts.end,
+        accountId: opts.accountId,
+        limit: PAGE_LIMIT,
+        order: 'desc',
+        start_after: cursor,
+      },
     });
     const batch = data.transactions ?? [];
     all.push(...batch);

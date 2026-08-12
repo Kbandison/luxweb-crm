@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Topbar } from '@/components/admin/topbar';
 import { PageHeader } from '@/components/ui/page-header';
+import { buttonVariants } from '@/components/ui/button';
 import { SectionHead } from '@/components/ui/section-head';
 import { StatCard } from '@/components/ui/stat-card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -15,6 +17,7 @@ import {
   getDepositsToReconcile,
   getPayoutLedger,
   getPayableMembers,
+  FINANCE_WINDOW_MONTHS,
 } from '@/lib/queries/finances';
 import { mercuryConfigured } from '@/lib/mercury/client';
 import { formatUSD, formatDateTime } from '@/lib/formatters';
@@ -44,7 +47,7 @@ export default async function AdminFinancesPage() {
     getBankAccounts(),
     getCashSummary(),
     getBankTransactions({ limit: 250 }),
-    getMonthlyPnL(6),
+    getMonthlyPnL(FINANCE_WINDOW_MONTHS),
     canPay ? getPaymentRequests() : Promise.resolve([]),
     getDepositsToReconcile(),
     getPayoutLedger(),
@@ -58,10 +61,16 @@ export default async function AdminFinancesPage() {
         <PageHeader
           eyebrow="Money"
           title="Finances"
-          description="Live cash position and transactions from your Mercury accounts."
+          description="Cash actually in the bank. Invoiced revenue lives in Earnings."
           actions={
             connected ? (
               <>
+                <Link
+                  href="/admin/earnings"
+                  className={buttonVariants({ variant: 'secondary', size: 'sm' })}
+                >
+                  Earnings
+                </Link>
                 <MercurySyncButton days={365} />
                 <MercurySyncButton />
               </>

@@ -35,14 +35,22 @@ export default async function AdminEarningsPage() {
         <PageHeader
           eyebrow="Workspace"
           title="Earnings"
-          description="Revenue from paid invoices, outstanding balance, and per-project totals."
+          description="Revenue from paid invoices, outstanding balance, and per-project totals. For money actually in the bank, see Finances."
           actions={
+            <>
+            <Link
+              href="/admin/finances"
+              className={buttonVariants({ variant: 'secondary', size: 'sm' })}
+            >
+              Finances
+            </Link>
             <a
               href="/api/admin/earnings/export.csv"
               className={buttonVariants({ variant: 'secondary', size: 'sm' })}
             >
               Export CSV
             </a>
+            </>
           }
         />
 
