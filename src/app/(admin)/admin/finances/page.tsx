@@ -12,6 +12,7 @@ import {
   getCashSummary,
   getMonthlyPnL,
   getPaymentRequests,
+  getDepositsToReconcile,
 } from '@/lib/queries/finances';
 import { mercuryConfigured } from '@/lib/mercury/client';
 import { formatUSD, formatDateTime } from '@/lib/formatters';
@@ -19,6 +20,7 @@ import { MercurySyncButton } from '@/components/admin/finances/sync-button';
 import { TransactionList } from '@/components/admin/finances/transaction-list';
 import { PnlTable } from '@/components/admin/finances/pnl-table';
 import { PayoutPanel } from '@/components/admin/finances/payout-panel';
+import { ReconcilePanel } from '@/components/admin/finances/reconcile-panel';
 import { paymentsEnabled } from '@/lib/mercury/payments';
 
 export default async function AdminFinancesPage() {
@@ -34,12 +36,13 @@ export default async function AdminFinancesPage() {
   // queue payments.
   const canPay = paymentsEnabled() && hasCapability(session.role, 'manage_billing');
 
-  const [accounts, summary, transactions, pnl, payouts] = await Promise.all([
+  const [accounts, summary, transactions, pnl, payouts, deposits] = await Promise.all([
     getBankAccounts(),
     getCashSummary(),
     getBankTransactions({ limit: 250 }),
     getMonthlyPnL(6),
     canPay ? getPaymentRequests() : Promise.resolve([]),
+    getDepositsToReconcile(),
   ]);
 
   return (
@@ -165,6 +168,16 @@ export default async function AdminFinancesPage() {
             <section className="space-y-3">
               <SectionHead
                 number={accounts.length > 0 ? '03' : '02'}
+                title="Reconciliation"
+                description="Match deposits to the invoices they paid. Stripe batches its payouts, so one deposit often covers several."
+                size="md"
+              />
+              <ReconcilePanel deposits={deposits} />
+            </section>
+
+            <section className="space-y-3">
+              <SectionHead
+                number={accounts.length > 0 ? '04' : '03'}
                 title="Transactions"
                 description="Set a category on outgoing money to feed the P&L."
                 size="md"
@@ -175,7 +188,7 @@ export default async function AdminFinancesPage() {
             {canPay ? (
               <section className="space-y-3">
                 <SectionHead
-                  number={accounts.length > 0 ? '04' : '03'}
+                  number={accounts.length > 0 ? '05' : '04'}
                   title="Payouts"
                   description="Queue a payment; approve it in Mercury to actually send it."
                   size="md"

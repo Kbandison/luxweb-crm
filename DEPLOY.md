@@ -246,6 +246,20 @@ Access is gated on `view_finance` — the same capability as Earnings, so owner 
 
 ---
 
+## 6e-2. Invoice reconciliation
+
+Matches bank deposits to the invoices they paid. **Prereq:** apply `crm-master/crm_invoice_reconciliation.sql` (single step).
+
+That migration also **drops `bank_transactions.invoice_id`** from §6e. Stripe settles in batches, so one deposit routinely covers several invoices — a single foreign key can't express that. Nothing ever wrote to the column, so the drop is safe; `crm.invoice_reconciliations` is now the only source of truth.
+
+**How matching works.** Rather than assuming Stripe's 2.9% + 30¢, the matcher computes the *implied* fee (invoice gross − deposit) and accepts a combination when that lands in a plausible range (≤4.5% + $1 per invoice). That survives rate changes, international cards, and direct client wires where a hardcoded rate would silently mis-match.
+
+Two rules it will not break: a deposit can never exceed the gross it came from, and an invoice can only ever belong to one deposit (enforced by a unique constraint, not just UI).
+
+Suggestions are proposals, never decisions — when several invoices share an amount, more than one match is arithmetically valid and only you know which is right. Matches are reversible via **Unmatch**.
+
+---
+
 ## 6f. Mercury payouts (off by default)
 
 The CRM can queue a payout that **you approve in Mercury** before any money moves. It is hidden until you switch it on.
