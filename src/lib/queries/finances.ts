@@ -1,6 +1,11 @@
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { inferCategory, isInternalTransfer } from '@/lib/finances/categories';
+import {
+  suggestMatches,
+  type Candidate,
+  type MatchSuggestion,
+} from '@/lib/finances/reconcile';
 
 /** Read queries for the banking mirror. All fail soft. */
 
@@ -336,6 +341,122 @@ export async function getPaymentRequests(limit = 25): Promise<PaymentRequestRow[
       submittedAt: (r.submitted_at as string | null) ?? null,
       createdAt: r.created_at as string,
     }));
+  } catch {
+    return [];
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Reconciliation
+ * ------------------------------------------------------------------------- */
+
+export type ReconciledInvoice = {
+  invoiceId: string;
+  amountCents: number;
+  label: string;
+};
+
+export type DepositToReconcile = {
+  transactionId: string;
+  amountCents: number;
+  counterpartyName: string | null;
+  postedAt: string | null;
+  reconciledAt: string | null;
+  matched: ReconciledInvoice[];
+  /** Gross of the matched invoices; differs from the deposit by the fee. */
+  matchedGrossCents: number;
+  suggestions: MatchSuggestion[];
+};
+
+/** A paid invoice, labelled for the matcher. */
+async function loadOpenInvoices(): Promise<Map<string, Candidate>> {
+  const out = new Map<string, Candidate>();
+  try {
+    const sb = supabaseAdmin();
+    const [{ data: invoices }, { data: linked }] = await Promise.all([
+      sb
+        .from('invoices')
+        .select('id, amount_cents, paid_at, contacts!inner(full_name)')
+        .eq('status', 'paid')
+        .not('paid_at', 'is', null)
+        .order('paid_at', { ascending: false })
+        .limit(200),
+      sb.from('invoice_reconciliations').select('invoice_id'),
+    ]);
+    const taken = new Set(
+      ((linked ?? []) as { invoice_id: string }[]).map((r) => r.invoice_id),
+    );
+    for (const inv of (invoices ?? []) as Record<string, unknown>[]) {
+      const id = inv.id as string;
+      if (taken.has(id)) continue; // already accounted for by another deposit
+      const contact = inv.contacts as { full_name?: string } | { full_name?: string }[] | null;
+      const name = Array.isArray(contact) ? contact[0]?.full_name : contact?.full_name;
+      out.set(id, {
+        invoiceId: id,
+        amountCents: Number(inv.amount_cents ?? 0),
+        paidAt: (inv.paid_at as string | null) ?? null,
+        label: name ?? 'Invoice',
+      });
+    }
+  } catch {
+    /* no candidates */
+  }
+  return out;
+}
+
+/**
+ * Incoming deposits with their matches, plus suggestions for the unmatched.
+ *
+ * Only settled, non-internal money in: a transfer between the studio's own
+ * accounts never paid an invoice, and pending cash hasn't arrived.
+ */
+export async function getDepositsToReconcile(limit = 30): Promise<DepositToReconcile[]> {
+  try {
+    const sb = supabaseAdmin();
+    const [{ data: txs }, { data: links }, candidates] = await Promise.all([
+      sb
+        .from('bank_transactions')
+        .select('id, amount_cents, counterparty_name, kind, posted_at, reconciled_at')
+        .gt('amount_cents', 0)
+        .not('posted_at', 'is', null)
+        .not('status', 'in', '(failed,cancelled)')
+        .order('posted_at', { ascending: false })
+        .limit(limit),
+      sb.from('invoice_reconciliations').select('transaction_id, invoice_id, amount_cents'),
+      loadOpenInvoices(),
+    ]);
+
+    const byTx = new Map<string, ReconciledInvoice[]>();
+    for (const l of (links ?? []) as Record<string, unknown>[]) {
+      const t = l.transaction_id as string;
+      const list = byTx.get(t) ?? [];
+      list.push({
+        invoiceId: l.invoice_id as string,
+        amountCents: Number(l.amount_cents ?? 0),
+        label: 'Invoice',
+      });
+      byTx.set(t, list);
+    }
+
+    const pool = [...candidates.values()];
+
+    return ((txs ?? []) as Record<string, unknown>[])
+      .filter((t) => !isInternalTransfer((t.kind as string | null) ?? null))
+      .map((t) => {
+        const id = t.id as string;
+        const amountCents = Number(t.amount_cents ?? 0);
+        const matched = byTx.get(id) ?? [];
+        return {
+          transactionId: id,
+          amountCents,
+          counterpartyName: (t.counterparty_name as string | null) ?? null,
+          postedAt: (t.posted_at as string | null) ?? null,
+          reconciledAt: (t.reconciled_at as string | null) ?? null,
+          matched,
+          matchedGrossCents: matched.reduce((s, m) => s + m.amountCents, 0),
+          suggestions: matched.length > 0 ? [] : suggestMatches(amountCents, pool),
+        };
+      });
   } catch {
     return [];
   }
