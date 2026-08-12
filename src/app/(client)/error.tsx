@@ -23,7 +23,7 @@ export default function ClientError({
       </h1>
       <p className="mt-3 max-w-md font-sans text-sm text-ink-muted">
         Our team was notified. Try again — if the page keeps erroring out,
-        reach out to Kevin.
+        reach out to us.
       </p>
       <p className="mt-2 font-sans text-sm text-ink-muted">
         <a href={STUDIO_EMAIL_HREF} className="text-copper hover:underline">

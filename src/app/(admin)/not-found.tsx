@@ -11,7 +11,7 @@ export default function AdminNotFound() {
       </h1>
       <p className="mt-3 max-w-md font-sans text-sm text-ink-muted">
         The page you&apos;re looking for doesn&apos;t exist — or you don&apos;t
-        have access. If that feels wrong, let Kevin know.
+        have access. If that feels wrong, let an admin know.
       </p>
       <div className="copper-rule mt-8 h-px w-24" />
       <div className="mt-6 flex gap-2">

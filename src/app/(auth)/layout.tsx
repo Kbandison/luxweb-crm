@@ -38,7 +38,7 @@ export default function AuthLayout({
           </p>
           <p className="max-w-sm font-sans text-sm leading-relaxed text-ink-muted">
             This portal is invite-only. Access comes from the LuxWeb Studio
-            team — if you don&apos;t have an invite, reach out to Kevin.
+            team — if you don&apos;t have an invite, reach out to the studio.
           </p>
         </div>
 
