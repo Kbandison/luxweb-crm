@@ -19,6 +19,8 @@ export const runtime = 'nodejs';
 const Schema = z.object({
   category: z.enum(EXPENSE_CATEGORIES).nullable().optional(),
   crm_note: z.string().max(2000).nullable().optional(),
+  // Who this payment was for — feeds the payout ledger.
+  team_member_id: z.string().uuid().nullable().optional(),
 });
 
 export async function PATCH(
@@ -46,6 +48,9 @@ export async function PATCH(
     const patch: Record<string, unknown> = {};
     if ('category' in parsed.data) patch.category = parsed.data.category ?? null;
     if ('crm_note' in parsed.data) patch.crm_note = parsed.data.crm_note ?? null;
+    if ('team_member_id' in parsed.data) {
+      patch.team_member_id = parsed.data.team_member_id ?? null;
+    }
     if (Object.keys(patch).length === 0) return Response.json({ ok: true });
 
     const { error } = await supabaseAdmin()

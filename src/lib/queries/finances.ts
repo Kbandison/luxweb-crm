@@ -30,6 +30,7 @@ export type BankTransactionRow = {
   description: string | null;
   mercuryCategory: string | null;
   category: string | null;
+  teamMemberId: string | null;
   dashboardLink: string | null;
   postedAt: string | null;
   createdAt: string;
@@ -73,6 +74,7 @@ function mapTx(t: Record<string, unknown>): BankTransactionRow {
       null,
     mercuryCategory: (t.mercury_category as string | null) ?? null,
     category: (t.category as string | null) ?? null,
+    teamMemberId: (t.team_member_id as string | null) ?? null,
     dashboardLink: (t.dashboard_link as string | null) ?? null,
     postedAt: (t.posted_at as string | null) ?? null,
     createdAt: t.created_at as string,
@@ -457,6 +459,146 @@ export async function getDepositsToReconcile(limit = 30): Promise<DepositToRecon
           suggestions: matched.length > 0 ? [] : suggestMatches(amountCents, pool),
         };
       });
+  } catch {
+    return [];
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Payout ledger — what each person has earned vs. what they've been paid
+ * ------------------------------------------------------------------------- */
+
+export type PayoutLedgerRow = {
+  teamMemberId: string;
+  name: string;
+  rateType: string | null;
+  rateCents: number | null;
+  /** Logged hours × rate. Hourly members only — see note below. */
+  earnedTimeCents: number;
+  hours: number;
+  /** Commission on won appointments they booked. */
+  earnedCommissionCents: number;
+  earnedTotalCents: number;
+  /** Settled money out attributed to this person. */
+  paidCents: number;
+  balanceCents: number;
+  /** True when we can't derive earnings — a fixed-rate arrangement. */
+  manualOnly: boolean;
+};
+
+/**
+ * What the studio owes each team member, against what's actually left the bank.
+ *
+ * Earned comes from two places the CRM already tracks: logged hours × the
+ * member's rate, and commission on won appointments they booked. Paid comes
+ * from bank transactions attributed to them — actual money out, not what was
+ * queued, so a payout made directly in Mercury still counts.
+ *
+ * Fixed-rate members are flagged `manualOnly`: their cost isn't a function of
+ * hours, so inferring it from time logs would be fiction. Their paid column is
+ * still accurate.
+ */
+export async function getPayoutLedger(): Promise<PayoutLedgerRow[]> {
+  try {
+    const sb = supabaseAdmin();
+    const [{ data: members }, { data: logs }, { data: appts }, { data: paid }] =
+      await Promise.all([
+        sb
+          .from('team_members')
+          .select('id, full_name, user_id, rate_cents, rate_type, status')
+          .eq('status', 'active'),
+        sb.from('time_logs').select('hours, team_member_id').not('team_member_id', 'is', null),
+        sb
+          .from('appointments')
+          .select('setter_id, commission_cents')
+          .eq('result', 'won'),
+        sb
+          .from('bank_transactions')
+          .select('amount_cents, team_member_id, kind, posted_at, status')
+          .not('team_member_id', 'is', null)
+          .lt('amount_cents', 0)
+          .not('status', 'in', '(failed,cancelled)'),
+      ]);
+
+    const rows = (members ?? []) as Record<string, unknown>[];
+    // Commission is keyed by the setter's user id; the ledger is keyed by
+    // team member, so bridge the two.
+    const memberByUser = new Map<string, string>();
+    for (const m of rows) {
+      const uid = m.user_id as string | null;
+      if (uid) memberByUser.set(uid, m.id as string);
+    }
+
+    const hoursBy = new Map<string, number>();
+    for (const l of (logs ?? []) as Record<string, unknown>[]) {
+      const id = l.team_member_id as string;
+      hoursBy.set(id, (hoursBy.get(id) ?? 0) + Number(l.hours ?? 0));
+    }
+
+    const commissionBy = new Map<string, number>();
+    for (const a of (appts ?? []) as Record<string, unknown>[]) {
+      const uid = a.setter_id as string | null;
+      const memberId = uid ? memberByUser.get(uid) : undefined;
+      if (!memberId) continue;
+      commissionBy.set(
+        memberId,
+        (commissionBy.get(memberId) ?? 0) + Number(a.commission_cents ?? 0),
+      );
+    }
+
+    const paidBy = new Map<string, number>();
+    for (const t of (paid ?? []) as Record<string, unknown>[]) {
+      // Only settled, real outgoing money — an envelope transfer isn't a payout.
+      if (!t.posted_at) continue;
+      if (isInternalTransfer((t.kind as string | null) ?? null)) continue;
+      const id = t.team_member_id as string;
+      paidBy.set(id, (paidBy.get(id) ?? 0) + Math.abs(Number(t.amount_cents ?? 0)));
+    }
+
+    return rows
+      .map((m) => {
+        const id = m.id as string;
+        const rateCents = m.rate_cents as number | null;
+        const rateType = (m.rate_type as string | null) ?? 'hourly';
+        const hours = hoursBy.get(id) ?? 0;
+        const manualOnly = rateType !== 'hourly' || rateCents == null;
+        const earnedTime = manualOnly ? 0 : Math.round(hours * (rateCents ?? 0));
+        const earnedCommission = commissionBy.get(id) ?? 0;
+        const paidCents = paidBy.get(id) ?? 0;
+        const earnedTotalCents = earnedTime + earnedCommission;
+        return {
+          teamMemberId: id,
+          name: (m.full_name as string) ?? 'Unknown',
+          rateType,
+          rateCents,
+          earnedTimeCents: earnedTime,
+          hours,
+          earnedCommissionCents: earnedCommission,
+          earnedTotalCents,
+          paidCents,
+          balanceCents: earnedTotalCents - paidCents,
+          manualOnly,
+        };
+      })
+      .filter((r) => r.earnedTotalCents > 0 || r.paidCents > 0 || r.hours > 0)
+      .sort((a, b) => b.balanceCents - a.balanceCents);
+  } catch {
+    return [];
+  }
+}
+
+/** Active team members, for attributing a payment to someone. */
+export async function getPayableMembers(): Promise<Array<{ id: string; name: string }>> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('team_members')
+      .select('id, full_name')
+      .eq('status', 'active')
+      .order('full_name');
+    return ((data ?? []) as Record<string, unknown>[]).map((m) => ({
+      id: m.id as string,
+      name: (m.full_name as string) ?? 'Unknown',
+    }));
   } catch {
     return [];
   }

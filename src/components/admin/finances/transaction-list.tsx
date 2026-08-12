@@ -22,7 +22,14 @@ function isPending(t: BankTransactionRow): boolean {
   return t.status === 'pending' || !t.postedAt;
 }
 
-export function TransactionList({ transactions }: { transactions: BankTransactionRow[] }) {
+export function TransactionList({
+  transactions,
+  members = [],
+}: {
+  transactions: BankTransactionRow[];
+  /** Active team members, for attributing a payout. */
+  members?: Array<{ id: string; name: string }>;
+}) {
   const [flow, setFlow] = useState<Flow>('all');
   const [search, setSearch] = useState('');
 
@@ -121,7 +128,20 @@ export function TransactionList({ transactions }: { transactions: BankTransactio
                         ) : incoming ? (
                           <span className="font-sans text-xs text-ink-subtle">—</span>
                         ) : (
-                          <CategoryPicker id={t.id} value={t.category} hint={t.mercuryCategory} />
+                          <>
+                            <CategoryPicker
+                              id={t.id}
+                              value={t.category}
+                              hint={t.mercuryCategory}
+                            />
+                            {members.length > 0 ? (
+                              <MemberPicker
+                                id={t.id}
+                                value={t.teamMemberId}
+                                members={members}
+                              />
+                            ) : null}
+                          </>
                         )}
                         {pending ? (
                           <StatusPill label="Pending" tone="bg-warning/15 text-warning" size="sm" />
@@ -201,6 +221,62 @@ function CategoryPicker({
       {EXPENSE_CATEGORIES.map((c) => (
         <option key={c} value={c}>
           {c}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/**
+ * Attribute an outgoing payment to a team member, so it counts against what
+ * they're owed. Offered on outgoing money only — a deposit isn't a payout.
+ */
+function MemberPicker({
+  id,
+  value,
+  members,
+}: {
+  id: string;
+  value: string | null;
+  members: Array<{ id: string; name: string }>;
+}) {
+  const router = useRouter();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+
+  async function set(next: string) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/finances/transactions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_member_id: next || null }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error("Couldn't attribute", body.error ?? 'Try again.');
+        return;
+      }
+      router.refresh();
+    } catch {
+      toast.error("Couldn't attribute", 'Network error.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <select
+      value={value ?? ''}
+      disabled={busy}
+      onChange={(e) => void set(e.target.value)}
+      aria-label="Paid to"
+      className="h-7 rounded-md border border-border bg-surface px-1.5 text-xs text-ink-muted focus-visible:border-copper focus-visible:outline-none disabled:opacity-50"
+    >
+      <option value="">Not a payout</option>
+      {members.map((m) => (
+        <option key={m.id} value={m.id}>
+          {m.name}
         </option>
       ))}
     </select>
