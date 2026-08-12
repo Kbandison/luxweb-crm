@@ -179,7 +179,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin/revisions', label: 'Revisions', icon: IconMessageSquare, shortcut: 8, group: 'Lifecycle', capability: 'manage_revisions' },
   { href: '/admin/reviews', label: 'Reviews', icon: IconStar, shortcut: 9, group: 'Lifecycle', capability: 'manage_reviews' },
   { href: '/admin/earnings', label: 'Earnings', icon: IconCoins, shortcut: 0, group: 'Money', capability: 'view_finance' },
-  { href: '/admin/finances', label: 'Finances', icon: IconCoins, group: 'Money', capability: 'view_finance' },
+  { href: '/admin/finances', label: 'Finances', icon: IconGauge, group: 'Money', capability: 'view_finance' },
 ];
 
 /** The nav items a given role is allowed to see, in declaration order. */

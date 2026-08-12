@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { inferCategory, isInternalTransfer } from '@/lib/finances/categories';
 import {
@@ -115,6 +116,34 @@ export type CashSummary = {
   lastSyncedAt: string | null;
 };
 
+/**
+ * Transactions for the last `months` calendar months, deduped per request.
+ *
+ * The cash summary and the P&L both need this window — the summary only cares
+ * about the current month, but reading the wider window once and narrowing in
+ * memory means one query instead of two overlapping ones. React's `cache`
+ * collapses the calls within a single render.
+ */
+const loadTransactionWindow = cache(async (months: number) => {
+  const since = new Date();
+  since.setUTCDate(1);
+  since.setUTCHours(0, 0, 0, 0);
+  since.setUTCMonth(since.getUTCMonth() - (months - 1));
+  try {
+    const { data } = await supabaseAdmin()
+      .from('bank_transactions')
+      .select('amount_cents, status, kind, mercury_category, category, posted_at, created_at')
+      .gte('created_at', since.toISOString())
+      .not('status', 'in', '(failed,cancelled)');
+    return (data ?? []) as Record<string, unknown>[];
+  } catch {
+    return [] as Record<string, unknown>[];
+  }
+});
+
+/** Months of history the finance page reads. */
+export const FINANCE_WINDOW_MONTHS = 6;
+
 function startOfMonthUtc(): string {
   const d = new Date();
   d.setUTCDate(1);
@@ -140,15 +169,22 @@ export async function getCashSummary(): Promise<CashSummary> {
     lastSyncedAt: null,
   };
   try {
-    const sb = supabaseAdmin();
-    const [{ data: accounts }, { data: txs }] = await Promise.all([
-      sb.from('bank_accounts').select('available_balance_cents, current_balance_cents, synced_at').eq('status', 'active'),
-      sb
-        .from('bank_transactions')
-        .select('amount_cents, status, posted_at')
-        .gte('created_at', startOfMonthUtc())
-        .not('status', 'in', '(failed,cancelled)'),
+    // Compared as instants, not strings: Postgres renders '+00:00' where JS
+    // renders 'Z', so a lexicographic compare drops a transaction landing
+    // exactly on the boundary.
+    const monthStartMs = new Date(startOfMonthUtc()).getTime();
+    const [{ data: accounts }, windowRows] = await Promise.all([
+      supabaseAdmin()
+        .from('bank_accounts')
+        .select('available_balance_cents, current_balance_cents, synced_at')
+        .eq('status', 'active'),
+      loadTransactionWindow(FINANCE_WINDOW_MONTHS),
     ]);
+    // Narrow the shared window to this month rather than re-querying for it.
+    const txs = windowRows.filter((t) => {
+      const created = new Date(String(t.created_at ?? '')).getTime();
+      return Number.isFinite(created) && created >= monthStartMs;
+    });
 
     const out = { ...empty };
     for (const a of (accounts ?? []) as Record<string, unknown>[]) {
@@ -160,7 +196,7 @@ export async function getCashSummary(): Promise<CashSummary> {
       }
     }
 
-    for (const t of (txs ?? []) as Record<string, unknown>[]) {
+    for (const t of txs) {
       const cents = Number(t.amount_cents ?? 0);
       if (t.status === 'pending' || !t.posted_at) {
         out.pendingCount += 1;
@@ -219,14 +255,9 @@ export async function getMonthlyPnL(months = 6): Promise<MonthlyPnL[]> {
   const sinceIso = since.toISOString();
 
   try {
-    const sb = supabaseAdmin();
-    const [{ data: txs }, { data: invoices }] = await Promise.all([
-      sb
-        .from('bank_transactions')
-        .select('amount_cents, status, kind, mercury_category, category, posted_at')
-        .gte('created_at', sinceIso)
-        .not('status', 'in', '(failed,cancelled)'),
-      sb
+    const [txs, { data: invoices }] = await Promise.all([
+      loadTransactionWindow(months),
+      supabaseAdmin()
         .from('invoices')
         .select('amount_cents, paid_at')
         .eq('status', 'paid')
@@ -255,7 +286,7 @@ export async function getMonthlyPnL(months = 6): Promise<MonthlyPnL[]> {
       return b;
     };
 
-    for (const t of (txs ?? []) as Record<string, unknown>[]) {
+    for (const t of txs) {
       // Unsettled money hasn't happened yet.
       const posted = t.posted_at as string | null;
       if (!posted) continue;
@@ -363,7 +394,6 @@ export type DepositToReconcile = {
   amountCents: number;
   counterpartyName: string | null;
   postedAt: string | null;
-  reconciledAt: string | null;
   matched: ReconciledInvoice[];
   /** Gross of the matched invoices; differs from the deposit by the fee. */
   matchedGrossCents: number;
@@ -371,23 +401,16 @@ export type DepositToReconcile = {
 };
 
 /** A paid invoice, labelled for the matcher. */
-async function loadOpenInvoices(): Promise<Map<string, Candidate>> {
+async function loadOpenInvoices(taken: Set<string>): Promise<Map<string, Candidate>> {
   const out = new Map<string, Candidate>();
   try {
-    const sb = supabaseAdmin();
-    const [{ data: invoices }, { data: linked }] = await Promise.all([
-      sb
-        .from('invoices')
-        .select('id, amount_cents, paid_at, contacts!inner(full_name)')
-        .eq('status', 'paid')
-        .not('paid_at', 'is', null)
-        .order('paid_at', { ascending: false })
-        .limit(200),
-      sb.from('invoice_reconciliations').select('invoice_id'),
-    ]);
-    const taken = new Set(
-      ((linked ?? []) as { invoice_id: string }[]).map((r) => r.invoice_id),
-    );
+    const { data: invoices } = await supabaseAdmin()
+      .from('invoices')
+      .select('id, amount_cents, paid_at, contacts!inner(full_name)')
+      .eq('status', 'paid')
+      .not('paid_at', 'is', null)
+      .order('paid_at', { ascending: false })
+      .limit(200);
     for (const inv of (invoices ?? []) as Record<string, unknown>[]) {
       const id = inv.id as string;
       if (taken.has(id)) continue; // already accounted for by another deposit
@@ -415,21 +438,27 @@ async function loadOpenInvoices(): Promise<Map<string, Candidate>> {
 export async function getDepositsToReconcile(limit = 30): Promise<DepositToReconcile[]> {
   try {
     const sb = supabaseAdmin();
-    const [{ data: txs }, { data: links }, candidates] = await Promise.all([
+    // One read of the links table, used for both the existing matches and to
+    // exclude already-attributed invoices from the candidate pool.
+    const [{ data: txs }, { data: links }] = await Promise.all([
       sb
         .from('bank_transactions')
-        .select('id, amount_cents, counterparty_name, kind, posted_at, reconciled_at')
+        .select('id, amount_cents, counterparty_name, kind, posted_at')
         .gt('amount_cents', 0)
         .not('posted_at', 'is', null)
         .not('status', 'in', '(failed,cancelled)')
         .order('posted_at', { ascending: false })
         .limit(limit),
       sb.from('invoice_reconciliations').select('transaction_id, invoice_id, amount_cents'),
-      loadOpenInvoices(),
     ]);
 
+    const linkRows = (links ?? []) as Record<string, unknown>[];
+    const candidates = await loadOpenInvoices(
+      new Set(linkRows.map((l) => l.invoice_id as string)),
+    );
+
     const byTx = new Map<string, ReconciledInvoice[]>();
-    for (const l of (links ?? []) as Record<string, unknown>[]) {
+    for (const l of linkRows) {
       const t = l.transaction_id as string;
       const list = byTx.get(t) ?? [];
       list.push({
@@ -453,7 +482,6 @@ export async function getDepositsToReconcile(limit = 30): Promise<DepositToRecon
           amountCents,
           counterpartyName: (t.counterparty_name as string | null) ?? null,
           postedAt: (t.posted_at as string | null) ?? null,
-          reconciledAt: (t.reconciled_at as string | null) ?? null,
           matched,
           matchedGrossCents: matched.reduce((s, m) => s + m.amountCents, 0),
           suggestions: matched.length > 0 ? [] : suggestMatches(amountCents, pool),

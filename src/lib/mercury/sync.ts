@@ -7,6 +7,7 @@ import {
   toCents,
   type MercuryTransaction,
 } from './client';
+import { listApprovalRequests, paymentsEnabled } from './payments';
 
 /**
  * Pull Mercury into `crm.bank_accounts` / `crm.bank_transactions`.
@@ -26,8 +27,56 @@ const DEFAULT_LOOKBACK_DAYS = 45;
 export type SyncResult = {
   accounts: number;
   transactions: number;
+  /** Queued payouts whose approval state changed. */
+  payouts: number;
   since: string;
 };
+
+/** Mercury's approval vocabulary → our payment_requests.status. */
+const APPROVAL_STATUS: Record<string, string> = {
+  pendingApproval: 'submitted',
+  approved: 'approved',
+  rejected: 'rejected',
+  cancelled: 'cancelled',
+};
+
+/**
+ * Pull approval outcomes back for payouts still shown as in-flight.
+ *
+ * Best-effort: a banking sync must not fail because the payouts feature is
+ * misconfigured or switched off mid-flight.
+ */
+async function syncPayoutStatuses(): Promise<number> {
+  if (!paymentsEnabled()) return 0;
+  try {
+    const sb = supabaseAdmin();
+    const { data: pending } = await sb
+      .from('payment_requests')
+      .select('id, mercury_request_id')
+      .eq('status', 'submitted')
+      .not('mercury_request_id', 'is', null);
+    const rows = (pending ?? []) as { id: string; mercury_request_id: string }[];
+    if (rows.length === 0) return 0;
+
+    const remote = new Map(
+      (await listApprovalRequests()).map((r) => [r.requestId, r.status]),
+    );
+    let changed = 0;
+    for (const row of rows) {
+      const next = APPROVAL_STATUS[remote.get(row.mercury_request_id) ?? ''];
+      // Unknown or unchanged — leave it alone.
+      if (!next || next === 'submitted') continue;
+      await sb
+        .from('payment_requests')
+        .update({ status: next, updated_at: new Date().toISOString() })
+        .eq('id', row.id);
+      changed += 1;
+    }
+    return changed;
+  } catch {
+    return 0;
+  }
+}
 
 function isoDaysAgo(days: number): string {
   const d = new Date();
@@ -108,5 +157,7 @@ export async function syncMercury(
     written += chunk.length;
   }
 
-  return { accounts: accountRows.length, transactions: written, since };
+  const payouts = await syncPayoutStatuses();
+
+  return { accounts: accountRows.length, transactions: written, payouts, since };
 }

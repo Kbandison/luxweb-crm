@@ -18,7 +18,7 @@ import 'server-only';
  * it's deliberately switched on.
  */
 
-const BASE_URL = 'https://api.mercury.com/api/v1';
+import { mercuryFetch } from './http';
 
 /**
  * Payouts are off unless explicitly enabled. Gated on its own flag rather than
@@ -30,13 +30,6 @@ export function paymentsEnabled(): boolean {
     process.env.MERCURY_PAYMENTS_ENABLED === 'true' &&
     !!(process.env.MERCURY_WRITE_TOKEN || process.env.MERCURY_API_TOKEN)
   );
-}
-
-/** Prefers a dedicated write token if one exists; otherwise the read token. */
-function token(): string {
-  const t = process.env.MERCURY_WRITE_TOKEN || process.env.MERCURY_API_TOKEN;
-  if (!t) throw new Error('No Mercury token configured');
-  return t;
 }
 
 /** A fat-finger ceiling. Anything larger goes through Mercury directly. */
@@ -55,32 +48,11 @@ export type MercuryRecipient = {
   dateLastPaid: string | null;
 };
 
-async function request<T>(
-  path: string,
-  init?: { method: 'GET' | 'POST'; body?: unknown },
-): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: init?.method ?? 'GET',
-    headers: {
-      Authorization: `Bearer ${token()}`,
-      Accept: 'application/json',
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: init?.body ? JSON.stringify(init.body) : undefined,
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    throw new Error(
-      `Mercury ${path} failed: ${res.status}${detail ? ` — ${detail.slice(0, 300)}` : ''}`,
-    );
-  }
-  return (await res.json()) as T;
-}
-
 /** Recipients you've already set up in Mercury. The CRM never creates them. */
 export async function listRecipients(): Promise<MercuryRecipient[]> {
-  const data = await request<{ recipients?: MercuryRecipient[] }>('/recipients');
+  const data = await mercuryFetch<{ recipients?: MercuryRecipient[] }>('/recipients', {
+    mode: 'write',
+  });
   return (data.recipients ?? []).filter((r) => r.status === 'active');
 }
 
@@ -119,9 +91,36 @@ export async function requestSendMoney(input: {
     externalMemo: input.externalMemo || undefined,
   };
 
-  const res = await request<{ requestId: string; status: SendMoneyRequestResult['status'] }>(
-    `/account/${input.accountId}/request-send-money`,
-    { method: 'POST', body },
-  );
+  const res = await mercuryFetch<{
+    requestId: string;
+    status: SendMoneyRequestResult['status'];
+  }>(`/account/${input.accountId}/request-send-money`, {
+    mode: 'write',
+    method: 'POST',
+    body,
+  });
   return { requestId: res.requestId, status: res.status };
+}
+
+export type ApprovalRequestStatus =
+  | 'pendingApproval'
+  | 'approved'
+  | 'rejected'
+  | 'cancelled';
+
+/**
+ * Current state of queued payouts.
+ *
+ * Approval happens asynchronously in Mercury's dashboard, so a request we
+ * submitted stays 'submitted' in our table until we ask. Without this the
+ * payouts list would claim "awaiting approval" forever, including for payments
+ * that were approved and sent days ago.
+ */
+export async function listApprovalRequests(): Promise<
+  Array<{ requestId: string; status: ApprovalRequestStatus }>
+> {
+  const data = await mercuryFetch<{
+    requests?: Array<{ requestId: string; status: ApprovalRequestStatus }>;
+  }>('/request-send-money', { mode: 'write', params: { limit: 200 } });
+  return data.requests ?? [];
 }
