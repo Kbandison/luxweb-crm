@@ -1,5 +1,6 @@
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { inferCategory, isInternalTransfer } from '@/lib/finances/categories';
 
 /** Read queries for the banking mirror. All fail soft. */
 
@@ -165,5 +166,135 @@ export async function getCashSummary(): Promise<CashSummary> {
     return out;
   } catch {
     return empty;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Profit & loss
+ * ------------------------------------------------------------------------- */
+
+export type MonthlyPnL = {
+  /** 'YYYY-MM' */
+  month: string;
+  /** Settled deposits, excluding transfers between the studio's own accounts. */
+  cashInCents: number;
+  /** Settled outgoing, same exclusion. */
+  expensesCents: number;
+  netCents: number;
+  /** What was billed and paid, per the CRM's invoices. */
+  invoicedCents: number;
+  byCategory: Array<{ category: string; cents: number }>;
+  /** Outgoing money we couldn't categorize — needs a human. */
+  uncategorizedCents: number;
+  uncategorizedCount: number;
+};
+
+function monthKey(iso: string): string {
+  return iso.slice(0, 7);
+}
+
+/**
+ * Cash-basis P&L by month.
+ *
+ * Cash in / expenses come from the bank (what actually moved), while
+ * `invoicedCents` comes from paid invoices. The two rarely match and both are
+ * shown on purpose: Stripe takes its cut before depositing and pays out in
+ * batches, so banked cash trails invoiced revenue in both size and timing.
+ *
+ * Internal transfers are excluded — see isInternalTransfer for why that's
+ * essential with an envelope account setup.
+ */
+export async function getMonthlyPnL(months = 6): Promise<MonthlyPnL[]> {
+  const since = new Date();
+  since.setUTCDate(1);
+  since.setUTCHours(0, 0, 0, 0);
+  since.setUTCMonth(since.getUTCMonth() - (months - 1));
+  const sinceIso = since.toISOString();
+
+  try {
+    const sb = supabaseAdmin();
+    const [{ data: txs }, { data: invoices }] = await Promise.all([
+      sb
+        .from('bank_transactions')
+        .select('amount_cents, status, kind, mercury_category, category, posted_at')
+        .gte('created_at', sinceIso)
+        .not('status', 'in', '(failed,cancelled)'),
+      sb
+        .from('invoices')
+        .select('amount_cents, paid_at')
+        .eq('status', 'paid')
+        .gte('paid_at', sinceIso),
+    ]);
+
+    const buckets = new Map<string, MonthlyPnL>();
+    const catTotals = new Map<string, Map<string, number>>();
+
+    const bucket = (m: string): MonthlyPnL => {
+      let b = buckets.get(m);
+      if (!b) {
+        b = {
+          month: m,
+          cashInCents: 0,
+          expensesCents: 0,
+          netCents: 0,
+          invoicedCents: 0,
+          byCategory: [],
+          uncategorizedCents: 0,
+          uncategorizedCount: 0,
+        };
+        buckets.set(m, b);
+        catTotals.set(m, new Map());
+      }
+      return b;
+    };
+
+    for (const t of (txs ?? []) as Record<string, unknown>[]) {
+      // Unsettled money hasn't happened yet.
+      const posted = t.posted_at as string | null;
+      if (!posted) continue;
+      const kind = (t.kind as string | null) ?? null;
+      if (isInternalTransfer(kind)) continue;
+
+      const m = monthKey(posted);
+      const b = bucket(m);
+      const cents = Number(t.amount_cents ?? 0);
+
+      if (cents >= 0) {
+        b.cashInCents += cents;
+        continue;
+      }
+
+      const spend = Math.abs(cents);
+      b.expensesCents += spend;
+      const category = inferCategory({
+        category: (t.category as string | null) ?? null,
+        kind,
+        mercuryCategory: (t.mercury_category as string | null) ?? null,
+      });
+      if (category) {
+        const cats = catTotals.get(m)!;
+        cats.set(category, (cats.get(category) ?? 0) + spend);
+      } else {
+        b.uncategorizedCents += spend;
+        b.uncategorizedCount += 1;
+      }
+    }
+
+    for (const inv of (invoices ?? []) as Record<string, unknown>[]) {
+      const paidAt = inv.paid_at as string | null;
+      if (!paidAt) continue;
+      bucket(monthKey(paidAt)).invoicedCents += Number(inv.amount_cents ?? 0);
+    }
+
+    for (const [m, b] of buckets) {
+      b.netCents = b.cashInCents - b.expensesCents;
+      b.byCategory = [...(catTotals.get(m) ?? new Map())]
+        .map(([category, cents]) => ({ category, cents }))
+        .sort((a, b2) => b2.cents - a.cents);
+    }
+
+    return [...buckets.values()].sort((a, b) => b.month.localeCompare(a.month));
+  } catch {
+    return [];
   }
 }
