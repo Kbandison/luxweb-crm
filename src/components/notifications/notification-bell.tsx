@@ -472,16 +472,30 @@ function describe(n: Notification): Described {
       };
     case 'contract_signed':
       return {
-        title: `${str('clientName')} signed the contract`,
+        title: `${str('clientName')} signed the agreement`,
         body: str('title') || undefined,
         href: str('contractPath')
           ? normalizePath(str('contractPath'))
           : undefined,
       };
+    case 'agreement_withdrawn':
+      return {
+        title: p.wasSigned === true ? 'Agreement voided' : 'Agreement withdrawn',
+        body: [str('title'), str('reason')].filter(Boolean).join(' · ') || undefined,
+        href: str('portalPath') ? normalizePath(str('portalPath')) : undefined,
+      };
+    case 'deposit_invoice_failed':
+      return {
+        title: `${str('clientName')} signed — deposit invoice failed`,
+        body: str('title') || undefined,
+        href: str('contractPath') ? normalizePath(str('contractPath')) : undefined,
+      };
     case 'contract_pending_client_signature':
       return {
         title: 'Agreement ready to sign',
-        body: 'Counter-signed by LuxWeb · awaiting your signature.',
+        body: str('title')
+          ? `${str('title')} · signed by LuxWeb, awaiting yours.`
+          : 'Signed by LuxWeb · awaiting your signature.',
         href: str('contractPath')
           ? normalizePath(str('contractPath'))
           : undefined,

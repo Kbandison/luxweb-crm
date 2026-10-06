@@ -44,6 +44,7 @@ export type ClientDashboard = {
 
 export type ClientDashboardContract = {
   id: string;
+  proposalId: string;
   proposalTitle: string;
   agreementVersion: string;
   projectId: string | null;
@@ -121,7 +122,11 @@ export async function getClientDashboard(
     displayName,
     projects,
     unpaidInvoices: invoices,
-    pendingProposals: proposals,
+    // A sent agreement is signed on its contract — list it once, as the
+    // contract, not again as an agreement awaiting review.
+    pendingProposals: proposals.filter(
+      (p) => !contracts.some((c) => c.proposalId === p.id),
+    ),
     pendingContracts: contracts,
     signedAgreements: signed,
   };
@@ -170,7 +175,7 @@ async function fetchPendingContracts(
     const { data } = await supabaseAdmin()
       .from('contracts')
       .select(
-        'id, agreement_version, project_id, created_at, proposals!inner(title)',
+        'id, proposal_id, agreement_version, project_id, created_at, proposals!inner(title)',
       )
       .in('contact_id', contactIds)
       // Include both the legacy single-signature value and the new
@@ -180,6 +185,7 @@ async function fetchPendingContracts(
       .order('created_at', { ascending: false });
     type Row = {
       id: string;
+      proposal_id: string;
       agreement_version: string;
       project_id: string | null;
       created_at: string;
@@ -190,6 +196,7 @@ async function fetchPendingContracts(
       const prop = flattenJoin(r.proposals);
       return {
         id: r.id,
+        proposalId: r.proposal_id,
         proposalTitle: prop?.title ?? 'Agreement',
         agreementVersion: r.agreement_version,
         projectId: r.project_id,
@@ -238,6 +245,33 @@ async function fetchDashboardProposals(
  * Works for project-scoped and contact-only proposals. Never returns
  * drafts (client portal never shows in-progress drafts).
  */
+/**
+ * The agreement's live (non-void) contract, if the viewer owns it. Agreements
+ * are signed on their contract page, so links to the agreement itself
+ * forward there.
+ */
+export async function getLiveContractIdForProposal(
+  proposalId: string,
+  userId: string,
+): Promise<string | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('contracts')
+      .select('id, created_at, contacts!inner(user_id)')
+      .eq('proposal_id', proposalId)
+      .neq('status', 'void')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    type Row = { id: string; contacts: { user_id: string | null } | { user_id: string | null }[] };
+    const row = data as unknown as Row | null;
+    if (!row || flattenJoin(row.contacts)?.user_id !== userId) return null;
+    return row.id;
+  } catch {
+    return null;
+  }
+}
+
 export async function getClientProposalById(
   proposalId: string,
   userId: string,
@@ -701,7 +735,7 @@ export async function getClientProposal(
 }
 
 /* -------------------------------------------------------------------------
- * Contracts (created when the studio counter-signs an accepted proposal)
+ * Contracts (created when the studio signs and sends an agreement)
  * ------------------------------------------------------------------------- */
 
 export type ClientContractListRow = {
@@ -722,6 +756,16 @@ export type ClientContractDetail = ClientContractListRow & {
   adminSignedAt: string | null;
   /** Contact's on-file full_name. Typed signature must match. */
   contactFullName: string;
+  projectId: string | null;
+  title: string;
+  /** Fingerprint of bodyMd; the signing page sends it back to prove what was read. */
+  bodySha256: string | null;
+  /** The agreement as sent — the summary above the terms renders from it. */
+  content: ProposalContent | null;
+  /** When the offer lapses (sent agreements). */
+  expiresAt: string | null;
+  /** The agreement's own status — 'expired' closes signing before the cron runs. */
+  agreementStatus: string;
 };
 
 export async function getClientProjectContracts(
@@ -768,7 +812,7 @@ export async function getClientContract(
     const { data } = await supabaseAdmin()
       .from('contracts')
       .select(
-        'id, status, agreement_version, body_md, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, proposal_id, project_id, contacts!inner(user_id, full_name)',
+        'id, status, agreement_version, body_md, body_sha256, content_snapshot, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, proposal_id, project_id, contacts!inner(user_id, full_name), proposals!inner(title, status, expires_at, content_json)',
       )
       .eq('id', contractId)
       .single();
@@ -787,13 +831,23 @@ export async function getClientContract(
       admin_signed_at: string | null;
       proposal_id: string;
       project_id: string | null;
+      body_sha256: string | null;
+      content_snapshot: ProposalContent | null;
       contacts:
         | { user_id: string | null; full_name: string }
         | { user_id: string | null; full_name: string }[];
+      proposals: ProposalEmbed | ProposalEmbed[];
+    };
+    type ProposalEmbed = {
+      title: string;
+      status: string;
+      expires_at: string | null;
+      content_json: ProposalContent | null;
     };
     const r = data as unknown as Row;
     const contact = flattenJoin(r.contacts);
     if (!contact || contact.user_id !== userId) return null;
+    const proposal = flattenJoin(r.proposals);
 
     return {
       id: r.id,
@@ -809,6 +863,12 @@ export async function getClientContract(
       adminSignedAt: r.admin_signed_at,
       proposalId: r.proposal_id,
       contactFullName: contact.full_name,
+      projectId: r.project_id,
+      title: proposal?.title ?? 'Agreement',
+      bodySha256: r.body_sha256,
+      content: r.content_snapshot ?? proposal?.content_json ?? null,
+      expiresAt: proposal?.expires_at ?? null,
+      agreementStatus: proposal?.status ?? 'sent',
     };
   } catch {
     return null;

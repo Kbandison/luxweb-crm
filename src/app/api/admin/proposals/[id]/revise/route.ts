@@ -4,20 +4,22 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { withdrawUnsigned } from '@/lib/contracts/after-sign';
 
 export const runtime = 'nodejs';
 
 /**
- * Flip a sent proposal back to draft so it can be edited and re-sent.
- * Industry-standard "Revise & Resend" pattern — preserves an audit-log
- * snapshot of the prior content so we can prove what was sent originally
- * if it ever comes up.
+ * Pull a sent (or expired) agreement back to draft so it can be edited and
+ * re-sent. Snapshots the prior content into the audit log, and voids the
+ * unsigned contract that went out with it — the client's link stops
+ * working, and they're told an updated version is coming. Re-sending signs
+ * and issues a fresh contract.
  *
  * Allowed transitions:
- *   sent → draft (revision counter bumps)
+ *   sent    → draft (revision counter bumps)
+ *   expired → draft (same — reopen a lapsed offer with fresh terms)
  *
- * Refused for any other status — accepted / rejected / expired all stay
- * locked. (Use a fresh proposal for a new bid against the same contact.)
+ * Accepted (signed) agreements stay locked; declined ones too.
  */
 export async function POST(
   _req: Request,
@@ -40,10 +42,11 @@ export async function POST(
       return Response.json({ error: 'Not found' }, { status: 404 });
     }
 
-    if ((before.status as string) !== 'sent') {
+    const fromStatus = before.status as string;
+    if (fromStatus !== 'sent' && fromStatus !== 'expired') {
       return Response.json(
         {
-          error: `Proposal is ${before.status}; only sent proposals can be revised.`,
+          error: `Agreement is ${fromStatus}; only sent or expired agreements can be revised.`,
         },
         { status: 409 },
       );
@@ -67,19 +70,38 @@ export async function POST(
       },
     });
 
-    const { error } = await sb
+    const { data: revisedRows, error } = await sb
       .from('proposals')
       .update({
         status: 'draft',
         revision: nextRevision,
-        // Clear sent_at so the next Send writes a fresh timestamp.
+        // Cleared so the next Send writes fresh ones.
         sent_at: null,
+        expires_at: null,
       })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('status', fromStatus)
+      .select('id');
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
     }
+    if ((revisedRows ?? []).length === 0) {
+      return Response.json(
+        { error: 'The agreement changed while you were revising — reload and try again.' },
+        { status: 409 },
+      );
+    }
+
+    // The contract that went out with it can no longer be signed. A client
+    // holding a link to a still-open offer is told; an expired one already
+    // lapsed, so there's nothing new to tell them.
+    await withdrawUnsigned({
+      proposalId: id,
+      reason: 'Withdrawn so we can send you an updated version.',
+      actorId: session.userId,
+      notifyClient: fromStatus === 'sent',
+    });
 
     await writeAudit({
       actor_id: session.userId,
@@ -87,7 +109,7 @@ export async function POST(
       entity_type: 'proposal',
       entity_id: id,
       diff: {
-        status: { from: 'sent', to: 'draft' },
+        status: { from: fromStatus, to: 'draft' },
         revision: { from: prevRevision, to: nextRevision },
       },
     });

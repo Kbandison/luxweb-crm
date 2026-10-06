@@ -3,6 +3,7 @@ import { requireCapability } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { withdrawUnsigned } from '@/lib/contracts/after-sign';
 
 export const runtime = 'nodejs';
 
@@ -93,6 +94,18 @@ export async function PATCH(
       .update(update)
       .eq('id', id);
     if (error) return Response.json({ error: error.message }, { status: 500 });
+
+    // Marking a sent agreement declined (or expired) closes the offer: its
+    // unsigned contract can't be signed anymore. The client declined it, so
+    // there's no one to notify; an expiry lapsed on the date they were given.
+    if (parsed.data.status) {
+      await withdrawUnsigned({
+        proposalId: id,
+        reason: parsed.data.status === 'rejected' ? 'Declined' : 'Expired',
+        actorId: session.userId,
+        notifyClient: false,
+      });
+    }
 
     await writeAudit({
       actor_id: session.userId,

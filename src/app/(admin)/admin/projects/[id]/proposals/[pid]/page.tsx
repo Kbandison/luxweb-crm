@@ -1,5 +1,10 @@
 import { notFound } from 'next/navigation';
-import { getContractByProposalId, getProposal } from '@/lib/queries/admin';
+import {
+  getContractByProposalId,
+  getProposal,
+  getUserFullName,
+} from '@/lib/queries/admin';
+import { getSession } from '@/lib/supabase/session';
 import { ProposalEditor } from '@/components/admin/proposals/proposal-editor';
 
 export default async function ProposalEditorPage({
@@ -8,9 +13,11 @@ export default async function ProposalEditorPage({
   params: Promise<{ id: string; pid: string }>;
 }) {
   const { id, pid } = await params;
-  const [proposal, existingContract] = await Promise.all([
+  const session = await getSession();
+  const [proposal, existingContract, senderName] = await Promise.all([
     getProposal(pid),
     getContractByProposalId(pid),
+    session ? getUserFullName(session.userId) : Promise.resolve(null),
   ]);
   if (!proposal || proposal.projectId !== id) notFound();
 
@@ -26,10 +33,9 @@ export default async function ProposalEditorPage({
         initialSentAt={proposal.sentAt}
         initialRevision={proposal.revision}
         initialAcceptedAt={proposal.acceptedAt}
-        initialAcceptedByName={proposal.acceptedByName}
-        initialAcceptedByIp={proposal.acceptedByIp}
-        initialAcceptedByUserAgent={proposal.acceptedByUserAgent}
         existingContract={existingContract}
+        senderName={senderName}
+        initialExpiresAt={proposal.expiresAt}
       />
     </main>
   );

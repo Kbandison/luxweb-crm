@@ -4,6 +4,7 @@ import {
   depositForSigning,
   milestoneSeedRows,
   seedStatusForMilestones,
+  signingPlan,
 } from './on-sign';
 import {
   defaultProposalContent,
@@ -249,6 +250,57 @@ describe('depositForSigning on a phase plan', () => {
       'inactive',
       'inactive',
       'inactive',
+    ]);
+  });
+});
+
+describe('signingPlan', () => {
+  const opts = { title: 'Site build', totalCents: 400000, signedAt: '2026-10-07T16:45:00.000Z' };
+  function phasePlan(milestones: ProposalContent['investment']['milestones']) {
+    const c = content(milestones, 400000);
+    c.investment.plan_version = 2;
+    return c;
+  }
+  const DEP = { kind: 'deposit' as const, label: 'Deposit', percent: 50, amount_cents: 200000, due: 'On signing' };
+  const DESIGN = { kind: 'phase' as const, phase_id: 'p0', label: 'Design', percent: 50, amount_cents: 200000, due: 'On approval' };
+
+  it('waits for the deposit before work starts', () => {
+    const plan = signingPlan(phasePlan([DEP, DESIGN]), opts);
+    expect(plan.depositState).toBe('pending');
+    expect(plan.startNow).toBe(false);
+    expect(plan.milestones.map((m) => [m.sort_order, m.title, m.status])).toEqual([
+      [0, 'Deposit', 'pending'],
+      [1, 'Design', 'inactive'],
+    ]);
+    expect(plan.prepaid).toEqual([]);
+  });
+
+  it('starts work at signature when there is no deposit', () => {
+    const plan = signingPlan(phasePlan([{ ...DESIGN, amount_cents: 400000 }]), opts);
+    expect(plan.depositState).toBe('not_required');
+    expect(plan.startNow).toBe(true);
+    expect(plan.milestones[0].status).toBe('pending');
+  });
+
+  it('records a collected deposit as a dated paid invoice and starts work', () => {
+    const plan = signingPlan(
+      phasePlan([
+        { ...DEP, collected: true, collected_on: '2026-09-02', collected_method: 'Zelle' },
+        DESIGN,
+      ]),
+      opts,
+    );
+    expect(plan.depositState).toBe('collected');
+    expect(plan.startNow).toBe(true);
+    expect(plan.milestones.map((m) => m.status)).toEqual(['done', 'pending']);
+    expect(plan.prepaid).toEqual([
+      {
+        sort_order: 0,
+        description: 'Deposit — Site build',
+        amount_cents: 200000,
+        paid_at: '2026-09-02T12:00:00.000Z',
+        method: 'Zelle',
+      },
     ]);
   });
 });

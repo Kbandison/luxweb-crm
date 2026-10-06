@@ -4,7 +4,6 @@ import {
   getProjectProposals,
   linkOrphanProposalsToProject,
 } from '@/lib/queries/admin';
-import { SignAgreementButton } from '@/components/admin/proposals/sign-agreement-button';
 import { SectionHead } from '@/components/ui/section-head';
 import { StatusPill } from '@/components/ui/status-pill';
 import { formatDate, formatUSD } from '@/lib/formatters';
@@ -30,7 +29,6 @@ export default async function AdminProjectAgreementPage({
     getProjectProposals(id),
     getProjectContracts(id),
   ]);
-  const proposalsWithContract = new Set(contracts.map((c) => c.proposalId));
 
   if (proposals.length === 0 && contracts.length === 0) {
     return (
@@ -40,8 +38,8 @@ export default async function AdminProjectAgreementPage({
             No agreement yet
           </p>
           <p className="mx-auto mt-2 max-w-md font-sans text-sm text-ink-muted">
-            Create a proposal from the client&apos;s page. Once the client
-            accepts it, counter-sign it here to create the agreement.
+            Start an agreement from the client&apos;s lead page. When you sign
+            and send it, the contract shows up here.
           </p>
         </div>
       </main>
@@ -53,67 +51,54 @@ export default async function AdminProjectAgreementPage({
       <section>
         <SectionHead
           number="01"
-          title={`Proposals · ${proposals.length}`}
+          title={`Agreements · ${proposals.length}`}
         />
         {proposals.length === 0 ? (
-          <Empty label="No proposal on this project yet." className="mt-5" />
+          <Empty label="No agreement on this project yet." className="mt-5" />
         ) : (
           <ul className="mt-5 overflow-hidden rounded-xl border border-border bg-surface divide-y divide-border">
-            {proposals.map((p) => {
-              const orphan =
-                p.status === 'accepted' && !proposalsWithContract.has(p.id);
-              return (
-                <li key={p.id}>
-                  <Link
-                    href={`/admin/projects/${id}/proposals/${p.id}`}
-                    className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-surface-2/50"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-sans text-sm font-medium text-ink">
-                        {p.title}
-                      </p>
-                      <p className="mt-0.5 font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
-                        {p.sentAt
-                          ? `Sent ${formatDate(p.sentAt)}`
-                          : `Created ${formatDate(p.createdAt)}`}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      <StatusPill
-                        label={
-                          PROPOSAL_STATUS_LABEL[p.status as ProposalStatus] ??
-                          p.status
-                        }
-                        tone={
-                          PROPOSAL_STATUS_TONE[p.status as ProposalStatus] ??
-                          'bg-ink/5 text-ink-muted'
-                        }
-                      />
-                      {p.totalCents != null ? (
-                        <span className="font-mono text-sm font-medium tabular-nums text-ink">
-                          {formatUSD(p.totalCents)}
-                        </span>
-                      ) : null}
-                      <span
-                        aria-hidden
-                        className="font-mono text-[10px] uppercase tracking-meta text-copper"
-                      >
-                        Open →
+            {proposals.map((p) => (
+              <li key={p.id}>
+                <Link
+                  href={`/admin/projects/${id}/proposals/${p.id}`}
+                  className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-surface-2/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-sans text-sm font-medium text-ink">
+                      {p.title}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
+                      {p.sentAt
+                        ? `Sent ${formatDate(p.sentAt)}`
+                        : `Created ${formatDate(p.createdAt)}`}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <StatusPill
+                      label={
+                        PROPOSAL_STATUS_LABEL[p.status as ProposalStatus] ??
+                        p.status
+                      }
+                      tone={
+                        PROPOSAL_STATUS_TONE[p.status as ProposalStatus] ??
+                        'bg-ink/5 text-ink-muted'
+                      }
+                    />
+                    {p.totalCents != null ? (
+                      <span className="font-mono text-sm font-medium tabular-nums text-ink">
+                        {formatUSD(p.totalCents)}
                       </span>
-                    </div>
-                  </Link>
-                  {orphan ? (
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-copper/30 bg-copper/5 px-5 py-3">
-                      <p className="font-sans text-xs text-copper">
-                        Accepted by client. Counter-sign to create the
-                        agreement and send it for their signature.
-                      </p>
-                      <SignAgreementButton proposalId={p.id} />
-                    </div>
-                  ) : null}
-                </li>
-              );
-            })}
+                    ) : null}
+                    <span
+                      aria-hidden
+                      className="font-mono text-[10px] uppercase tracking-meta text-copper"
+                    >
+                      Open →
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
           </ul>
         )}
       </section>
@@ -125,7 +110,7 @@ export default async function AdminProjectAgreementPage({
         />
         {contracts.length === 0 ? (
           <Empty
-            label="No contract yet. Once the client accepts a proposal, counter-sign it above to create one."
+            label="No contract yet — signing and sending an agreement creates one."
             className="mt-5"
           />
         ) : (

@@ -44,6 +44,12 @@ import ContractPendingClientSignatureEmail, {
 import PaymentAlertEmail, {
   paymentAlertSubject,
 } from '@/emails/payment-alert-email';
+import AgreementWithdrawnEmail, {
+  agreementWithdrawnSubject,
+} from '@/emails/agreement-withdrawn-email';
+import AgreementAlertEmail, {
+  agreementAlertSubject,
+} from '@/emails/agreement-alert-email';
 
 /* -------------------------------------------------------------------------
  * Event shapes
@@ -210,6 +216,31 @@ export type NotifyEvent =
       clientName: string;
       /** client portal URL */
       contractPath: string;
+      title?: string;
+      /** When the offer lapses. */
+      expiresAt?: string | null;
+    }
+  | {
+      // Client-facing: an agreement they were sent was withdrawn (revised,
+      // declined, expired) or a signed one was voided.
+      type: 'agreement_withdrawn';
+      userId: string;
+      proposalId: string;
+      contractId: string;
+      title: string;
+      reason: string;
+      wasSigned: boolean;
+      portalPath: string;
+    }
+  | {
+      // Admin alert: a client signed, but raising the deposit invoice failed.
+      type: 'deposit_invoice_failed';
+      userId: string;
+      contractId: string;
+      clientName: string;
+      title: string;
+      message: string;
+      contractPath: string;
     }
   | {
       type: 'care_plan_activated';
@@ -305,6 +336,8 @@ function subjectKeyFor(event: NotifyEvent): { field: string; value: string } | n
     case 'revision_updated':
       return { field: 'revisionId', value: event.revisionId };
     case 'contract_pending_client_signature':
+    case 'agreement_withdrawn':
+    case 'deposit_invoice_failed':
       return { field: 'contractId', value: event.contractId };
     case 'care_plan_activated':
       return { field: 'subscriptionId', value: event.subscriptionId };
@@ -328,6 +361,7 @@ const CATEGORY_BY_TYPE: Record<NotifyEvent['type'], EmailCategory> = {
   proposal_sent: 'update',
   proposal_accepted_client: 'update',
   contract_pending_client_signature: 'update',
+  agreement_withdrawn: 'update',
   milestone_updated: 'update',
   revision_updated: 'update',
   invite: 'update',
@@ -336,6 +370,7 @@ const CATEGORY_BY_TYPE: Record<NotifyEvent['type'], EmailCategory> = {
   new_lead: 'admin',
   proposal_accepted: 'admin',
   contract_signed: 'admin',
+  deposit_invoice_failed: 'admin',
   revision_requested: 'admin',
   payment_received: 'admin',
   payment_overdue: 'admin',
@@ -658,10 +693,38 @@ function renderTemplate(
       const props = {
         recipientName,
         contractUrl: appUrl(event.contractPath),
+        title: event.title,
+        expiresAt: event.expiresAt ?? null,
       };
       return {
-        subject: contractPendingClientSignatureSubject(),
+        subject: contractPendingClientSignatureSubject(props),
         react: createElement(ContractPendingClientSignatureEmail, props),
+      };
+    }
+    case 'agreement_withdrawn': {
+      const props = {
+        recipientName,
+        title: event.title,
+        reason: event.reason,
+        wasSigned: event.wasSigned,
+        portalUrl: appUrl(event.portalPath),
+      };
+      return {
+        subject: agreementWithdrawnSubject(props),
+        react: createElement(AgreementWithdrawnEmail, props),
+      };
+    }
+    case 'deposit_invoice_failed': {
+      const props = {
+        clientName: event.clientName,
+        title: event.title,
+        problem: "the deposit invoice didn't go out",
+        detail: event.message,
+        contractUrl: appUrl(event.contractPath),
+      };
+      return {
+        subject: agreementAlertSubject(props),
+        react: createElement(AgreementAlertEmail, props),
       };
     }
     case 'care_plan_activated': {

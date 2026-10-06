@@ -1,16 +1,12 @@
+import {
+  inlineSegments,
+  parseBlocks,
+  type Block,
+} from '@/lib/contracts/markdown';
+
 /**
- * Renders the contract body_md. Targets the specific markdown features
- * used in src/content/agreement-v1.1.md:
- *
- *   - # / ## / ### / #### headings
- *   - **bold** inline
- *   - unordered lists (lines starting with "- ")
- *   - pipe tables  ( "| col | col |" ... )
- *   - horizontal rules ("---")
- *   - blank-line separated paragraphs
- *
- * Deliberately hand-rolled so the legal content is rendered through code
- * we fully control — no surprise HTML escaping, no dependency churn.
+ * Renders a contract's body_md on screen. The markdown dialect and its
+ * parser live in lib/contracts/markdown.ts, shared with the executed PDF.
  */
 export function ContractBody({ body }: { body: string }) {
   const blocks = parseBlocks(body);
@@ -21,82 +17,6 @@ export function ContractBody({ body }: { body: string }) {
       ))}
     </div>
   );
-}
-
-type Block =
-  | { type: 'heading'; level: 1 | 2 | 3 | 4; text: string }
-  | { type: 'paragraph'; text: string }
-  | { type: 'list'; items: string[] }
-  | { type: 'table'; rows: string[][] }
-  | { type: 'hr' };
-
-function parseBlocks(src: string): Block[] {
-  const lines = src.replace(/\r\n/g, '\n').split('\n');
-  const out: Block[] = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-    if (!line.trim()) {
-      i++;
-      continue;
-    }
-
-    if (/^---\s*$/.test(line)) {
-      out.push({ type: 'hr' });
-      i++;
-      continue;
-    }
-
-    const h = /^(#{1,4})\s+(.*)$/.exec(line);
-    if (h) {
-      out.push({
-        type: 'heading',
-        level: h[1].length as 1 | 2 | 3 | 4,
-        text: h[2].trim(),
-      });
-      i++;
-      continue;
-    }
-
-    if (/^\s*\|.+\|\s*$/.test(line)) {
-      const tableLines: string[] = [];
-      while (i < lines.length && /^\s*\|.+\|\s*$/.test(lines[i])) {
-        tableLines.push(lines[i]);
-        i++;
-      }
-      const rows = tableLines
-        .map((l) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()))
-        // Drop the alignment row ( | --- | --- | ).
-        .filter((cells) => !cells.every((c) => /^-+:?$|^:?-+$|^:?-+:?$/.test(c)));
-      out.push({ type: 'table', rows });
-      continue;
-    }
-
-    if (/^\s*-\s+/.test(line)) {
-      const items: string[] = [];
-      while (i < lines.length && /^\s*-\s+/.test(lines[i])) {
-        items.push(lines[i].replace(/^\s*-\s+/, '').trim());
-        i++;
-      }
-      out.push({ type: 'list', items });
-      continue;
-    }
-
-    // Paragraph — consume until blank line or block boundary.
-    const paraLines: string[] = [];
-    while (
-      i < lines.length &&
-      lines[i].trim() &&
-      !/^(#{1,4}\s|---\s*$|\s*\|.+\|\s*$|\s*-\s+)/.test(lines[i])
-    ) {
-      paraLines.push(lines[i]);
-      i++;
-    }
-    out.push({ type: 'paragraph', text: paraLines.join(' ').trim() });
-  }
-
-  return out;
 }
 
 function Block({ block }: { block: Block }) {
@@ -171,27 +91,16 @@ function Block({ block }: { block: Block }) {
 }
 
 /**
- * Inline formatting — supports `**bold**`. Everything else (links, italics,
- * inline code) is rare in the agreement template and would open up an XSS
- * surface we don't need.
+ * Inline formatting — supports `**bold**` only (see inlineSegments).
  */
 function inline(text: string): React.ReactNode {
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  const re = /\*\*(.+?)\*\*/g;
-  let match: RegExpExecArray | null;
-  let key = 0;
-  while ((match = re.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    parts.push(
-      <strong key={key++} className="font-semibold text-ink">
-        {match[1]}
-      </strong>,
-    );
-    lastIndex = re.lastIndex;
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
-  return parts;
+  return inlineSegments(text).map((seg, i) =>
+    seg.bold ? (
+      <strong key={i} className="font-semibold text-ink">
+        {seg.text}
+      </strong>
+    ) : (
+      seg.text
+    ),
+  );
 }

@@ -146,8 +146,8 @@ export function LeadDetail({
           <Section number="04" title="Contracts" />
           {contracts.length === 0 ? (
             <p className="font-sans text-sm text-ink-muted">
-              No contract yet. Once the client accepts a proposal,
-              counter-sign it to create one.
+              No contract yet — signing and sending an agreement creates
+              one.
             </p>
           ) : (
             <ul className="overflow-hidden rounded-xl border border-border bg-surface divide-y divide-border">

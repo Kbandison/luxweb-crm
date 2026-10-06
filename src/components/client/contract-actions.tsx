@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SuccessModal } from '@/components/ui/success-modal';
 import { useToast } from '@/components/ui/toast';
-import { formatDateTimeLongTz } from '@/lib/formatters';
+import { formatDateLong, formatDateTimeLongTz } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import type { ContractStatus } from '@/lib/types/contract';
 
@@ -32,6 +32,9 @@ export function ClientContractActions({
   signedAt,
   signedName,
   expectedSignerName,
+  bodySha256,
+  expiresAt,
+  expired,
 }: {
   contractId: string;
   status: ContractStatus;
@@ -39,14 +42,31 @@ export function ClientContractActions({
   signedName: string | null;
   /** The contact's on-file full_name. Typed signature must match. */
   expectedSignerName: string;
+  /** Fingerprint of the text on this page — sent back when signing. */
+  bodySha256: string | null;
+  expiresAt: string | null;
+  expired: boolean;
 }) {
+  const pending =
+    status === 'pending_signature' || status === 'pending_client_signature';
   return (
     <div>
-      {status === 'pending_signature' ||
-      status === 'pending_client_signature' ? (
+      {pending && expired ? (
+        <div className="rounded-2xl border border-warning/30 bg-warning/5 p-6">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-warning">
+            This agreement has expired
+          </p>
+          <p className="mt-1 font-sans text-sm text-ink-muted">
+            {expiresAt ? `It was open until ${formatDateLong(expiresAt)}. ` : ''}
+            Reply to our email or message us and we&apos;ll send an updated one.
+          </p>
+        </div>
+      ) : pending ? (
         <SignBar
           contractId={contractId}
           expectedSignerName={expectedSignerName}
+          bodySha256={bodySha256}
+          expiresAt={expiresAt}
         />
       ) : status === 'pending_admin_signature' ? (
         <div className="rounded-2xl border border-copper/30 bg-copper-soft/25 p-6">
@@ -77,9 +97,13 @@ export function ClientContractActions({
 function SignBar({
   contractId,
   expectedSignerName,
+  bodySha256,
+  expiresAt,
 }: {
   contractId: string;
   expectedSignerName: string;
+  bodySha256: string | null;
+  expiresAt: string | null;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -105,6 +129,7 @@ function SignBar({
         body: JSON.stringify({
           full_name: fullName.trim(),
           agreed: true,
+          ...(bodySha256 ? { body_sha256: bodySha256 } : {}),
         }),
       });
       if (!res.ok) {
@@ -119,10 +144,17 @@ function SignBar({
         deposit_invoice_id?: string | null;
         deposit_status?: string;
       };
+      setOpen(false);
+      // A deposit is due: go straight to paying it — same sitting, no
+      // extra click through a modal.
+      if (j.deposit_invoice_id && j.project_id) {
+        toast.success('Agreement signed', "Here's your deposit — your signed copy is on its way by email.");
+        router.push(`/portal/project/${j.project_id}/invoices/${j.deposit_invoice_id}/pay`);
+        return;
+      }
       setSignedProjectId(j.project_id ?? null);
       setSignedInvoiceId(j.deposit_invoice_id ?? null);
       setDepositStatus(j.deposit_status ?? null);
-      setOpen(false);
       setConfirmOpen(true);
     } finally {
       setBusy(false);
@@ -142,11 +174,11 @@ function SignBar({
               Sign your agreement
             </p>
             <p className="mt-1 font-display text-lg font-medium text-ink">
-              Review the legal terms, then add your second signature.
+              We&apos;ve signed — it&apos;s waiting on you.
             </p>
             <p className="mt-1 font-sans text-sm text-ink-muted">
-              The proposal covered scope and investment. This agreement covers
-              IP, confidentiality, liability, and the full legal terms.
+              Read the summary and the full agreement below, then sign.
+              {expiresAt ? ` Open until ${formatDateLong(expiresAt)}.` : ''}
             </p>
           </div>
           <Button type="button" onClick={() => setOpen(true)} className="shrink-0">
