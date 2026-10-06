@@ -278,6 +278,14 @@ function NewInvoiceDialog({
   const [description, setDescription] = useState('');
   const [amountDollars, setAmountDollars] = useState('');
   const [daysUntilDue, setDaysUntilDue] = useState('14');
+  // Set when the server says this would bill past the signed contract; the
+  // admin confirms (hourly / out-of-scope work) or backs out.
+  const [overContract, setOverContract] = useState<{
+    contracted_cents: number;
+    billed_cents: number;
+    remaining_cents: number;
+    over_by_cents: number;
+  } | null>(null);
 
   // Override Dialog's default autofocus (close button is first focusable
   // in DOM) so the form's first field gets focus instead.
@@ -292,6 +300,7 @@ function NewInvoiceDialog({
     setAmountDollars('');
     setDaysUntilDue('14');
     setError(null);
+    setOverContract(null);
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -312,10 +321,16 @@ function NewInvoiceDialog({
           amount_cents: Math.round(dollars * 100),
           description: description.trim(),
           days_until_due: Number(daysUntilDue) || 14,
+          // Second submit after the warning below = confirmed.
+          ...(overContract ? { acknowledge_over_contract: true } : {}),
         }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
+        if (res.status === 409 && j.over_contract) {
+          setOverContract(j.over_contract);
+          return;
+        }
         const msg = j.error ?? 'Failed to create invoice.';
         setError(msg);
         toast.error("Couldn't send invoice", msg);
@@ -411,7 +426,11 @@ function NewInvoiceDialog({
                   min={1}
                   step="0.01"
                   value={amountDollars}
-                  onChange={(e) => setAmountDollars(e.target.value)}
+                  onChange={(e) => {
+                    setAmountDollars(e.target.value);
+                    // A new amount gets checked against the contract again.
+                    setOverContract(null);
+                  }}
                   placeholder="2500"
                   required
                 />
@@ -441,6 +460,24 @@ function NewInvoiceDialog({
               </ul>
             </div>
 
+            {overContract ? (
+              <div role="alert" className="rounded-lg border border-warning/30 bg-warning/5 p-4">
+                <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-warning">
+                  Past the signed contract
+                </p>
+                <p className="mt-1 font-sans text-xs leading-relaxed text-ink">
+                  The contract (with change orders) is{' '}
+                  {formatUSD(overContract.contracted_cents)} and{' '}
+                  {formatUSD(overContract.billed_cents)} is already billed, so
+                  this goes {formatUSD(overContract.over_by_cents)} over. That&apos;s
+                  expected for hourly or out-of-scope work — otherwise check
+                  this phase hasn&apos;t been invoiced already.
+                </p>
+                <p className="mt-2 font-sans text-xs text-ink-muted">
+                  Press <span className="text-ink">Bill anyway</span> to send it.
+                </p>
+              </div>
+            ) : null}
             {error ? (
               <p role="alert" className="font-sans text-xs text-danger">
                 {error}
@@ -463,7 +500,7 @@ function NewInvoiceDialog({
               size="sm"
               disabled={busy || !description.trim() || !amountDollars}
             >
-              {busy ? 'Sending…' : 'Send invoice'}
+              {busy ? 'Sending…' : overContract ? 'Bill anyway' : 'Send invoice'}
             </Button>
           </footer>
         </form>

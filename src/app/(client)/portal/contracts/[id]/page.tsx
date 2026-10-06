@@ -10,7 +10,13 @@ import {
 } from '@/components/client/contract-actions';
 import { SectionHead } from '@/components/ui/section-head';
 import { AgreementViewBeacon } from '@/components/client/agreement-view-beacon';
-import { formatDateTime } from '@/lib/formatters';
+import { formatDateTime, formatUSD } from '@/lib/formatters';
+import Link from 'next/link';
+import { StatusPill } from '@/components/ui/status-pill';
+import {
+  CHANGE_ORDER_STATUS_META,
+  getClientChangeOrdersForContract,
+} from '@/lib/queries/change-orders';
 
 /**
  * The client's agreement — one page, one signature. A short summary of
@@ -27,7 +33,10 @@ export default async function ClientContractPage({
   const { id } = await params;
   const session = await getSession();
   if (!session) redirect('/login');
-  const contract = await getClientContract(id, session.userId);
+  const [contract, changeOrders] = await Promise.all([
+    getClientContract(id, session.userId),
+    getClientChangeOrdersForContract(id, session.userId),
+  ]);
   if (!contract) notFound();
 
   const pending =
@@ -99,6 +108,35 @@ export default async function ClientContractPage({
 
       {contract.content && contract.status !== 'void' ? (
         <AgreementSummary content={contract.content} />
+      ) : null}
+
+      {contract.status === 'signed' && changeOrders.length > 0 ? (
+        <section className="space-y-3">
+          <SectionHead title="Change orders" />
+          <ul className="overflow-hidden rounded-xl border border-border bg-surface divide-y divide-border">
+            {changeOrders.map((co) => (
+              <li key={co.id}>
+                <Link
+                  href={`/portal/change-orders/${co.id}`}
+                  className="flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-surface-2/50"
+                >
+                  <span className="min-w-0 flex-1 truncate font-sans text-sm text-ink">
+                    #{co.number} · {co.title}
+                  </span>
+                  <span className="font-mono text-sm tabular-nums text-ink">
+                    {co.amountCents === 0
+                      ? '—'
+                      : `${co.amountCents > 0 ? '+' : '−'}${formatUSD(Math.abs(co.amountCents))}`}
+                  </span>
+                  <StatusPill
+                    label={CHANGE_ORDER_STATUS_META[co.status].label}
+                    tone={CHANGE_ORDER_STATUS_META[co.status].tone}
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       <section className="space-y-4">

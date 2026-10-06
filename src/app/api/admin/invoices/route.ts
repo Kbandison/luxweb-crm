@@ -8,6 +8,8 @@ import { notify, getContactUserId } from '@/lib/notifications';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 import { flattenJoin } from '@/lib/array-join';
+import { projectContractBilling } from '@/lib/change-orders/billing';
+import { billingCheck } from '@/lib/change-orders/guard';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +18,12 @@ const CreateSchema = z.object({
   amount_cents: z.number().int().min(100), // $1 minimum
   description: z.string().min(1).max(500),
   days_until_due: z.number().int().min(1).max(365).default(14),
+  /**
+   * The admin confirmed billing past the signed contract (hourly or
+   * out-of-scope work, § 1.2). Without it, such an invoice comes back 409
+   * with the numbers so the UI can ask.
+   */
+  acknowledge_over_contract: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -62,6 +70,34 @@ export async function POST(req: Request) {
         },
         { status: 400 },
       );
+    }
+
+    // Overcharge guard, manual flavour: warn, don't block. Hourly and
+    // out-of-scope work legitimately bills past the contract — but so does an
+    // accidental second invoice for a phase, so ask before sending it.
+    const billing = await projectContractBilling(parsed.data.project_id);
+    let overContract = false;
+    if (billing) {
+      const check = billingCheck({
+        contractedCents: billing.contractedCents,
+        billedCents: billing.allBilledCents,
+        amountCents: parsed.data.amount_cents,
+      });
+      overContract = !check.ok;
+      if (overContract && !parsed.data.acknowledge_over_contract) {
+        return Response.json(
+          {
+            error: 'This invoice would bill past the signed contract.',
+            over_contract: {
+              contracted_cents: billing.contractedCents,
+              billed_cents: billing.allBilledCents,
+              remaining_cents: check.remainingCents,
+              over_by_cents: check.overByCents,
+            },
+          },
+          { status: 409 },
+        );
+      }
     }
 
     const s = stripe();
@@ -174,6 +210,7 @@ export async function POST(req: Request) {
         stripe_invoice_id: finalized.id,
         amount_cents: parsed.data.amount_cents,
         description: parsed.data.description,
+        ...(overContract ? { past_contract_confirmed: true } : {}),
       },
     });
 

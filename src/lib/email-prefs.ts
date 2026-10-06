@@ -57,6 +57,11 @@ export const CLIENT_EMAIL_PREFS = [
     hint: 'A nudge when an agreement is waiting on your signature or about to expire.',
   },
   {
+    key: 'change_order',
+    label: 'Change orders',
+    hint: 'When a change to your project is ready for your signature.',
+  },
+  {
     key: 'milestone_updated',
     label: 'Milestone updates',
     hint: 'When a project milestone changes status.',
@@ -110,6 +115,16 @@ export const ADMIN_EMAIL_PREFS = [
     key: 'contract_signed',
     label: 'Agreement signed',
     hint: 'Email when a client signs an agreement.',
+  },
+  {
+    key: 'change_order_update',
+    label: 'Change orders',
+    hint: 'Email when a client signs or declines a change order.',
+  },
+  {
+    key: 'contract_billing_blocked',
+    label: 'Billing blocked',
+    hint: 'Email when an automatic invoice would bill past the signed contract.',
   },
   {
     key: 'agreement_changes_requested',

@@ -9,6 +9,8 @@ export type AgreementExecutedEmailProps = {
   clientName: string;
   bodySha256: string | null;
   agreementUrl: string;
+  /** What was signed. Defaults to "agreement". */
+  documentNoun?: 'agreement' | 'change order';
 };
 
 /**
@@ -18,10 +20,11 @@ export type AgreementExecutedEmailProps = {
  */
 export default function AgreementExecutedEmail(props: AgreementExecutedEmailProps) {
   const { recipientName, title, audience, clientName, bodySha256, agreementUrl } = props;
+  const noun = props.documentNoun ?? 'agreement';
   return (
     <BaseLayout preview={`Signed: ${title}`}>
       <Text className="m-0 text-xs uppercase tracking-[0.22em] text-copper">
-        Agreement signed
+        {noun === 'change order' ? 'Change order signed' : 'Agreement signed'}
       </Text>
       <Heading className="mt-3 text-2xl font-medium tracking-tight text-ink">
         Hi {recipientName.split(' ')[0] || 'there'},
@@ -29,12 +32,12 @@ export default function AgreementExecutedEmail(props: AgreementExecutedEmailProp
       <Text className="mt-4 text-base leading-relaxed text-ink">
         {audience === 'client' ? (
           <>
-            Thanks for signing. Your copy of the agreement for <strong>{title}</strong>,
+            Thanks for signing. Your copy of the {noun} for <strong>{title}</strong>,
             signed by both of us, is attached for your records.
           </>
         ) : (
           <>
-            <strong>{clientName}</strong> signed the agreement for <strong>{title}</strong>.
+            <strong>{clientName}</strong> signed the {noun} for <strong>{title}</strong>.
             The executed copy is attached for filing.
           </>
         )}

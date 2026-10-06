@@ -6,7 +6,11 @@ import { SignaturePair } from '@/components/contract/signature-block';
 import { VoidContractButton } from '@/components/admin/contracts/void-contract-button';
 import { FinishSetupButton } from '@/components/admin/contracts/finish-setup-button';
 import { StatusPill } from '@/components/ui/status-pill';
-import { formatDate, formatDateTime } from '@/lib/formatters';
+import { formatDate, formatDateTime, formatUSD } from '@/lib/formatters';
+import {
+  CHANGE_ORDER_STATUS_META,
+  type ChangeOrderListRow,
+} from '@/lib/queries/change-orders';
 import { CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE } from '@/lib/status-meta';
 
 const DEPOSIT_LABEL: Record<string, string> = {
@@ -27,10 +31,13 @@ export function AdminContractView({
   contract,
   backHref,
   backLabel,
+  changeOrders = [],
 }: {
   contract: ContractDetail;
   backHref: string;
   backLabel: string;
+  /** Change orders amending this (signed) agreement, newest first. */
+  changeOrders?: ChangeOrderListRow[];
 }) {
   const signed = contract.status === 'signed';
   const pending =
@@ -151,6 +158,57 @@ export function AdminContractView({
           {DEPOSIT_LABEL[contract.depositState ?? ''] ?? 'Deposit —'} · signed copy
           emailed {contract.executedCopySentAt ? formatDateTime(contract.executedCopySentAt) : ''}
         </p>
+      ) : null}
+
+      {signed && contract.projectId ? (
+        <section className="space-y-3 print:hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-muted">
+              Change orders · {changeOrders.length}
+            </h2>
+            <Link
+              href={`/admin/projects/${contract.projectId}/contracts/${contract.id}/change-orders/new`}
+              className="rounded-md border border-copper/40 bg-copper-soft/40 px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta text-copper transition-colors hover:bg-copper-soft/70"
+            >
+              New change order
+            </Link>
+          </div>
+          {changeOrders.length > 0 ? (
+            <ul className="overflow-hidden rounded-xl border border-border bg-surface divide-y divide-border">
+              {changeOrders.map((co) => {
+                const meta = CHANGE_ORDER_STATUS_META[co.status];
+                return (
+                  <li key={co.id}>
+                    <Link
+                      href={`/admin/projects/${contract.projectId}/change-orders/${co.id}`}
+                      className="flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-surface-2/50"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-sans text-sm font-medium text-ink">
+                          #{co.number} · {co.title}
+                        </p>
+                        <p className="font-mono text-[11px] uppercase tracking-meta-tight text-ink-subtle">
+                          {co.signedAt ? `Signed ${formatDate(co.signedAt)}` : `Sent ${formatDate(co.sentAt)}`}
+                        </p>
+                      </div>
+                      <span className="font-mono text-sm tabular-nums text-ink">
+                        {co.amountCents === 0
+                          ? '—'
+                          : `${co.amountCents > 0 ? '+' : '−'}${formatUSD(Math.abs(co.amountCents))}`}
+                      </span>
+                      <StatusPill label={meta.label} tone={meta.tone} />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="font-sans text-sm text-ink-muted">
+              None yet. A change to scope, timeline, or price goes here, signed
+              by both of you (§ 1.5).
+            </p>
+          )}
+        </section>
       ) : null}
 
       <article className="rounded-2xl border border-border bg-surface p-8 md:p-10 print-plain">

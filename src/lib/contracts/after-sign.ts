@@ -15,6 +15,7 @@ import AgreementExecutedEmail, {
 } from '@/emails/agreement-executed-email';
 import { clientParty, type ProposalContent } from '@/lib/types/proposal';
 import { flattenJoin } from '@/lib/array-join';
+import { checkAutomaticInvoice } from '@/lib/change-orders/billing';
 
 export type DepositState =
   | 'not_required'
@@ -243,6 +244,10 @@ export async function raiseDeposit(
         .eq('id', contractId);
       return { state: 'not_required', invoiceId: null };
     }
+
+    // Overcharge guard: an automatic invoice must fit the signed contract.
+    const fits = await checkAutomaticInvoice(row.project_id, deposit.amountCents);
+    if (!fits.ok) throw new Error(fits.message);
 
     const invoice = await createAndSendInvoice({
       projectId: row.project_id,
