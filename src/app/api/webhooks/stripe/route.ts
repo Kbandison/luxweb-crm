@@ -12,7 +12,11 @@ import {
   fetchSubscriptionForSync,
   syncSubscriptionRow,
 } from '@/lib/care-plan/sync';
-import { advanceProposalMilestoneChain } from '@/lib/milestones/advance-on-payment';
+import {
+  applyInvoicePaidEffects,
+  claimInvoicePaid,
+  notifyInvoicePaid,
+} from '@/lib/invoices/on-paid';
 
 export const runtime = 'nodejs';
 
@@ -136,23 +140,25 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
   const projectId = existing.project_id as string | null;
   const previousStatus = existing.status as string;
 
-  // Separate UPDATE. Tolerant to schema-cache drift since we don't SELECT
-  // any possibly-unknown columns back.
-  const { error: updateErr } = await supabaseAdmin()
-    .from('invoices')
-    .update({ status: 'paid', paid_at: paidAt })
-    .eq('id', crmInvoiceId);
-
-  if (updateErr) {
+  // Claim the payment. Only the first path to record it — this webhook, the
+  // client's return to the portal, or an admin's Mark paid (which itself
+  // makes Stripe send this event) — runs the side effects. Losing the claim
+  // means someone already recorded it, including any backdated paid date,
+  // which this must not overwrite with "now".
+  let claimed: boolean;
+  try {
+    claimed = await claimInvoicePaid(crmInvoiceId, paidAt, { fromVoid: true });
+  } catch (err) {
     await logWebhookIssue({
       stripeInvoiceId,
       eventType: 'invoice.paid',
       stage: 'update',
-      message: updateErr.message,
+      message: err instanceof Error ? err.message : String(err),
       crmInvoiceId,
     });
     return;
   }
+  if (!claimed) return;
 
   await writeAudit({
     actor_id: null,
@@ -166,84 +172,26 @@ async function handleInvoicePaid(inv: Stripe.Invoice) {
     },
   });
 
-  // Idempotency: if the row was already marked paid, don't re-fire emails
-  // or notifications. Stripe retries + our own manual resends both covered.
-  if (previousStatus === 'paid') return;
+  // Deal → active, project → in_progress, and close the milestone this
+  // invoice was for (not "the next one" — an unrelated invoice used to
+  // close whatever milestone happened to be next).
+  await applyInvoicePaidEffects({
+    id: crmInvoiceId,
+    contactId,
+    projectId,
+    amountCents,
+    description,
+  });
 
-  // Auto-bump the contact's deal to 'active' on first payment so the
-  // pipeline kanban reflects reality. Skip if there's no eligible deal.
-  try {
-    await supabaseAdmin()
-      .from('deals')
-      .update({ stage: 'active', stage_changed_at: new Date().toISOString() })
-      .eq('contact_id', contactId)
-      .in('stage', ['lead', 'discovery', 'proposal']);
-  } catch {
-    // Best-effort.
-  }
-
-  // Flip the project from 'planning' to 'in_progress' on first invoice
-  // payment. Mirrors reconcile-invoice so the webhook path and the
-  // reconcile-on-return path agree. The .neq guard makes it idempotent —
-  // subsequent payments don't undo a later 'completed' / 'on_hold' state.
-  if (projectId) {
-    try {
-      await supabaseAdmin()
-        .from('projects')
-        .update({ status: 'in_progress' })
-        .eq('id', projectId)
-        .eq('status', 'planning');
-    } catch {
-      // Best-effort.
-    }
-  }
-
-  // Advance the proposal-milestone chain for this project. First payment
-  // closes the deposit milestone + unlocks phase 1; second payment closes
-  // phase 1 + unlocks launch; etc.
-  if (projectId) {
-    await advanceProposalMilestoneChain(projectId);
-  }
-
-  const clientUserId = await getContactUserId(contactId);
-  if (clientUserId) {
-    await notify({
-      type: 'invoice_paid',
-      userId: clientUserId,
-      invoiceId: crmInvoiceId,
-      description,
-      amountCents,
-      paidAt,
-      hostedInvoiceUrl,
-      invoicePath: projectId
-        ? `/portal/project/${projectId}/invoices`
-        : '/portal/dashboard',
-    });
-  }
-
-  // Admin fan-out: "you got paid" — in-app bell + email to the studio inbox
-  // (alerts@). This is the studio's money alert, separate from the client's
-  // invoice_paid receipt above.
-  const clientName = await getContactName(contactId);
-  const adminIds = await getAdminUserIds();
-  if (adminIds.length > 0) {
-    const adminInvoicePath = projectId
-      ? `/admin/projects/${projectId}/invoices`
-      : '/admin/dashboard';
-    await Promise.all(
-      adminIds.map((userId) =>
-        notify({
-          type: 'payment_received',
-          userId,
-          invoiceId: crmInvoiceId,
-          clientName,
-          description,
-          amountCents,
-          invoicePath: adminInvoicePath,
-        }),
-      ),
-    );
-  }
+  await notifyInvoicePaid({
+    invoiceId: crmInvoiceId,
+    contactId,
+    projectId,
+    description,
+    amountCents,
+    paidAt,
+    hostedInvoiceUrl,
+  });
 }
 
 async function handleInvoiceOverdue(inv: Stripe.Invoice) {

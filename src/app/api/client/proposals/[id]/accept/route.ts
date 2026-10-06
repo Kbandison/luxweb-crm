@@ -88,7 +88,9 @@ export async function POST(
     const userAgent = req.headers.get('user-agent') ?? null;
     const acceptedAt = new Date().toISOString();
 
-    const { error } = await supabaseAdmin()
+    // Conditional on still being 'sent', so a double submit (or a revise
+    // racing the accept) can't accept twice or accept a pulled-back draft.
+    const { data: acceptedRows, error } = await supabaseAdmin()
       .from('proposals')
       .update({
         status: 'accepted',
@@ -97,10 +99,18 @@ export async function POST(
         accepted_by_ip: ip,
         accepted_by_user_agent: userAgent,
       })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('status', 'sent')
+      .select('id');
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
+    }
+    if ((acceptedRows ?? []).length === 0) {
+      return Response.json(
+        { error: 'This proposal is no longer open for acceptance.' },
+        { status: 409 },
+      );
     }
 
     await writeAudit({

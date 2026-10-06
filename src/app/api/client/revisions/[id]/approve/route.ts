@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserIds } from '@/lib/notifications';
 import { createAndSendInvoice } from '@/lib/invoices/create';
+import { projectInvoiceDueDays } from '@/lib/contracts/terms';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -17,7 +18,7 @@ export const runtime = 'nodejs';
  *   - Auto-fires the invoice for that milestone (using milestone.amount_cents)
  *     and links it via milestones.invoice_id, so client can pay immediately
  *   - DOES NOT mark the milestone done — that happens when the payment
- *     lands and the existing advance-chain runs
+ *     lands and closes the milestone its invoice is linked to
  *   - Notifies admin
  *
  * Reuses an existing invoice if milestone.invoice_id is already set and
@@ -134,6 +135,8 @@ export async function POST(
             projectId: r.project_id,
             amountCents: Number(m.amount_cents),
             description: `${m.title} — ${project?.name ?? 'Project'}`,
+            // Bill on the signed agreement's Net terms, not the default.
+            daysUntilDue: await projectInvoiceDueDays(r.project_id),
             actorId: null,
             source: 'milestone_approve_auto',
           });

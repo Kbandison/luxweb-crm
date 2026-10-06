@@ -2,7 +2,11 @@ import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { writeAudit } from '@/lib/audit';
-import { advanceProposalMilestoneChain } from '@/lib/milestones/advance-on-payment';
+import {
+  applyInvoicePaidEffects,
+  claimInvoicePaid,
+  notifyInvoicePaid,
+} from '@/lib/invoices/on-paid';
 import { flattenJoin } from '@/lib/array-join';
 
 /**
@@ -10,9 +14,9 @@ import { flattenJoin } from '@/lib/array-join';
  * Stripe. Closes the race between Stripe's `payment_intent.succeeded`
  * webhook arriving and the client landing back on the invoices page.
  *
- * Idempotent with the webhook: both paths end up doing the same UPDATE.
- * Ownership is verified by the caller (the invoices page already enforces
- * client-owns-project via contacts.user_id in its list query).
+ * Shares claimInvoicePaid() with the webhook, so whichever arrives first
+ * records the payment and runs the side effects and notifications; the
+ * other is a no-op. Ownership is verified here against contacts.user_id.
  *
  * Returns `true` if the row was flipped to paid as a result of this call,
  * `false` if nothing changed (already paid, voided, or no succeeded PI yet).
@@ -25,7 +29,7 @@ export async function reconcileInvoicePaid(
   const { data: inv } = await supabaseAdmin()
     .from('invoices')
     .select(
-      'id, status, stripe_invoice_id, amount_cents, contact_id, project_id, contacts!inner(user_id)',
+      'id, status, stripe_invoice_id, amount_cents, description, hosted_invoice_url, contact_id, project_id, contacts!inner(user_id)',
     )
     .eq('id', invoiceId)
     .maybeSingle();
@@ -36,6 +40,9 @@ export async function reconcileInvoicePaid(
     status: string;
     stripe_invoice_id: string | null;
     amount_cents: number | string | null;
+    description: string | null;
+    hosted_invoice_url: string | null;
+    contact_id: string;
     project_id: string | null;
     contacts:
       | { user_id: string | null }
@@ -67,11 +74,13 @@ export async function reconcileInvoicePaid(
   if (!succeeded) return false;
 
   const paidAt = new Date().toISOString();
-  const { error } = await supabaseAdmin()
-    .from('invoices')
-    .update({ status: 'paid', paid_at: paidAt })
-    .eq('id', invoiceId);
-  if (error) return false;
+  let claimed: boolean;
+  try {
+    claimed = await claimInvoicePaid(invoiceId, paidAt);
+  } catch {
+    return false;
+  }
+  if (!claimed) return false;
 
   await writeAudit({
     actor_id: null,
@@ -85,23 +94,24 @@ export async function reconcileInvoicePaid(
     },
   });
 
-  // Mirror what the Stripe webhook does — flip the linked project from
-  // 'planning' to 'in_progress' on first payment, and advance the
-  // proposal-milestone chain by one position. Webhook is authoritative
-  // in prod; this branch only matters for localhost dev where Stripe
-  // events don't reach the dev server unless forwarded via stripe-cli.
-  if (r.project_id) {
-    try {
-      await supabaseAdmin()
-        .from('projects')
-        .update({ status: 'in_progress' })
-        .eq('id', r.project_id)
-        .eq('status', 'planning');
-    } catch {
-      // Best-effort.
-    }
-    await advanceProposalMilestoneChain(r.project_id);
-  }
+  // Same effects and notifications as the webhook — this path wins the race
+  // whenever the client lands back before Stripe's event does.
+  await applyInvoicePaidEffects({
+    id: invoiceId,
+    contactId: r.contact_id,
+    projectId: r.project_id,
+    amountCents: Number(r.amount_cents ?? 0),
+    description: r.description,
+  });
+  await notifyInvoicePaid({
+    invoiceId,
+    contactId: r.contact_id,
+    projectId: r.project_id,
+    description: r.description ?? 'Invoice',
+    amountCents: Number(r.amount_cents ?? 0),
+    paidAt,
+    hostedInvoiceUrl: r.hosted_invoice_url,
+  });
 
   return true;
 }

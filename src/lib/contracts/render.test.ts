@@ -42,6 +42,24 @@ describe('renderAgreement', () => {
     expect(body).not.toMatch(/\[\[MISSING:/);
     expect(body).not.toMatch(/\{\{/);
   });
+
+  it('refuses an agreement version that does not exist, by name', async () => {
+    const variables = deriveContractVariables(proposal(), {
+      effectiveDate: '2026-09-06',
+    });
+    await expect(renderAgreement(variables, { version: '1.5' })).rejects.toThrow(
+      'Unknown agreement version "1.5"',
+    );
+  });
+
+  it('accepts the version with or without its "v" prefix', async () => {
+    const variables = deriveContractVariables(proposal(), {
+      effectiveDate: '2026-09-06',
+    });
+    const a = await renderAgreement(variables, { version: 'v1.4' });
+    const b = await renderAgreement(variables, { version: '1.4' });
+    expect(a.body_md).toBe(b.body_md);
+  });
 });
 
 describe('project phases', () => {
@@ -203,6 +221,30 @@ describe('payment schedule', () => {
     );
     // Everything still outstanding keeps its due text.
     expect(payment).toContain('| Launch | $2,500 | 50% | Before go-live |');
+  });
+
+  it('dates a collected milestone when the received date is known', async () => {
+    const body = await render(
+      proposal((c) => {
+        c.investment.total_cents = 500000;
+        c.investment.milestones = [
+          {
+            label: 'Deposit',
+            percent: 50,
+            amount_cents: 250000,
+            due: 'On signing',
+            collected: true,
+            collected_on: '2026-09-02',
+            collected_method: 'Zelle',
+          },
+          { label: 'Launch', percent: 50, amount_cents: 250000, due: 'On approval' },
+        ];
+      }),
+    );
+    const payment = section(body, '## 3. Payment Terms', '## 4.');
+    expect(payment).toContain(
+      '| Deposit | $2,500 | 50% | **Received** September 2, 2026 — paid prior to signing |',
+    );
   });
 
   it('leaves the due column alone when nothing was collected', async () => {

@@ -77,9 +77,20 @@ export async function PATCH(
       );
     }
 
+    // total_cents is a denormalized copy of content_json's total (lists and
+    // emails read it). Derive it here rather than trusting a second number
+    // from the client that could disagree with the content.
+    const update: Record<string, unknown> = { ...parsed.data };
+    const investment = (parsed.data.content_json as
+      | { investment?: { total_cents?: unknown } }
+      | undefined)?.investment;
+    if (typeof investment?.total_cents === 'number') {
+      update.total_cents = investment.total_cents;
+    }
+
     const { error } = await supabaseAdmin()
       .from('proposals')
-      .update(parsed.data)
+      .update(update)
       .eq('id', id);
     if (error) return Response.json({ error: error.message }, { status: 500 });
 
@@ -88,7 +99,7 @@ export async function PATCH(
       action: 'update',
       entity_type: 'proposal',
       entity_id: id,
-      diff: { fields: Object.keys(parsed.data) },
+      diff: { fields: Object.keys(update) },
     });
     return Response.json({ ok: true });
   } catch (err) {
@@ -119,10 +130,10 @@ export async function DELETE(
       );
     }
 
-    // Block delete if any contract has been generated from this proposal.
-    // contracts.proposal_id is nullable so there's no FK cascade — orphaned
-    // contracts would lose their legal-trail back-reference. Force admin to
-    // delete the contract first.
+    // Block delete if any contract — voided ones included — was generated
+    // from this proposal. A contract is a legal record and keeps its
+    // proposal; the FK is ON DELETE RESTRICT (crm_contracts_integrity.sql),
+    // this check just turns that into a readable error.
     const { count: contractCount } = await supabaseAdmin()
       .from('contracts')
       .select('id', { count: 'exact', head: true })
@@ -132,7 +143,7 @@ export async function DELETE(
       return Response.json(
         {
           error:
-            'A contract has been generated from this proposal. Delete the contract first.',
+            'A contract was generated from this proposal, so it has to stay as part of that record.',
         },
         { status: 409 },
       );

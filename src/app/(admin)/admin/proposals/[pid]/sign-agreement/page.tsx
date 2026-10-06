@@ -13,6 +13,10 @@ import {
 import { ContractBody } from '@/components/contract/contract-body';
 import { SignaturePair } from '@/components/contract/signature-block';
 import { AdminSignForm } from '@/components/admin/proposals/admin-sign-form';
+import {
+  isKnownAgreementVersion,
+  normalizeAgreementVersion,
+} from '@/lib/contracts/versions';
 
 /**
  * Admin preview-and-sign for the agreement. Renders the exact text that
@@ -63,19 +67,46 @@ export default async function AdminSignAgreementPage({
     /* fall back to empty input */
   }
 
+  const backHref = proposal.projectId
+    ? `/admin/projects/${proposal.projectId}/proposals/${pid}`
+    : `/admin/proposals/${pid}`;
+
+  // The version is pinned at send. An unknown one (a typo from before it
+  // was pinned) would otherwise crash this page reading a missing template.
+  const agreementVersion = normalizeAgreementVersion(
+    proposal.content.agreement_version,
+  );
+  if (!isKnownAgreementVersion(agreementVersion)) {
+    return (
+      <main className="mx-auto w-full max-w-3xl px-8 py-16">
+        <p className="font-mono text-[10px] uppercase tracking-meta-hero text-copper">
+          Can&apos;t render agreement
+        </p>
+        <h1 className="mt-2 font-display text-2xl font-medium tracking-tight text-ink">
+          Agreement version &ldquo;{proposal.content.agreement_version}&rdquo;
+          doesn&apos;t exist
+        </h1>
+        <p className="mt-2 font-sans text-sm text-ink-muted">
+          Revise &amp; resend the proposal to pin it to the current agreement.
+        </p>
+        <Link
+          href={backHref}
+          className="mt-6 inline-block font-mono text-[10px] uppercase tracking-meta text-copper"
+        >
+          ← Back to proposal
+        </Link>
+      </main>
+    );
+  }
+
   // Render the agreement body that WILL be saved on sign.
   const effectiveDate = proposal.acceptedAt ?? new Date().toISOString();
   const variables = deriveContractVariables(proposal.content, {
     effectiveDate,
   });
-  const agreementVersion = proposal.content.agreement_version || '1.1';
   const { body_md } = await renderAgreement(variables, {
-    version: `v${agreementVersion.replace(/^v/, '')}`,
+    version: `v${agreementVersion}`,
   });
-
-  const backHref = proposal.projectId
-    ? `/admin/projects/${proposal.projectId}/proposals/${pid}`
-    : `/admin/proposals/${pid}`;
 
   return (
     <main className="mx-auto w-full max-w-5xl space-y-8 px-8 py-8">

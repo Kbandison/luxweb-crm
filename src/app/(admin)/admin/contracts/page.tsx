@@ -28,7 +28,7 @@ export default async function AdminContractsListPage() {
         {contracts.length === 0 ? (
           <EmptyState
             title="No contracts yet"
-            description="Contracts auto-generate when a proposal is accepted. Counter-sign from the proposal page to create the agreement."
+            description="Once a client accepts a proposal, counter-sign it from the proposal page to create the agreement."
           />
         ) : (
           <div className="overflow-hidden rounded-xl border border-border bg-surface">

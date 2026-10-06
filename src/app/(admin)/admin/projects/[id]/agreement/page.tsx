@@ -40,8 +40,8 @@ export default async function AdminProjectAgreementPage({
             No agreement yet
           </p>
           <p className="mx-auto mt-2 max-w-md font-sans text-sm text-ink-muted">
-            Create a proposal from the client&apos;s page. The contract auto-generates
-            once the proposal is accepted.
+            Create a proposal from the client&apos;s page. Once the client
+            accepts it, counter-sign it here to create the agreement.
           </p>
         </div>
       </main>
@@ -125,7 +125,7 @@ export default async function AdminProjectAgreementPage({
         />
         {contracts.length === 0 ? (
           <Empty
-            label="Contract auto-generates when the client accepts the proposal."
+            label="No contract yet. Once the client accepts a proposal, counter-sign it above to create one."
             className="mt-5"
           />
         ) : (

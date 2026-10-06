@@ -4,8 +4,12 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { writeAudit } from '@/lib/audit';
 import { notify, getContactUserId } from '@/lib/notifications';
-import { advanceProposalMilestoneChain } from '@/lib/milestones/advance-on-payment';
-import { revalidateProject } from '@/lib/cache/revalidate-project';
+import {
+  applyInvoicePaidEffects,
+  claimInvoicePaid,
+  paidAtForDate,
+  releaseInvoicePaid,
+} from '@/lib/invoices/on-paid';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -19,16 +23,21 @@ export const runtime = 'nodejs';
  * only route to `paid` is a Stripe charge, so an off-Stripe payment either
  * goes unrecorded or the client gets invoiced for it a second time.
  *
- * Deliberately mirrors the `invoice.paid` webhook's side effects so the
+ * Shares applyInvoicePaidEffects() with the `invoice.paid` webhook so the
  * money-moved-manually path and the money-moved-through-Stripe path leave the
- * system in the same state: deal bumped, project started, milestone chain
- * advanced, client sent a receipt.
+ * system in the same state: deal bumped, project started, this invoice's
+ * milestone closed, client sent a receipt.
  *
  * Stripe is told too, via `paid_out_of_band` — it settles the invoice without
  * charging anything, which stops Stripe's dunning emails from chasing a
  * balance that's already been collected. That's the whole point of the
  * endpoint, so a Stripe failure is surfaced rather than swallowed: silently
  * mirroring only our side would leave Stripe still emailing the client.
+ *
+ * Order matters. Settling in Stripe makes Stripe fire `invoice.paid` back at
+ * us, so the CRM row is claimed FIRST (with the backdated date). The webhook
+ * then finds it already paid and leaves it alone — previously it overwrote
+ * the backdated date with "now" and could close a second milestone.
  */
 const Schema = z.object({
   /**
@@ -100,38 +109,42 @@ export async function POST(
     const projectId = row.project_id as string | null;
     const contactId = row.contact_id as string;
 
-    // Settle it in Stripe first. If this fails we stop rather than mirror,
-    // because a half-applied state (paid here, still open + dunning there)
-    // is the exact confusion this endpoint exists to prevent.
+    const paidAt = paid_on ? paidAtForDate(paid_on) : new Date().toISOString();
+
+    // Claim the row before Stripe hears about it — see the ordering note
+    // above. Losing the claim means a payment landed while this dialog was
+    // open; report that rather than recording it twice.
+    const claimed = await claimInvoicePaid(id, paidAt);
+    if (!claimed) {
+      return Response.json({ ok: true, already_paid: true });
+    }
+
     if (stripeInvoiceId) {
       try {
         await stripe().invoices.pay(stripeInvoiceId, {
           paid_out_of_band: true,
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return Response.json(
-          {
-            error: `Stripe wouldn't settle this invoice out of band: ${message}`,
-          },
-          { status: 502 },
-        );
+        // Stripe refuses to settle an invoice that's already paid there —
+        // e.g. the client paid by card while the webhook was delayed. The
+        // money is real either way, so keep our record.
+        const alreadyPaidInStripe = await stripe()
+          .invoices.retrieve(stripeInvoiceId)
+          .then((inv) => inv.status === 'paid')
+          .catch(() => false);
+        if (!alreadyPaidInStripe) {
+          // Put the row back so the CRM doesn't claim money Stripe will
+          // keep chasing the client for.
+          await releaseInvoicePaid(id, paidAt, previousStatus);
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json(
+            {
+              error: `Stripe wouldn't settle this invoice out of band: ${message}`,
+            },
+            { status: 502 },
+          );
+        }
       }
-    }
-
-    // Backdated dates are stamped at noon UTC so the calendar day survives
-    // being read back in Eastern time — midnight UTC would render as the
-    // previous day in the P&L and on the client's receipt.
-    const paidAt = paid_on
-      ? new Date(`${paid_on}T12:00:00.000Z`).toISOString()
-      : new Date().toISOString();
-
-    const { error: updateErr } = await sb
-      .from('invoices')
-      .update({ status: 'paid', paid_at: paidAt })
-      .eq('id', id);
-    if (updateErr) {
-      return Response.json({ error: updateErr.message }, { status: 500 });
     }
 
     await writeAudit({
@@ -148,32 +161,16 @@ export async function POST(
       },
     });
 
-    // From here down: the same side effects the Stripe webhook fires, so a
-    // manually-recorded payment moves the project exactly as far as a
-    // Stripe one would. All best-effort — the money is already recorded.
-    try {
-      await sb
-        .from('deals')
-        .update({ stage: 'active', stage_changed_at: new Date().toISOString() })
-        .eq('contact_id', contactId)
-        .in('stage', ['lead', 'discovery', 'proposal']);
-    } catch {
-      // Best-effort.
-    }
-
-    if (projectId) {
-      try {
-        await sb
-          .from('projects')
-          .update({ status: 'in_progress' })
-          .eq('id', projectId)
-          .eq('status', 'planning');
-      } catch {
-        // Best-effort.
-      }
-      await advanceProposalMilestoneChain(projectId);
-      revalidateProject(projectId);
-    }
+    // Same effects a Stripe payment has: deal → active, project started,
+    // and this invoice's milestone closed. Best-effort — the money is
+    // already recorded.
+    await applyInvoicePaidEffects({
+      id,
+      contactId,
+      projectId,
+      amountCents: Number(row.amount_cents ?? 0),
+      description: (row.description as string | null) ?? null,
+    });
 
     // Receipt to the client. This is the part that answers "have you got my
     // money?" — worth sending precisely because they paid outside the portal

@@ -5,6 +5,11 @@ import { formatUSD, formatDateLong } from '@/lib/formatters';
 import { getTimelinePhases } from '@/lib/types/proposal';
 import type { ProposalContent, TimelinePhase } from '@/lib/types/proposal';
 import type { ContractVariables } from '@/lib/types/contract';
+import {
+  AGREEMENT_VERSIONS,
+  isKnownAgreementVersion,
+  normalizeAgreementVersion,
+} from '@/lib/contracts/versions';
 
 /**
  * Derive the substitution variables for the Agreement from a proposal's
@@ -120,7 +125,9 @@ function renderMilestonesTable(
     const amount = formatUSD(m.amount_cents);
     const percent = `${m.percent || 0}%`;
     const due = m.collected
-      ? '**Received** — paid prior to signing'
+      ? m.collected_on
+        ? `**Received** ${formatDateLong(m.collected_on)} — paid prior to signing`
+        : '**Received** — paid prior to signing'
       : m.due || '—';
     return `| ${label} | ${amount} | ${percent} | ${due} |`;
   });
@@ -220,10 +227,17 @@ export async function renderAgreement(
   opts: { version?: string } = {},
 ): Promise<{ body_md: string; version: string }> {
   const version = opts.version ?? 'v1.1';
+  // Refuse anything that isn't a real template revision, with an error that
+  // says so — otherwise a typo surfaces as an opaque ENOENT from readFile.
+  if (!isKnownAgreementVersion(version)) {
+    throw new Error(
+      `Unknown agreement version "${version}". Known: ${AGREEMENT_VERSIONS.join(', ')}.`,
+    );
+  }
   // The on-disk filename uses the "v" prefix (e.g., agreement-v1.1.md), so
   // normalize whatever shape the caller passed (`'v1.1'` or `'1.1'`) into
   // the prefixed form.
-  const fileSlug = version.startsWith('v') ? version : `v${version}`;
+  const fileSlug = `v${normalizeAgreementVersion(version)}`;
   const file = path.join(
     process.cwd(),
     'src',

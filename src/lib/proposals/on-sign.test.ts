@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { depositForSigning, seedStatusForMilestones } from './on-sign';
+import {
+  collectedPayments,
+  depositForSigning,
+  milestoneSeedRows,
+  seedStatusForMilestones,
+} from './on-sign';
 import {
   defaultProposalContent,
   type ProposalContent,
@@ -27,6 +32,7 @@ describe('depositForSigning', () => {
     expect(depositForSigning(content([DEPOSIT, PHASE1, LAUNCH]), null, 'x')).toEqual({
       amountCents: 250000,
       label: 'Deposit',
+      milestoneIndex: 0,
     });
   });
 
@@ -58,6 +64,7 @@ describe('depositForSigning', () => {
     expect(depositForSigning(c, null, 'x')).toEqual({
       amountCents: 250000,
       label: 'Deposit',
+      milestoneIndex: 0,
     });
   });
 
@@ -66,6 +73,7 @@ describe('depositForSigning', () => {
     expect(depositForSigning(c, null, 'x')).toEqual({
       amountCents: 125000,
       label: 'Phase 1',
+      milestoneIndex: 1,
     });
   });
 
@@ -74,6 +82,7 @@ describe('depositForSigning', () => {
     expect(depositForSigning(c, null, 'Full project')).toEqual({
       amountCents: 480000,
       label: 'Full project',
+      milestoneIndex: null,
     });
   });
 
@@ -81,6 +90,7 @@ describe('depositForSigning', () => {
     expect(depositForSigning(null, 480000, 'x')).toEqual({
       amountCents: 480000,
       label: 'Deposit',
+      milestoneIndex: null,
     });
     expect(depositForSigning(null, null, 'x')).toBeNull();
     expect(depositForSigning(null, 0, 'x')).toBeNull();
@@ -130,5 +140,70 @@ describe('seedStatusForMilestones', () => {
 
   it('returns nothing for an empty payment plan', () => {
     expect(seedStatusForMilestones([])).toEqual([]);
+  });
+});
+
+describe('collectedPayments', () => {
+  it('records each collected milestone with its date and method', () => {
+    const c = content([
+      {
+        ...DEPOSIT,
+        collected: true,
+        collected_on: '2026-09-02',
+        collected_method: 'Zelle',
+      },
+      PHASE1,
+      LAUNCH,
+    ]);
+    expect(collectedPayments(c, '2026-10-06')).toEqual([
+      {
+        milestoneIndex: 0,
+        amountCents: 250000,
+        label: 'Deposit',
+        paidOn: '2026-09-02',
+        method: 'Zelle',
+      },
+    ]);
+  });
+
+  it('falls back to the signing date for legacy rows without one', () => {
+    const c = content([{ ...DEPOSIT, collected: true }, PHASE1]);
+    expect(collectedPayments(c, '2026-10-06')[0]).toMatchObject({
+      paidOn: '2026-10-06',
+      method: 'Not recorded',
+    });
+  });
+
+  it('records nothing when nothing was collected', () => {
+    expect(collectedPayments(content([DEPOSIT, PHASE1, LAUNCH]), '2026-10-06')).toEqual([]);
+    expect(collectedPayments(null, '2026-10-06')).toEqual([]);
+  });
+
+  it('skips a collected milestone with no amount', () => {
+    const c = content([{ ...DEPOSIT, amount_cents: 0, collected: true }, PHASE1]);
+    expect(collectedPayments(c, '2026-10-06')).toEqual([]);
+  });
+});
+
+describe('milestoneSeedRows', () => {
+  it('keeps the proposal order so invoices can find their milestone', () => {
+    const rows = milestoneSeedRows([DEPOSIT, PHASE1, LAUNCH], 'proj-1', '2026-10-06T00:00:00.000Z');
+    expect(rows.map((r) => [r.sort_order, r.title, r.status])).toEqual([
+      [0, 'Deposit', 'pending'],
+      [1, 'Phase 1', 'inactive'],
+      [2, 'Launch', 'inactive'],
+    ]);
+    expect(rows.every((r) => r.source === 'proposal' && r.project_id === 'proj-1')).toBe(true);
+  });
+
+  it('seeds a collected milestone done, stamped, and labelled as prepaid', () => {
+    const [deposit] = milestoneSeedRows(
+      [{ ...DEPOSIT, collected: true }, PHASE1],
+      'proj-1',
+      '2026-10-06T00:00:00.000Z',
+    );
+    expect(deposit.status).toBe('done');
+    expect(deposit.completed_at).toBe('2026-10-06T00:00:00.000Z');
+    expect(deposit.description).toBe('$2500 · On signing · paid prior to signing');
   });
 });

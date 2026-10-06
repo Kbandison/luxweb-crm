@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/toast';
 import { InvoiceStatusPill } from './invoice-status-pill';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { OFFLINE_PAYMENT_METHODS } from '@/lib/invoices/payment-methods';
 
 export function InvoicesList({
   projectId,
@@ -475,16 +476,6 @@ function NewInvoiceDialog({
  * Mark paid outside Stripe
  * ------------------------------------------------------------------------- */
 
-/** Common ways money actually arrives when it doesn't come through Stripe. */
-const PAYMENT_METHODS = [
-  'Bank transfer / ACH',
-  'Zelle',
-  'Check',
-  'Cash',
-  'Wire',
-  'Other',
-];
-
 /**
  * Records a payment that never touched Stripe — most often a deposit the
  * client handed over before the contract existed. Without this the invoice
@@ -504,7 +495,7 @@ function MarkPaidDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [method, setMethod] = useState(PAYMENT_METHODS[0]);
+  const [method, setMethod] = useState<string>(OFFLINE_PAYMENT_METHODS[0]);
   const [note, setNote] = useState('');
   // Defaults to today in the studio's timezone — en-CA formats as
   // YYYY-MM-DD, which is exactly what a date input wants. Computed once per
@@ -606,7 +597,7 @@ function MarkPaidDialog({
                   onChange={(e) => setMethod(e.target.value)}
                   className="h-10 w-full rounded-md border border-border bg-surface px-3 font-sans text-sm text-ink transition-colors focus:border-copper focus:outline-none"
                 >
-                  {PAYMENT_METHODS.map((m) => (
+                  {OFFLINE_PAYMENT_METHODS.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
@@ -648,7 +639,7 @@ function MarkPaidDialog({
               </p>
               <ul className="mt-2 space-y-1 font-sans text-xs leading-relaxed text-ink">
                 <li>· Settles the invoice in Stripe with no charge, so it stops chasing the client for payment</li>
-                <li>· Marks it paid in the CRM and closes out the current project phase</li>
+                <li>· Marks it paid in the CRM and closes the milestone this invoice was for, if any</li>
                 <li>· Emails the client a receipt confirming you got it</li>
               </ul>
             </div>

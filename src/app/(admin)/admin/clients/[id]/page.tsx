@@ -294,7 +294,8 @@ function Engagements({
       <SectionHead number="03" title="Contracts" />
       {contracts.length === 0 ? (
         <p className="font-sans text-sm text-ink-muted">
-          Contracts auto-generate when a proposal is accepted by the client.
+          No contract yet. Once the client accepts a proposal, counter-sign it
+          to create one.
         </p>
       ) : (
         <ul className="overflow-hidden rounded-xl border border-border bg-surface divide-y divide-border">

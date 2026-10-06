@@ -1,3 +1,5 @@
+import { CURRENT_AGREEMENT_VERSION } from '@/lib/contracts/versions';
+
 /**
  * A single work phase in the proposal timeline. `id` is a stable key that
  * links the phase to its payment milestone (milestone.phase_id) so the two
@@ -88,6 +90,14 @@ export type ProposalContent = {
        * Agreement's payment table shows it as received rather than due.
        */
       collected?: boolean;
+      /**
+       * When a collected milestone's money arrived (YYYY-MM-DD). Signing
+       * records it as a paid invoice dated this day, so the payment shows up
+       * in Finances and can be matched to the bank deposit. Required to send.
+       */
+      collected_on?: string;
+      /** How it arrived — Zelle, check, etc. Kept on the payment's audit row. */
+      collected_method?: string;
     }>;
     net_days: number;
     late_fee: string;
@@ -265,7 +275,7 @@ export function defaultProposalContent(opts: {
       'Pay the 50% deposit (invoice sent upon signature).',
       'Kick-off call & scheduling — we get to work.',
     ],
-    agreement_version: '1.4',
+    agreement_version: CURRENT_AGREEMENT_VERSION,
   };
 }
 
