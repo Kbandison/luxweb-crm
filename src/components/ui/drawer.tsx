@@ -56,20 +56,29 @@ export function Drawer({
   // Track post-mount frame so we can transition the panel from off-screen
   // to its resting position. Without this, the panel would appear instantly.
   const [entered, setEntered] = React.useState(false);
+  // Closing resets it — during render when `open` flips, so the next open
+  // starts off-screen again.
+  const [wasOpen, setWasOpen] = React.useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (!open) setEntered(false);
+  }
   React.useEffect(() => {
-    if (!open) {
-      setEntered(false);
-      return;
-    }
+    if (!open) return;
     // Two RAFs — the first commits the off-screen transform, the second
     // schedules the entered transform so the browser has a starting frame
-    // to animate from.
+    // to animate from. Both ids are cancelled on cleanup: the inner one
+    // used to be "cancelled" by returning from the rAF callback, which does
+    // nothing — closing within a frame then left a stray setEntered(true)
+    // that made the next open skip its slide-in.
+    let id2: number | null = null;
     const id1 = requestAnimationFrame(() => {
-      const id2 = requestAnimationFrame(() => setEntered(true));
-      // Best-effort cleanup of nested rAF id.
-      return () => cancelAnimationFrame(id2);
+      id2 = requestAnimationFrame(() => setEntered(true));
     });
-    return () => cancelAnimationFrame(id1);
+    return () => {
+      cancelAnimationFrame(id1);
+      if (id2 !== null) cancelAnimationFrame(id2);
+    };
   }, [open]);
 
   const sideAttachClass = side === 'right' ? 'justify-end' : 'justify-start';

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { StatusPill } from '@/components/ui/status-pill';
 import { useToast } from '@/components/ui/toast';
-import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/formatters';
 
 export function NotesPanel({

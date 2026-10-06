@@ -20,6 +20,11 @@ export async function POST(req: Request) {
   if (!session) {
     return Response.json({ error: 'Unauthenticated' }, { status: 401 });
   }
+  const limit = limitByKey(`notifications/mark-read:${session.userId}`, {
+    capacity: 60,
+    refillPerSec: 60 / 60,
+  });
+  if (!limit.ok) return rateLimitResponse(limit.retryAfterSec);
 
   const raw = await req.json().catch(() => ({}));
   const parsed = Schema.safeParse(raw);

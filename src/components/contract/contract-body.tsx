@@ -121,7 +121,6 @@ function Block({ block }: { block: Block }) {
           return <h4 className={headingClass}>{inline(block.text)}</h4>;
       }
     }
-    // eslint-disable-next-line no-fallthrough
     case 'paragraph':
       return (
         <p className="mt-4 text-sm leading-relaxed text-ink">

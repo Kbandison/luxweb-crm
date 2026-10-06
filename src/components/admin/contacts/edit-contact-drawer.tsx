@@ -46,9 +46,9 @@ export function EditContactDrawer({
   const [tagsInput, setTagsInput] = useState(initial.tags.join(', '));
   const [leadScore, setLeadScore] = useState(String(initial.leadScore));
 
-  // Reset to initial when re-opened in case the user closed without saving.
-  useEffect(() => {
-    if (!open) return;
+  // Open from the latest saved values, in case the last edit was closed
+  // without saving or the contact changed since.
+  function openDrawer() {
     setFullName(initial.fullName);
     setEmail(initial.email ?? '');
     setPhone(initial.phone ?? '');
@@ -57,7 +57,8 @@ export function EditContactDrawer({
     setTagsInput(initial.tags.join(', '));
     setLeadScore(String(initial.leadScore));
     setError(null);
-  }, [open, initial]);
+    setOpen(true);
+  }
 
   // Override Dialog's default autofocus (close button is first focusable
   // in DOM) so the form's first field gets focus instead.
@@ -120,7 +121,7 @@ export function EditContactDrawer({
         type="button"
         variant="secondary"
         size="sm"
-        onClick={() => setOpen(true)}
+        onClick={openDrawer}
       >
         Edit
       </Button>

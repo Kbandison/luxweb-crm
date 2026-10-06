@@ -122,6 +122,10 @@ export function NotificationBell() {
   }, [refresh]);
 
   useEffect(() => {
+    // refresh() only sets state after its fetch resolves — the "update from
+    // an external system in a callback" case the rule allows. The linter
+    // can't see past the async boundary inside the useCallback.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
 
     // Poll interval. When Realtime is connected we throttle to 60s as a
