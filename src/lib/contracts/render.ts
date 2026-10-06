@@ -2,8 +2,14 @@ import 'server-only';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
-import type { ProposalContent } from '@/lib/types/proposal';
+import { getTimelinePhases } from '@/lib/types/proposal';
+import type { ProposalContent, TimelinePhase } from '@/lib/types/proposal';
 import type { ContractVariables } from '@/lib/types/contract';
+import {
+  AGREEMENT_VERSIONS,
+  isKnownAgreementVersion,
+  normalizeAgreementVersion,
+} from '@/lib/contracts/versions';
 
 /**
  * Derive the substitution variables for the Agreement from a proposal's
@@ -54,6 +60,8 @@ export function deriveContractVariables(
     integrations_list: integrationsLine,
     security: flattenLine(content.scope.security),
     performance: flattenLine(content.scope.performance),
+    site_deliverables: renderSiteDeliverables(content.scope.site_deliverables),
+    project_phases: renderProjectPhases(getTimelinePhases(content.timeline)),
     care_plan_clause: renderCarePlanClause(content.care_plan),
     deposit_amount: deposit ? formatUSD(deposit.amount_cents) : '—',
     phase1_amount: phase1 ? formatUSD(phase1.amount_cents) : '—',
@@ -98,6 +106,11 @@ function flattenLine(input: string | null | undefined): string {
  * the proposal. Supports any number and shape of milestones, so a
  * custom proposal (e.g., 30/30/30/10) shows up correctly instead of
  * being squeezed into a fixed deposit/phase1/launch layout.
+ *
+ * A milestone the client already paid says so in the Due column instead of
+ * naming a due date. That belongs in the signed document: it's the record
+ * that the money changed hands before the Agreement existed, and it stops
+ * the table from reading as though the deposit is still owed.
  */
 function renderMilestonesTable(
   milestones: ProposalContent['investment']['milestones'],
@@ -111,10 +124,72 @@ function renderMilestonesTable(
     const label = m.label || '—';
     const amount = formatUSD(m.amount_cents);
     const percent = `${m.percent || 0}%`;
-    const due = m.due || '—';
+    const due = m.collected
+      ? m.collected_on
+        ? `**Received** ${formatDateLong(m.collected_on)} — paid prior to signing`
+        : '**Received** — paid prior to signing'
+      : m.due || '—';
     return `| ${label} | ${amount} | ${percent} | ${due} |`;
   });
   return [header, ...rows].join('\n');
+}
+
+/**
+ * Render the client's site-specific deliverables as a markdown block for
+ * Agreement 1.1. These are the features the client actually asked for
+ * ("Online booking", "Menu with PDF download") as opposed to the standard
+ * scope lines, so they belong in the signed document and not just the
+ * proposal. Returns an empty string when the proposal lists none, so the
+ * Agreement simply omits the block. Legacy proposals predate the field.
+ */
+function renderSiteDeliverables(items: string[] | undefined): string {
+  const lines = (items || [])
+    .map((s) => flattenLine(s))
+    .filter((s) => s !== '—');
+  if (lines.length === 0) return '';
+  return [
+    '**Site-specific deliverables.** In addition to the above, the Project ' +
+      "includes the following items specific to Client's site:",
+    '',
+    ...lines.map((s) => `- ${s}`),
+  ].join('\n');
+}
+
+/**
+ * Render the proposal's timeline phases as the Agreement's phase schedule.
+ * The template used to hardcode a fixed Discovery / Build / Test & Launch
+ * list, so a proposal with renamed, added, or removed phases produced a
+ * contract that contradicted the proposal it was derived from.
+ *
+ * Emits one bold phase line (with its duration) followed by that phase's
+ * items as a flat bullet list — the only markdown shapes ContractBody
+ * renders, and deliberately no nesting, which it would flatten anyway.
+ */
+function renderProjectPhases(phases: TimelinePhase[]): string {
+  if (phases.length === 0) {
+    return (
+      'The Project phases are those described in the Proposal incorporated ' +
+      'as Exhibit A.'
+    );
+  }
+  return phases
+    .map((phase, i) => {
+      const name = flattenLine(phase.name);
+      const heading =
+        name === '—' ? `Phase ${i + 1}` : `Phase ${i + 1}: ${name}`;
+      const weeks = flattenLine(phase.weeks);
+      const duration =
+        weeks === '—'
+          ? ''
+          : ` — ${weeks} ${weeks === '1' ? 'week' : 'weeks'}`;
+      const items = (phase.items || [])
+        .map((it) => flattenLine(it))
+        .filter((it) => it !== '—')
+        .map((it) => `- ${it}`);
+      const head = `**${heading}**${duration}`;
+      return items.length > 0 ? [head, '', ...items].join('\n') : head;
+    })
+    .join('\n\n');
 }
 
 /**
@@ -152,10 +227,17 @@ export async function renderAgreement(
   opts: { version?: string } = {},
 ): Promise<{ body_md: string; version: string }> {
   const version = opts.version ?? 'v1.1';
+  // Refuse anything that isn't a real template revision, with an error that
+  // says so — otherwise a typo surfaces as an opaque ENOENT from readFile.
+  if (!isKnownAgreementVersion(version)) {
+    throw new Error(
+      `Unknown agreement version "${version}". Known: ${AGREEMENT_VERSIONS.join(', ')}.`,
+    );
+  }
   // The on-disk filename uses the "v" prefix (e.g., agreement-v1.1.md), so
   // normalize whatever shape the caller passed (`'v1.1'` or `'1.1'`) into
   // the prefixed form.
-  const fileSlug = version.startsWith('v') ? version : `v${version}`;
+  const fileSlug = `v${normalizeAgreementVersion(version)}`;
   const file = path.join(
     process.cwd(),
     'src',

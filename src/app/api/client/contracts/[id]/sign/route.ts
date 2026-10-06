@@ -4,7 +4,7 @@ import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserIds } from '@/lib/notifications';
-import { createAndSendInvoice } from '@/lib/invoices/create';
+import { completeSigning } from '@/lib/contracts/after-sign';
 import { namesMatch } from '@/lib/signatures/match';
 import type { ProposalContent } from '@/lib/types/proposal';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -18,11 +18,12 @@ const Schema = z.object({
 });
 
 /**
- * Client signs the agreement. Marks the contract as signed, then:
- *   - Auto-creates a project for the contact if none exists yet, linking
- *     the proposal + contract to it.
- *   - Generates the deposit invoice from the proposal's first milestone
- *     (or full total, if no milestones are defined) and emails it.
+ * Client signs the agreement. Marks the contract as signed, then (see
+ * completeSigning):
+ *   - Puts it on a project — the one it's already on, an empty shell
+ *     project for the contact, or a new one — and seeds milestones.
+ *   - Records anything the client paid before signing as a paid invoice.
+ *   - Raises the deposit invoice on the Agreement's Net terms.
  *   - Notifies admin.
  */
 export async function POST(
@@ -115,7 +116,10 @@ export async function POST(
     const userAgent = req.headers.get('user-agent') ?? null;
     const signedAt = new Date().toISOString();
 
-    const { error } = await sb
+    // Conditional on the status we just checked, so two submits in flight
+    // (two tabs, a retry on a slow connection) can't both sign — each one
+    // used to go on to create a project and send a deposit invoice.
+    const { data: signedRows, error } = await sb
       .from('contracts')
       .update({
         status: 'signed',
@@ -124,10 +128,18 @@ export async function POST(
         signed_ip: ip,
         signed_user_agent: userAgent,
       })
-      .eq('id', id);
+      .eq('id', id)
+      .in('status', ['pending_client_signature', 'pending_signature'])
+      .select('id');
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
+    }
+    if ((signedRows ?? []).length === 0) {
+      return Response.json(
+        { error: 'This agreement was already signed.' },
+        { status: 409 },
+      );
     }
 
     await writeAudit({
@@ -145,139 +157,43 @@ export async function POST(
       },
     });
 
-    // Auto-create a project for this contact if none exists, then link
-    // the proposal + contract to it. The project may have already been
-    // created during contract sign retries — handle that idempotently.
-    let projectId = r.project_id;
-    if (!projectId) {
-      const { data: existingProj } = await sb
-        .from('projects')
-        .select('id')
-        .eq('contact_id', r.contact_id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (existingProj) {
-        projectId = (existingProj as { id: string }).id;
-      } else {
-        const content = (proposal?.content_json ?? null) as ProposalContent | null;
-        const totalCents =
-          proposal?.total_cents == null ? null : Number(proposal.total_cents);
-        const targetLaunch = content?.timeline?.target_launch || null;
-        const { data: newProj, error: projErr } = await sb
-          .from('projects')
-          .insert({
-            name: proposal?.title ?? 'New project',
-            status: 'planning',
-            contact_id: r.contact_id,
-            deal_id: proposal?.deal_id ?? null,
-            budget_cents: totalCents,
-            end_date: targetLaunch,
-          })
-          .select('id')
-          .single();
-        if (projErr || !newProj) {
-          return Response.json(
-            { error: projErr?.message ?? 'Failed to create project' },
-            { status: 500 },
-          );
-        }
-        projectId = (newProj as { id: string }).id;
-        await writeAudit({
-          actor_id: session.userId,
-          action: 'create',
-          entity_type: 'project',
-          entity_id: projectId,
-          diff: {
-            contact_id: r.contact_id,
-            source: 'contract_signed_auto',
-          },
-        });
-
-        // Seed milestones from the proposal's payment plan. First one
-        // starts 'pending' (active work). Rest start 'inactive' (locked);
-        // they auto-unlock one-by-one as payments land via the chain
-        // advance. source='proposal' enrolls them in the auto-flip;
-        // admin-added milestones default to 'manual' and stay manual-only.
-        const propMs = content?.investment?.milestones ?? [];
-        if (propMs.length > 0) {
-          const rows = propMs.map((m, i) => {
-            const dollars = (m.amount_cents / 100).toFixed(
-              m.amount_cents % 100 === 0 ? 0 : 2,
-            );
-            const descBits = [`$${dollars}`];
-            if (m.due) descBits.push(m.due);
-            return {
-              project_id: projectId,
-              title: m.label || `Milestone ${i + 1}`,
-              description: descBits.join(' · '),
-              status: i === 0 ? 'pending' : 'inactive',
-              source: 'proposal',
-              sort_order: i,
-              is_client_visible: true,
-              amount_cents: m.amount_cents,
-            };
-          });
-          try {
-            await sb.from('milestones').insert(rows);
-          } catch {
-            // Best-effort. Project creation already succeeded; admin can
-            // add milestones manually if this fails.
-          }
-        }
-      }
+    // Project, milestones, prepaid payments, deposit invoice.
+    let completed: Awaited<ReturnType<typeof completeSigning>>;
+    try {
+      completed = await completeSigning({
+        contractId: id,
+        contractProjectId: r.project_id,
+        proposalId: r.proposal_id,
+        contactId: r.contact_id,
+        clientUserId: session.userId,
+        proposal: {
+          title: proposal?.title ?? '',
+          totalCents:
+            proposal?.total_cents == null ? null : Number(proposal.total_cents),
+          content: (proposal?.content_json ?? null) as ProposalContent | null,
+          dealId: proposal?.deal_id ?? null,
+        },
+      });
+    } catch (err) {
+      // The signature stands; the setup behind it didn't finish. Say so
+      // plainly instead of a generic error that reads like signing failed.
+      console.error('[contract sign] post-sign setup failed:', err);
+      await writeAudit({
+        actor_id: session.userId,
+        action: 'post_sign_setup_failed',
+        entity_type: 'contract',
+        entity_id: id,
+        diff: { message: err instanceof Error ? err.message : String(err) },
+      });
+      return Response.json(
+        {
+          error:
+            "Your signature was recorded, but we couldn't finish setting up your project. We'll take it from here and be in touch.",
+        },
+        { status: 500 },
+      );
     }
-
-    // Link proposal + contract to the project (covers both the just-created
-    // case and earlier rows that were contact-scoped).
-    await sb
-      .from('proposals')
-      .update({ project_id: projectId })
-      .eq('id', r.proposal_id)
-      .is('project_id', null);
-    await sb
-      .from('contracts')
-      .update({ project_id: projectId })
-      .eq('id', id)
-      .is('project_id', null);
-
-    // Generate the deposit invoice. Use the first milestone if defined,
-    // otherwise fall back to the full proposal total.
-    let depositCents = 0;
-    let depositLabel = 'Deposit';
-    const content =
-      (proposal?.content_json ?? null) as ProposalContent | null;
-    if (content) {
-      const ms = content.investment.milestones ?? [];
-      const first = ms.find((m) => m.amount_cents > 0);
-      if (first) {
-        depositCents = first.amount_cents;
-        depositLabel = first.label || 'Deposit';
-      } else {
-        depositCents = content.investment.total_cents;
-        depositLabel = `Project investment — ${proposal?.title ?? 'agreement'}`;
-      }
-    } else if (proposal?.total_cents != null) {
-      depositCents = Number(proposal.total_cents);
-    }
-
-    let depositInvoiceId: string | null = null;
-    if (depositCents > 0) {
-      try {
-        const result = await createAndSendInvoice({
-          projectId,
-          amountCents: depositCents,
-          description: `${depositLabel} — ${proposal?.title ?? 'Agreement'}`,
-          actorId: null,
-          source: 'contract_signed_auto',
-        });
-        depositInvoiceId = result.invoiceId;
-      } catch (err) {
-        // Don't block the signature on invoice failure — admin can raise
-        // it manually from the project's Invoices tab.
-        console.warn('[contract sign] deposit invoice failed:', err);
-      }
-    }
+    const { projectId, depositStatus, depositInvoiceId } = completed;
 
     // Notify admin(s) that the contract is fully signed.
     const adminIds = await getAdminUserIds();
@@ -304,13 +220,14 @@ export async function POST(
       );
     }
 
-    if (projectId) revalidateProject(projectId);
+    revalidateProject(projectId);
 
     return Response.json({
       ok: true,
       signed_at: signedAt,
       project_id: projectId,
       deposit_invoice_id: depositInvoiceId,
+      deposit_status: depositStatus,
     });
   } catch (err) {
     if (err instanceof Response) return err;

@@ -91,6 +91,7 @@ function SignBar({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [signedProjectId, setSignedProjectId] = useState<string | null>(null);
   const [signedInvoiceId, setSignedInvoiceId] = useState<string | null>(null);
+  const [depositStatus, setDepositStatus] = useState<string | null>(null);
 
   async function sign(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -116,9 +117,11 @@ function SignBar({
       const j = (await res.json().catch(() => ({}))) as {
         project_id?: string;
         deposit_invoice_id?: string | null;
+        deposit_status?: string;
       };
       setSignedProjectId(j.project_id ?? null);
       setSignedInvoiceId(j.deposit_invoice_id ?? null);
+      setDepositStatus(j.deposit_status ?? null);
       setOpen(false);
       setConfirmOpen(true);
     } finally {
@@ -250,10 +253,21 @@ function SignBar({
               invoice — pay it when you&apos;re ready and we&apos;ll kick off
               the project.
             </>
+          ) : depositStatus === 'collected' ? (
+            <>
+              Both signatures captured. Your deposit is already marked as
+              received, so there&apos;s nothing to pay right now — we&apos;ll
+              be in touch about kickoff.
+            </>
+          ) : depositStatus === 'failed' ? (
+            <>
+              Both signatures captured. Your deposit invoice is on its way —
+              we&apos;ll email it to you shortly.
+            </>
           ) : (
             <>
-              Both signatures captured. We&apos;ll be in touch with the deposit
-              invoice and project kickoff details shortly.
+              Both signatures captured. We&apos;ll be in touch about project
+              kickoff shortly.
             </>
           )
         }

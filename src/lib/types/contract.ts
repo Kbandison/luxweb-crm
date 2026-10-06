@@ -43,6 +43,19 @@ export type ContractVariables = {
   security: string;
   /** scope.performance — e.g. "Image optimization, lazy-loading …" */
   performance: string;
+  // v1.4 fields — the last two places the Agreement still printed its own
+  // boilerplate instead of the proposal the client agreed to.
+  /**
+   * Pre-rendered markdown block listing scope.site_deliverables — the
+   * features specific to this client's site — or an empty string when the
+   * proposal lists none.
+   */
+  site_deliverables: string;
+  /**
+   * Pre-rendered markdown of the proposal's timeline phases (name, duration,
+   * and items), replacing the template's fixed three-phase schedule.
+   */
+  project_phases: string;
   /**
    * Pre-rendered markdown clause naming the recommended care plan and its
    * agreed price, or an empty string when the proposal didn't recommend one.

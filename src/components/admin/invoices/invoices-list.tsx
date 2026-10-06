@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/toast';
 import { InvoiceStatusPill } from './invoice-status-pill';
 import { formatDate, formatUSD } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { OFFLINE_PAYMENT_METHODS } from '@/lib/invoices/payment-methods';
 
 export function InvoicesList({
   projectId,
@@ -25,6 +26,7 @@ export function InvoicesList({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [voiding, setVoiding] = useState<InvoiceRow | null>(null);
   const [voidBusy, setVoidBusy] = useState(false);
+  const [markPaying, setMarkPaying] = useState<InvoiceRow | null>(null);
 
   const openCount = initial.filter(
     (i) => i.status === 'sent' || i.status === 'overdue',
@@ -167,6 +169,15 @@ export function InvoicesList({
                       {inv.status !== 'paid' && inv.status !== 'void' ? (
                         <button
                           type="button"
+                          onClick={() => setMarkPaying(inv)}
+                          className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-copper/40 hover:text-copper"
+                        >
+                          Mark paid
+                        </button>
+                      ) : null}
+                      {inv.status !== 'paid' && inv.status !== 'void' ? (
+                        <button
+                          type="button"
                           onClick={() => setVoiding(inv)}
                           className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-meta-tight text-ink-muted transition-colors hover:border-danger/40 hover:text-danger"
                         >
@@ -186,6 +197,14 @@ export function InvoicesList({
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         projectId={projectId}
+      />
+
+      {/* Keyed per invoice so each open starts from clean state — no reset
+          effect, and no chance of carrying one invoice's note onto another. */}
+      <MarkPaidDialog
+        key={markPaying?.id ?? 'none'}
+        invoice={markPaying}
+        onClose={() => setMarkPaying(null)}
       />
 
       <ConfirmDialog
@@ -445,6 +464,205 @@ function NewInvoiceDialog({
               disabled={busy || !description.trim() || !amountDollars}
             >
               {busy ? 'Sending…' : 'Send invoice'}
+            </Button>
+          </footer>
+        </form>
+      </div>
+    </Dialog>
+  );
+}
+
+/* -------------------------------------------------------------------------
+ * Mark paid outside Stripe
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Records a payment that never touched Stripe — most often a deposit the
+ * client handed over before the contract existed. Without this the invoice
+ * sits open forever or, worse, the client pays it a second time.
+ */
+function MarkPaidDialog({
+  invoice,
+  onClose,
+}: {
+  invoice: InvoiceRow | null;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const toast = useToast();
+  const headingId = useId();
+  const firstFieldRef = useRef<HTMLSelectElement | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [method, setMethod] = useState<string>(OFFLINE_PAYMENT_METHODS[0]);
+  const [note, setNote] = useState('');
+  // Defaults to today in the studio's timezone — en-CA formats as
+  // YYYY-MM-DD, which is exactly what a date input wants. Computed once per
+  // mount, and the parent remounts this per invoice.
+  const [paidOn, setPaidOn] = useState(() =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date()),
+  );
+
+  const open = invoice !== null;
+
+  // Override Dialog's default autofocus so the first field takes focus.
+  useEffect(() => {
+    if (!open) return;
+    const id = window.setTimeout(() => firstFieldRef.current?.focus(), 0);
+    return () => window.clearTimeout(id);
+  }, [open]);
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!invoice) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/invoices/${invoice.id}/mark-paid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          method,
+          note: note.trim() || undefined,
+          paid_on: paidOn || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        const msg = j.error ?? 'Failed to record the payment.';
+        setError(msg);
+        toast.error("Couldn't mark paid", msg);
+        return;
+      }
+      onClose();
+      toast.success('Payment recorded');
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onClose={busy ? () => {} : onClose}
+      labelledBy={headingId}
+      closeOnBackdropClick={!busy}
+      closeOnEscape={!busy}
+      panelClassName="w-full max-w-lg"
+    >
+      <div className="relative flex max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_32px_80px_-20px_rgba(0,0,0,0.4)]">
+        <header className="relative isolate shrink-0 overflow-hidden border-b border-border px-6 pb-5 pt-6">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-gradient-to-br from-copper/20 via-gold/10 to-transparent blur-2xl"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-px copper-rule"
+          />
+          <div className="relative">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
+              Paid outside Stripe
+            </p>
+            <h2
+              id={headingId}
+              className="mt-1 font-display text-2xl font-medium tracking-tight text-ink"
+            >
+              Record {invoice ? formatUSD(invoice.amountCents) : 'payment'}
+            </h2>
+            {invoice ? (
+              <p className="mt-1 font-sans text-sm text-ink-muted">
+                {invoice.description ?? 'Invoice'}
+              </p>
+            ) : null}
+          </div>
+        </header>
+
+        <form onSubmit={submit} className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 space-y-5 overflow-y-auto px-6 py-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="paid_method">How it arrived</Label>
+                <select
+                  ref={firstFieldRef}
+                  id="paid_method"
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-surface px-3 font-sans text-sm text-ink transition-colors focus:border-copper focus:outline-none"
+                >
+                  {OFFLINE_PAYMENT_METHODS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="paid_on">Date received</Label>
+                <Input
+                  id="paid_on"
+                  type="date"
+                  value={paidOn}
+                  onChange={(e) => setPaidOn(e.target.value)}
+                />
+                <p className="font-sans text-xs text-ink-subtle">
+                  Backdate it if the money landed earlier — the P&amp;L reads
+                  this date.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="paid_note">Reference (optional)</Label>
+              <Input
+                id="paid_note"
+                maxLength={500}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Check #1042 · paid at kickoff, pre-contract"
+              />
+              <p className="font-sans text-xs text-ink-subtle">
+                Stored on the audit record, not shown to the client.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-copper/20 bg-copper-soft/30 p-4">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-copper">
+                What happens on submit
+              </p>
+              <ul className="mt-2 space-y-1 font-sans text-xs leading-relaxed text-ink">
+                <li>· Settles the invoice in Stripe with no charge, so it stops chasing the client for payment</li>
+                <li>· Marks it paid in the CRM and closes the milestone this invoice was for, if any</li>
+                <li>· Emails the client a receipt confirming you got it</li>
+              </ul>
+            </div>
+
+            {error ? (
+              <p role="alert" className="font-sans text-xs text-danger">
+                {error}
+              </p>
+            ) : null}
+          </div>
+
+          <footer className="flex items-center justify-end gap-2 border-t border-border bg-surface px-6 py-4">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={busy || !method}>
+              {busy ? 'Recording…' : 'Record payment'}
             </Button>
           </footer>
         </form>

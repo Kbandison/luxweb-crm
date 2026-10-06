@@ -23,6 +23,8 @@ import { ProposalStatusPill } from './proposal-status-pill';
 import { ProposalPreview } from './proposal-preview';
 import { SignAgreementButton } from './sign-agreement-button';
 import { formatDate } from '@/lib/formatters';
+import { CURRENT_AGREEMENT_VERSION } from '@/lib/contracts/versions';
+import { OFFLINE_PAYMENT_METHODS } from '@/lib/invoices/payment-methods';
 import { cn } from '@/lib/utils';
 
 type Mode = 'edit' | 'preview';
@@ -89,6 +91,9 @@ export function ProposalEditor({
   const [error, setError] = useState<string | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
   const [sendBusy, setSendBusy] = useState(false);
+  // What the server refused to send over (422) — shown as a list above the
+  // form, since the toolbar's one-line error slot can't hold several.
+  const [sendProblems, setSendProblems] = useState<string[]>([]);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [reviseOpen, setReviseOpen] = useState(false);
@@ -132,11 +137,26 @@ export function ProposalEditor({
       // Save before sending so the shipped draft matches what's in the form.
       const ok = await save({ silent: true });
       if (!ok) return;
+      setSendProblems([]);
       const res = await fetch(`/api/admin/proposals/${proposalId}/send`, {
         method: 'POST',
       });
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
+        const j = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          problems?: string[];
+        };
+        if (j.problems && j.problems.length > 0) {
+          setSendProblems(j.problems);
+          setMode('edit');
+          toast.error(
+            "Can't send yet",
+            j.problems.length === 1
+              ? j.problems[0]
+              : `${j.problems.length} things to fix — listed above the form.`,
+          );
+          return;
+        }
         const msg = j.error ?? 'Failed to send.';
         setError(msg);
         toast.error("Couldn't send proposal", msg);
@@ -424,14 +444,31 @@ export function ProposalEditor({
           }
         />
       ) : (
-        <EditorForm
-          title={title}
-          setTitle={setTitle}
-          content={content}
-          setContent={setContent}
-          patch={patch}
-          patchScope={patchScope}
-        />
+        <>
+          {sendProblems.length > 0 ? (
+            <div
+              role="alert"
+              className="rounded-xl border border-warning/30 bg-warning/5 px-5 py-4"
+            >
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-warning">
+                Fix these before sending
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 font-sans text-sm text-ink">
+                {sendProblems.map((p) => (
+                  <li key={p}>{p}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <EditorForm
+            title={title}
+            setTitle={setTitle}
+            content={content}
+            setContent={setContent}
+            patch={patch}
+            patchScope={patchScope}
+          />
+        </>
       )}
 
       <ConfirmDialog
@@ -620,11 +657,13 @@ function EditorForm({
               onChange={(e) => patch('prepared_date', e.target.value)}
             />
           </Field>
-          <Field label="Agreement version">
-            <Input
-              value={content.agreement_version}
-              onChange={(e) => patch('agreement_version', e.target.value)}
-            />
+          <Field
+            label="Agreement version"
+            hint="Pinned to the current agreement when you send"
+          >
+            <p className="flex h-10 items-center font-mono text-sm text-ink-muted">
+              v{CURRENT_AGREEMENT_VERSION}
+            </p>
           </Field>
         </div>
       </FormSection>
@@ -691,6 +730,20 @@ function EditorForm({
                   'post_launch_support_months',
                   Number(e.target.value) || 0,
                 )
+              }
+            />
+          </Field>
+          <Field
+            label="Site-specific deliverables"
+            span={2}
+            hint="One per line — what this client asked for on their site"
+          >
+            <LineArea
+              rows={4}
+              value={content.scope.site_deliverables ?? []}
+              onChange={(lines) => patchScope('site_deliverables', lines)}
+              placeholder={
+                'Online booking with deposit\nStaff bios page\nGallery of past work\nMenu with PDF download'
               }
             />
           </Field>
@@ -963,6 +1016,16 @@ function EditorForm({
 // Unique id for a freshly added phase ↔ milestone pair. Runs only in a
 // click handler (client), so crypto.randomUUID is available; the fallback
 // keeps it working in any odd environment.
+/** Today as YYYY-MM-DD in the studio's timezone — what a date input wants. */
+function todayInStudioTz(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
 function makePhaseId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -1114,6 +1177,56 @@ function InvestmentSection({
     }));
   }
 
+  /**
+   * Flag a milestone as already paid outside the portal. Signing skips
+   * raising an invoice for it, so the client isn't billed for money they've
+   * already handed over.
+   */
+  function setMilestoneCollected(index: number, collected: boolean) {
+    setContent((c) => ({
+      ...c,
+      investment: {
+        ...c.investment,
+        milestones: c.investment.milestones.map((m, i) =>
+          i === index
+            ? collected
+              ? {
+                  ...m,
+                  collected,
+                  // Prefill so the common case (paid today, or just now
+                  // remembered) is one click; edit the date if it was earlier.
+                  collected_on: m.collected_on ?? todayInStudioTz(),
+                  collected_method:
+                    m.collected_method ?? OFFLINE_PAYMENT_METHODS[0],
+                }
+              : {
+                  ...m,
+                  collected,
+                  collected_on: undefined,
+                  collected_method: undefined,
+                }
+            : m,
+        ),
+      },
+    }));
+  }
+
+  function setMilestoneCollectedDetail(
+    index: number,
+    key: 'collected_on' | 'collected_method',
+    value: string,
+  ) {
+    setContent((c) => ({
+      ...c,
+      investment: {
+        ...c.investment,
+        milestones: c.investment.milestones.map((m, i) =>
+          i === index ? { ...m, [key]: value } : m,
+        ),
+      },
+    }));
+  }
+
   // Milestones are seeded from the Timeline section (one per phase). They can
   // be pruned here independently — removing one just leaves its phase unpaid
   // and doesn't touch the timeline.
@@ -1203,6 +1316,9 @@ function InvestmentSection({
             <p className="mt-1 font-sans text-xs text-ink-subtle">
               Seeded one per timeline phase and named after it. Remove any
               phase you don&apos;t bill for; the phase stays in the timeline.
+              Tick <span className="text-ink-muted">Collected</span> on
+              anything the client already paid — signing records it as paid
+              instead of invoicing for it.
             </p>
           </div>
           {ms.length > 1 ? (
@@ -1227,7 +1343,7 @@ function InvestmentSection({
           {ms.map((m, i) => (
             <div
               key={i}
-              className="grid items-center gap-3 sm:grid-cols-[1fr_90px_140px_1fr_auto]"
+              className="grid items-center gap-3 sm:grid-cols-[1fr_90px_140px_1fr_auto_auto]"
             >
               <Input
                 value={m.label}
@@ -1254,6 +1370,20 @@ function InvestmentSection({
                 placeholder="Due (e.g., On signing)"
                 onChange={(e) => setMilestoneField(i, 'due', e.target.value)}
               />
+              <label
+                className="flex items-center gap-2 whitespace-nowrap"
+                title="Already paid outside the portal — signing won't invoice for it"
+              >
+                <input
+                  type="checkbox"
+                  checked={m.collected === true}
+                  onChange={(e) => setMilestoneCollected(i, e.target.checked)}
+                  className="h-4 w-4 rounded border-border accent-copper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/30"
+                />
+                <span className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
+                  Collected
+                </span>
+              </label>
               <Button
                 type="button"
                 variant="ghost"
@@ -1263,6 +1393,39 @@ function InvestmentSection({
               >
                 ×
               </Button>
+              {m.collected ? (
+                <div className="flex flex-wrap items-center gap-3 rounded-md border border-success/20 bg-success/5 px-3 py-2 sm:col-span-6">
+                  <span className="font-mono text-[10px] uppercase tracking-meta text-success">
+                    Received
+                  </span>
+                  <Input
+                    type="date"
+                    aria-label={`Date ${m.label || 'milestone'} was received`}
+                    value={m.collected_on ?? ''}
+                    onChange={(e) =>
+                      setMilestoneCollectedDetail(i, 'collected_on', e.target.value)
+                    }
+                    className="h-8 w-auto"
+                  />
+                  <select
+                    aria-label={`How ${m.label || 'milestone'} was paid`}
+                    value={m.collected_method ?? OFFLINE_PAYMENT_METHODS[0]}
+                    onChange={(e) =>
+                      setMilestoneCollectedDetail(i, 'collected_method', e.target.value)
+                    }
+                    className="h-8 rounded-md border border-border bg-surface px-2 font-sans text-sm text-ink focus:border-copper focus:outline-none"
+                  >
+                    {OFFLINE_PAYMENT_METHODS.map((method) => (
+                      <option key={method} value={method}>
+                        {method}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="font-sans text-xs text-ink-subtle">
+                    Recorded as a paid invoice on signing — no invoice is sent.
+                  </span>
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

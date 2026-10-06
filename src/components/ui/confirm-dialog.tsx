@@ -12,6 +12,8 @@ export type ConfirmDialogProps = {
   cancelLabel?: string;
   tone?: 'default' | 'danger';
   busy?: boolean;
+  /** Hold the confirm action (button + Enter) until the dialog's input is valid. */
+  confirmDisabled?: boolean;
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 };
@@ -24,6 +26,7 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   tone = 'default',
   busy = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -31,18 +34,24 @@ export function ConfirmDialog({
   const titleId = useId();
   const descId = useId();
 
+  // Autofocus the confirm button so the primary action is reachable in one
+  // keystroke. Only on open — callers pass a fresh onConfirm every render,
+  // so tying focus to the key handler's effect would pull focus out of any
+  // field in the dialog on each keystroke.
+  useEffect(() => {
+    if (open) confirmBtnRef.current?.focus();
+  }, [open]);
+
   // Hand Enter back to confirm. The Dialog primitive handles Escape +
-  // focus trap. We still autofocus the confirm button so the primary
-  // action is reachable in one keystroke.
+  // focus trap.
   useEffect(() => {
     if (!open) return;
-    confirmBtnRef.current?.focus();
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Enter' && !busy) void onConfirm();
+      if (e.key === 'Enter' && !busy && !confirmDisabled) void onConfirm();
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, busy, onConfirm]);
+  }, [open, busy, confirmDisabled, onConfirm]);
 
   if (!open) return null;
 
@@ -118,7 +127,7 @@ export function ConfirmDialog({
             variant={isDanger ? 'danger' : 'primary'}
             size="sm"
             onClick={onConfirm}
-            disabled={busy}
+            disabled={busy || confirmDisabled}
           >
             {busy ? 'Working…' : confirmLabel}
           </Button>

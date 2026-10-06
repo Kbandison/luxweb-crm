@@ -701,7 +701,7 @@ export async function getClientProposal(
 }
 
 /* -------------------------------------------------------------------------
- * Contracts (auto-generated on proposal acceptance)
+ * Contracts (created when the studio counter-signs an accepted proposal)
  * ------------------------------------------------------------------------- */
 
 export type ClientContractListRow = {

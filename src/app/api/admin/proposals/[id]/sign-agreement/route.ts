@@ -9,6 +9,10 @@ import {
   renderAgreement,
 } from '@/lib/contracts/render';
 import { namesMatch } from '@/lib/signatures/match';
+import {
+  isKnownAgreementVersion,
+  normalizeAgreementVersion,
+} from '@/lib/contracts/versions';
 import type { ProposalContent } from '@/lib/types/proposal';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -136,54 +140,46 @@ export async function POST(
     const userAgent = req.headers.get('user-agent') ?? null;
     const adminSignedAt = new Date().toISOString();
 
+    // The version was pinned when the proposal was sent. Anything unknown is
+    // refused with a readable error rather than an unreadable template.
+    const agreementVersion = normalizeAgreementVersion(content.agreement_version);
+    if (!isKnownAgreementVersion(agreementVersion)) {
+      return Response.json(
+        {
+          error: `This proposal names agreement version "${content.agreement_version}", which doesn't exist. Revise & resend it to pin the current version.`,
+        },
+        { status: 422 },
+      );
+    }
+
     const effectiveDate = r.accepted_at ?? adminSignedAt;
     const variables = deriveContractVariables(content, { effectiveDate });
-    const agreementVersion = content.agreement_version || '1.1';
     const { body_md, version } = await renderAgreement(variables, {
-      version: `v${agreementVersion.replace(/^v/, '')}`,
+      version: `v${agreementVersion}`,
     });
 
-    // Hoist into a const so the closure below doesn't lose the
-    // !parsed.success narrowing.
-    const adminSignedName = parsed.data.full_name;
-    const insertContract = () =>
-      sb
-        .from('contracts')
-        .insert({
-          proposal_id: id,
-          project_id: r.project_id,
-          contact_id: r.contact_id,
-          agreement_version: version,
-          body_md,
-          variables,
-          status: 'pending_client_signature',
-          admin_signed_name: adminSignedName,
-          admin_signed_at: adminSignedAt,
-          admin_signed_ip: ip,
-          admin_signed_user_agent: userAgent,
-        })
-        .select('id')
-        .single();
-
-    let { data: cRow, error: cErr } = await insertContract();
-
-    // The DB historically had a plain UNIQUE(proposal_id) on contracts.
-    // crm-master/crm_contracts_void_reissue.sql replaces it with a
-    // partial unique index that ignores voided rows. If the migration
-    // hasn't been run yet, the insert above 409s on a re-sign-after-
-    // void. As a fallback, hard-delete the voided contracts for this
-    // proposal and retry once. After the migration this branch never
-    // fires.
-    if (cErr && /contracts_proposal_id_key/i.test(cErr.message ?? '')) {
-      await sb
-        .from('contracts')
-        .delete()
-        .eq('proposal_id', id)
-        .eq('status', 'void');
-      const retry = await insertContract();
-      cRow = retry.data;
-      cErr = retry.error;
-    }
+    // One live contract per proposal is enforced by a partial unique index
+    // that ignores voided rows (crm_contracts_integrity.sql). This route
+    // used to fall back to hard-deleting voided contracts when the old
+    // plain UNIQUE constraint was still in place — destroying the legal
+    // record of a voided agreement. A conflict now just fails.
+    const { data: cRow, error: cErr } = await sb
+      .from('contracts')
+      .insert({
+        proposal_id: id,
+        project_id: r.project_id,
+        contact_id: r.contact_id,
+        agreement_version: version,
+        body_md,
+        variables,
+        status: 'pending_client_signature',
+        admin_signed_name: parsed.data.full_name,
+        admin_signed_at: adminSignedAt,
+        admin_signed_ip: ip,
+        admin_signed_user_agent: userAgent,
+      })
+      .select('id')
+      .single();
 
     if (cErr || !cRow) {
       return Response.json(

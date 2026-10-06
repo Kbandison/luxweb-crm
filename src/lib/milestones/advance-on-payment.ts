@@ -76,88 +76,130 @@ export async function checkProjectCompletion(
   }
 }
 
+type MilestoneRow = {
+  id: string;
+  title: string;
+  status: string;
+  sort_order: number;
+  source: string | null;
+  invoice_id: string | null;
+  amount_cents: number | string | null;
+};
+
+/** Proposal-seeded rows (legacy rows predate the source column). */
+function isProposalRow(r: MilestoneRow): boolean {
+  return r.source === 'proposal' || r.source === null;
+}
+
 /**
- * Advance the milestone chain by one position when a payment lands on
- * the given project.
+ * Decide which milestone a paid invoice closes, and which one that unlocks.
+ * Pure, so the money logic can be tested without a database.
  *
- *   - Find the first non-done milestone in the project (lowest sort_order),
- *     preferring proposal-source rows. Legacy rows with source=NULL count
- *     as proposal too — they were seeded before the source column existed.
- *   - Mark it 'done' with completed_at = now()
- *   - If the next milestone after it is 'inactive', flip to 'pending'
- *   - Then run the project-completion check.
+ *   1. The milestone linked to the invoice (milestones.invoice_id). Signing
+ *      links the deposit; approving a milestone links its invoice.
+ *   2. Legacy fallback for invoices raised before that link existed: an
+ *      unlinked, still-open proposal milestone with the same amount whose
+ *      title the invoice description starts with — the exact shape signing
+ *      and approval have always used ("Deposit — Site build").
+ *   3. Otherwise nothing. A change-order, hourly, or ad-hoc invoice is not a
+ *      milestone payment and must not close one. (This used to close "the
+ *      next milestone" on every paid invoice, so an unrelated $300 invoice
+ *      could mark Build done.)
  *
- * Idempotent: if the chain has already advanced for a payment (e.g.
- * webhook + reconcile both fire) the second call finds a different
- * "first non-done" row or none at all and does nothing harmful.
- *
- * Best-effort. Returns void; errors are logged and swallowed since the
- * payment processing is the authoritative side-effect.
+ * Paying closes the milestone — payment is for work done. The next proposal
+ * milestone in order unlocks if it's still locked.
  */
-export async function advanceProposalMilestoneChain(
+export function pickMilestoneForInvoice(
+  rows: MilestoneRow[],
+  invoice: { id: string; amountCents: number; description: string | null },
+): { close: MilestoneRow | null; linkLegacy: boolean; unlock: MilestoneRow | null } {
+  const sorted = [...rows].sort((a, b) => a.sort_order - b.sort_order);
+
+  let target = sorted.find((r) => r.invoice_id === invoice.id) ?? null;
+  let linkLegacy = false;
+
+  if (!target) {
+    const description = invoice.description ?? '';
+    target =
+      sorted.find(
+        (r) =>
+          isProposalRow(r) &&
+          !r.invoice_id &&
+          r.status !== 'done' &&
+          r.status !== 'blocked' &&
+          Number(r.amount_cents) === invoice.amountCents &&
+          description.startsWith(`${r.title} — `),
+      ) ?? null;
+    linkLegacy = target !== null;
+  }
+
+  // Already closed (a second delivery of the same payment) — nothing to do.
+  if (!target || target.status === 'done') {
+    return { close: null, linkLegacy: false, unlock: null };
+  }
+
+  // Only the proposal chain unlocks in sequence; a manual milestone closing
+  // doesn't open anything.
+  const next = isProposalRow(target)
+    ? sorted.find((r) => isProposalRow(r) && r.sort_order > target.sort_order)
+    : undefined;
+
+  return {
+    close: target,
+    linkLegacy,
+    unlock: next && next.status === 'inactive' ? next : null,
+  };
+}
+
+/**
+ * Close the milestone a paid invoice was for, unlock the next one, and run
+ * the project-completion check.
+ *
+ * Callers must only call this once per payment — claimInvoicePaid() is what
+ * guarantees that. Best-effort: the payment itself is already recorded, so
+ * errors are logged and swallowed.
+ */
+export async function closeMilestoneForInvoice(
   projectId: string,
+  invoice: { id: string; amountCents: number; description: string | null },
 ): Promise<void> {
   try {
     const sb = supabaseAdmin();
-    // Tolerate legacy data: include rows where source is NULL alongside
-    // explicit 'proposal' rows. Skipping the source filter entirely could
-    // sweep in manual milestones, but `source.is.null` is a backfill-safe
-    // workaround for older test data.
     const { data } = await sb
       .from('milestones')
-      .select('id, status, sort_order, source')
-      .eq('project_id', projectId)
-      .or('source.eq.proposal,source.is.null')
-      .order('sort_order', { ascending: true });
+      .select('id, title, status, sort_order, source, invoice_id, amount_cents')
+      .eq('project_id', projectId);
 
-    type Row = {
-      id: string;
-      status: string;
-      sort_order: number;
-      source: string | null;
-    };
-    const rows = (data ?? []) as Row[];
-    if (rows.length === 0) {
-      // No proposal-y rows at all. Still run completion check — a
-      // project with only manual milestones could be fully done.
-      await checkProjectCompletion(projectId);
-      revalidateProject(projectId);
-      return;
-    }
-
-    // Find the first row that's NOT done. That's the one this payment
-    // closes out. Skip blocked — admin needs to clear the block first.
-    const nextIndex = rows.findIndex(
-      (r) => r.status !== 'done' && r.status !== 'blocked',
+    const { close, linkLegacy, unlock } = pickMilestoneForInvoice(
+      (data ?? []) as MilestoneRow[],
+      invoice,
     );
 
-    if (nextIndex !== -1) {
-      const closing = rows[nextIndex];
-      const completedAt = new Date().toISOString();
+    if (close) {
       await sb
         .from('milestones')
-        .update({ status: 'done', completed_at: completedAt })
-        .eq('id', closing.id);
-
-      // Unlock the next inactive row if present.
-      const next = rows[nextIndex + 1];
-      if (next && next.status === 'inactive') {
-        await sb
-          .from('milestones')
-          .update({ status: 'pending' })
-          .eq('id', next.id);
-      }
+        .update({
+          status: 'done',
+          completed_at: new Date().toISOString(),
+          ...(linkLegacy ? { invoice_id: invoice.id } : {}),
+        })
+        .eq('id', close.id)
+        .neq('status', 'done');
+    }
+    if (unlock) {
+      await sb
+        .from('milestones')
+        .update({ status: 'pending' })
+        .eq('id', unlock.id)
+        .eq('status', 'inactive');
     }
 
-    // Always check after the advance — covers the case where the chain
-    // is the last thing closing out the project.
+    // Always check — covers the payment that closes out the project.
     await checkProjectCompletion(projectId);
 
-    // Invalidate cached project pages so admin + client see the new state
-    // immediately (router.refresh on the client only pulls fresh data when
-    // the server cache has been busted).
+    // Bust cached project pages so admin + client see the new state.
     revalidateProject(projectId);
   } catch (err) {
-    console.warn('[advance-milestone-chain] failed:', err);
+    console.warn('[close-milestone-for-invoice] failed:', err);
   }
 }

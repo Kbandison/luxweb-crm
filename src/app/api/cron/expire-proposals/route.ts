@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 /**
  * Cron: flip `sent` proposals past their `expires_at` to `expired`.
  *
- * Scheduled hourly via vercel.json. Protected by `CRON_SECRET` env var
+ * Scheduled daily via vercel.json. Protected by `CRON_SECRET` env var
  * (Vercel-style Bearer token). Without the secret set, the endpoint
  * fails closed to avoid arbitrary callers triggering a mass status flip.
  */

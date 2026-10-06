@@ -1,3 +1,5 @@
+import { CURRENT_AGREEMENT_VERSION } from '@/lib/contracts/versions';
+
 /**
  * A single work phase in the proposal timeline. `id` is a stable key that
  * links the phase to its payment milestone (milestone.phase_id) so the two
@@ -48,6 +50,15 @@ export type ProposalContent = {
     security: string;
     performance: string;
     post_launch_support_months: number;
+    /**
+     * Deliverables specific to this client's site — the features and pages
+     * they actually asked for ("Online booking", "Menu with PDF download"),
+     * as opposed to the standard scope lines above. Rendered as its own
+     * block in the proposal and in Agreement 1.1 from v1.4 on. Optional
+     * because proposals saved before the field existed don't carry it;
+     * read it as `?? []`.
+     */
+    site_deliverables?: string[];
   };
   out_of_scope: string[];
   timeline: {
@@ -71,6 +82,22 @@ export type ProposalContent = {
       due: string; // e.g., 'On signing'
       /** Stable link to the timeline phase this milestone is billed for. */
       phase_id?: string;
+      /**
+       * The client already paid this one outside the portal — typically a
+       * deposit handed over before the contract was drawn up. Signing does
+       * NOT raise an invoice for a collected milestone (which would ask the
+       * client to pay twice); the milestone is seeded already done, and the
+       * Agreement's payment table shows it as received rather than due.
+       */
+      collected?: boolean;
+      /**
+       * When a collected milestone's money arrived (YYYY-MM-DD). Signing
+       * records it as a paid invoice dated this day, so the payment shows up
+       * in Finances and can be matched to the bank deposit. Required to send.
+       */
+      collected_on?: string;
+      /** How it arrived — Zelle, check, etc. Kept on the payment's audit row. */
+      collected_method?: string;
     }>;
     net_days: number;
     late_fee: string;
@@ -161,6 +188,7 @@ export function defaultProposalContent(opts: {
       performance:
         'Image optimization, lazy-loading, Lighthouse >90% targets.',
       post_launch_support_months: 3,
+      site_deliverables: [],
     },
     out_of_scope: [
       'E-commerce or custom app features',
@@ -247,7 +275,7 @@ export function defaultProposalContent(opts: {
       'Pay the 50% deposit (invoice sent upon signature).',
       'Kick-off call & scheduling — we get to work.',
     ],
-    agreement_version: '1.3',
+    agreement_version: CURRENT_AGREEMENT_VERSION,
   };
 }
 
