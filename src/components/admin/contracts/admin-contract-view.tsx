@@ -81,6 +81,38 @@ export function AdminContractView({
         </div>
       </div>
 
+      {pending ? (
+        <div className="space-y-3 print:hidden">
+          <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+            {contract.firstViewedAt
+              ? `Opened ${contract.viewCount}× · first ${formatDateTime(contract.firstViewedAt)} · last ${formatDateTime(contract.lastViewedAt ?? contract.firstViewedAt)}`
+              : 'Not opened by the client yet'}
+          </p>
+          {contract.changeRequests.length > 0 ? (
+            <div className="rounded-xl border border-warning/30 bg-warning/5 px-5 py-3">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-warning">
+                Client asked for changes
+              </p>
+              <ul className="mt-2 space-y-3">
+                {contract.changeRequests.map((r) => (
+                  <li key={r.id}>
+                    <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+                      {formatDateTime(r.createdAt)}
+                    </p>
+                    <p className="mt-0.5 whitespace-pre-wrap font-sans text-sm text-ink">
+                      {r.message}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 font-sans text-xs text-ink-muted">
+                Revise &amp; resend from the agreement to send an updated version.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {contract.status === 'void' ? (
         <div className="rounded-xl border border-border bg-surface px-5 py-3">
           <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-ink-muted">

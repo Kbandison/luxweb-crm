@@ -8,6 +8,7 @@ export type AgreementStage =
   | 'sent'
   | 'needs_countersign'
   | 'awaiting_client'
+  | 'changes_requested'
   | 'signed'
   | 'declined'
   | 'expired'
@@ -33,6 +34,11 @@ export const AGREEMENT_STAGE_META: Record<
     tone: 'bg-copper/15 text-copper',
     group: 'active',
   },
+  changes_requested: {
+    label: 'Changes requested',
+    tone: 'bg-warning/15 text-warning',
+    group: 'active',
+  },
   signed: { label: 'Signed', tone: 'bg-success/15 text-success', group: 'signed' },
   declined: { label: 'Declined', tone: 'bg-danger/10 text-danger', group: 'closed' },
   expired: { label: 'Expired', tone: 'bg-warning/15 text-warning', group: 'closed' },
@@ -43,7 +49,13 @@ export const AGREEMENT_STAGE_META: Record<
   },
 };
 
-type ContractLike = { id: string; status: string; created_at: string };
+type ContractLike = {
+  id: string;
+  status: string;
+  created_at: string;
+  /** Change requests the client left on this contract. */
+  change_requests?: number;
+};
 
 /** The newest contract that isn't void — the one that counts. */
 export function liveContract<C extends ContractLike>(contracts: C[]): C | null {
@@ -60,7 +72,9 @@ export function agreementStage(
 ): AgreementStage {
   const live = liveContract(contracts);
   if (live?.status === 'signed') return 'signed';
-  if (live) return 'awaiting_client';
+  // Requests on the contract that's still out are open; revising voids it,
+  // which is what closes them.
+  if (live) return (live.change_requests ?? 0) > 0 ? 'changes_requested' : 'awaiting_client';
 
   switch (proposalStatus) {
     case 'draft':

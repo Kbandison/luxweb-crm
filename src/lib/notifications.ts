@@ -50,6 +50,12 @@ import AgreementWithdrawnEmail, {
 import AgreementAlertEmail, {
   agreementAlertSubject,
 } from '@/emails/agreement-alert-email';
+import AgreementChangesRequestedEmail, {
+  agreementChangesRequestedSubject,
+} from '@/emails/agreement-changes-requested-email';
+import AgreementReminderEmail, {
+  agreementReminderSubject,
+} from '@/emails/agreement-reminder-email';
 
 /* -------------------------------------------------------------------------
  * Event shapes
@@ -233,6 +239,36 @@ export type NotifyEvent =
       portalPath: string;
     }
   | {
+      // Admin alert: the client asked for changes instead of signing.
+      type: 'agreement_changes_requested';
+      userId: string;
+      contractId: string;
+      proposalId: string;
+      clientName: string;
+      title: string;
+      message: string;
+      editorPath: string;
+    }
+  | {
+      // Admin, in-app only: the client opened the agreement for the first time.
+      type: 'agreement_viewed';
+      userId: string;
+      contractId: string;
+      clientName: string;
+      title: string;
+      contractPath: string;
+    }
+  | {
+      // Client nudge about an agreement waiting on their signature.
+      type: 'agreement_reminder';
+      userId: string;
+      contractId: string;
+      kind: 'unopened' | 'unsigned' | 'expiring';
+      title: string;
+      expiresAt: string | null;
+      contractPath: string;
+    }
+  | {
       // Admin alert: a client signed, but raising the deposit invoice failed.
       type: 'deposit_invoice_failed';
       userId: string;
@@ -338,6 +374,9 @@ function subjectKeyFor(event: NotifyEvent): { field: string; value: string } | n
     case 'contract_pending_client_signature':
     case 'agreement_withdrawn':
     case 'deposit_invoice_failed':
+    case 'agreement_changes_requested':
+    case 'agreement_viewed':
+    case 'agreement_reminder':
       return { field: 'contractId', value: event.contractId };
     case 'care_plan_activated':
       return { field: 'subscriptionId', value: event.subscriptionId };
@@ -362,6 +401,7 @@ const CATEGORY_BY_TYPE: Record<NotifyEvent['type'], EmailCategory> = {
   proposal_accepted_client: 'update',
   contract_pending_client_signature: 'update',
   agreement_withdrawn: 'update',
+  agreement_reminder: 'update',
   milestone_updated: 'update',
   revision_updated: 'update',
   invite: 'update',
@@ -371,6 +411,8 @@ const CATEGORY_BY_TYPE: Record<NotifyEvent['type'], EmailCategory> = {
   proposal_accepted: 'admin',
   contract_signed: 'admin',
   deposit_invoice_failed: 'admin',
+  agreement_changes_requested: 'admin',
+  agreement_viewed: 'admin',
   revision_requested: 'admin',
   payment_received: 'admin',
   payment_overdue: 'admin',
@@ -712,6 +754,35 @@ function renderTemplate(
       return {
         subject: agreementWithdrawnSubject(props),
         react: createElement(AgreementWithdrawnEmail, props),
+      };
+    }
+    case 'agreement_changes_requested': {
+      const props = {
+        clientName: event.clientName,
+        title: event.title,
+        message: event.message,
+        editorUrl: appUrl(event.editorPath),
+      };
+      return {
+        subject: agreementChangesRequestedSubject(props),
+        react: createElement(AgreementChangesRequestedEmail, props),
+      };
+    }
+    case 'agreement_viewed': {
+      // In-app only — an email for every first open would be noise.
+      return null;
+    }
+    case 'agreement_reminder': {
+      const props = {
+        recipientName,
+        kind: event.kind,
+        title: event.title,
+        expiresAt: event.expiresAt,
+        contractUrl: appUrl(event.contractPath),
+      };
+      return {
+        subject: agreementReminderSubject(props),
+        react: createElement(AgreementReminderEmail, props),
       };
     }
     case 'deposit_invoice_failed': {

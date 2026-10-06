@@ -1409,6 +1409,9 @@ export type AgreementListRow = {
   /** Most recent thing that happened to it — for sorting and the date column. */
   lastActivityAt: string;
   signedAt: string | null;
+  /** For an agreement out for signature: whether the client has opened it. */
+  firstViewedAt: string | null;
+  viewCount: number;
 };
 
 /**
@@ -1424,7 +1427,8 @@ export async function getAllAgreements(): Promise<AgreementListRow[]> {
       .select(
         `id, title, status, total_cents, project_id, created_at, sent_at, accepted_at,
          contacts!inner(full_name, company),
-         contracts(id, status, project_id, created_at, signed_at)`,
+         contracts(id, status, project_id, created_at, signed_at, first_viewed_at, view_count,
+           agreement_change_requests(id, created_at))`,
       )
       .order('created_at', { ascending: false });
     type ContractEmbed = {
@@ -1433,6 +1437,9 @@ export async function getAllAgreements(): Promise<AgreementListRow[]> {
       project_id: string | null;
       created_at: string;
       signed_at: string | null;
+      first_viewed_at: string | null;
+      view_count: number | null;
+      agreement_change_requests: { id: string; created_at: string }[] | null;
     };
     type Row = {
       id: string;
@@ -1451,7 +1458,10 @@ export async function getAllAgreements(): Promise<AgreementListRow[]> {
     const rows = (data ?? []) as unknown as Row[];
     return rows
       .map((r) => {
-        const contracts = r.contracts ?? [];
+        const contracts = (r.contracts ?? []).map((c) => ({
+          ...c,
+          change_requests: c.agreement_change_requests?.length ?? 0,
+        }));
         const live = liveContract(contracts);
         const contact = flattenJoin(r.contacts);
         const projectId = live?.project_id ?? r.project_id;
@@ -1466,7 +1476,11 @@ export async function getAllAgreements(): Promise<AgreementListRow[]> {
           r.created_at,
           r.sent_at,
           r.accepted_at,
-          ...contracts.flatMap((c) => [c.created_at, c.signed_at]),
+          ...contracts.flatMap((c) => [
+            c.created_at,
+            c.signed_at,
+            ...(c.agreement_change_requests ?? []).map((q) => q.created_at),
+          ]),
         ].filter((d): d is string => Boolean(d));
         return {
           id: r.id,
@@ -1478,6 +1492,8 @@ export async function getAllAgreements(): Promise<AgreementListRow[]> {
           href,
           lastActivityAt: dates.sort().at(-1) ?? r.created_at,
           signedAt: live?.status === 'signed' ? live.signed_at : null,
+          firstViewedAt: live?.first_viewed_at ?? null,
+          viewCount: live?.view_count ?? 0,
         };
       })
       .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
@@ -2018,6 +2034,11 @@ export type ContractDetail = ContractRow & {
   voidedAt: string | null;
   /** When the agreement stops being open for signature. */
   expiresAt: string | null;
+  firstViewedAt: string | null;
+  lastViewedAt: string | null;
+  viewCount: number;
+  /** Newest first. */
+  changeRequests: ChangeRequest[];
 };
 
 type ContractSelectRow = {
@@ -2087,21 +2108,58 @@ export async function getProjectContracts(
  * Void contracts are preserved in the DB for audit history but are
  * intentionally ignored here so admin can regenerate after a void.
  */
+/** A client's "Request changes" note on a contract. */
+export type ChangeRequest = { id: string; message: string; createdAt: string };
+
+type ChangeRequestRow = { id: string; message: string; created_at: string };
+
+function toChangeRequests(rows: ChangeRequestRow[] | null | undefined): ChangeRequest[] {
+  return [...(rows ?? [])]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .map((r) => ({ id: r.id, message: r.message, createdAt: r.created_at }));
+}
+
+export type LiveContractSummary = Pick<ContractRow, 'id' | 'projectId' | 'status'> & {
+  firstViewedAt: string | null;
+  lastViewedAt: string | null;
+  viewCount: number;
+  /** Newest first. Open while the contract is still waiting on the client. */
+  changeRequests: ChangeRequest[];
+};
+
 export async function getContractByProposalId(
   proposalId: string,
-): Promise<Pick<ContractRow, 'id' | 'projectId' | 'status'> | null> {
+): Promise<LiveContractSummary | null> {
   try {
     const { data } = await supabaseAdmin()
       .from('contracts')
-      .select('id, project_id, status')
+      .select(
+        'id, project_id, status, first_viewed_at, last_viewed_at, view_count, agreement_change_requests(id, message, created_at)',
+      )
       .eq('proposal_id', proposalId)
       .neq('status', 'void')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (!data) return null;
-    const r = data as { id: string; project_id: string | null; status: ContractStatus };
-    return { id: r.id, projectId: r.project_id, status: r.status };
+    const r = data as {
+      id: string;
+      project_id: string | null;
+      status: ContractStatus;
+      first_viewed_at: string | null;
+      last_viewed_at: string | null;
+      view_count: number | null;
+      agreement_change_requests: ChangeRequestRow[] | null;
+    };
+    return {
+      id: r.id,
+      projectId: r.project_id,
+      status: r.status,
+      firstViewedAt: r.first_viewed_at,
+      lastViewedAt: r.last_viewed_at,
+      viewCount: r.view_count ?? 0,
+      changeRequests: toChangeRequests(r.agreement_change_requests),
+    };
   } catch {
     return null;
   }
@@ -2112,7 +2170,7 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     const { data } = await supabaseAdmin()
       .from('contracts')
       .select(
-        'id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, admin_signed_ip, admin_signed_user_agent, body_md, body_sha256, deposit_state, deposit_error, deposit_invoice_id, executed_copy_sent_at, void_reason, voided_at, proposals!inner(title, expires_at), contacts!inner(full_name)',
+        'id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, admin_signed_ip, admin_signed_user_agent, body_md, body_sha256, deposit_state, deposit_error, deposit_invoice_id, executed_copy_sent_at, void_reason, voided_at, first_viewed_at, last_viewed_at, view_count, agreement_change_requests(id, message, created_at), proposals!inner(title, expires_at), contacts!inner(full_name)',
       )
       .eq('id', id)
       .single();
@@ -2132,6 +2190,10 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
       executed_copy_sent_at: string | null;
       void_reason: string | null;
       voided_at: string | null;
+      first_viewed_at: string | null;
+      last_viewed_at: string | null;
+      view_count: number | null;
+      agreement_change_requests: ChangeRequestRow[] | null;
       proposals:
         | { title: string; expires_at: string | null }
         | { title: string; expires_at: string | null }[];
@@ -2159,6 +2221,10 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
       voidReason: r.void_reason,
       voidedAt: r.voided_at,
       expiresAt: proposal?.expires_at ?? null,
+      firstViewedAt: r.first_viewed_at,
+      lastViewedAt: r.last_viewed_at,
+      viewCount: r.view_count ?? 0,
+      changeRequests: toChangeRequests(r.agreement_change_requests),
     };
   } catch {
     return null;

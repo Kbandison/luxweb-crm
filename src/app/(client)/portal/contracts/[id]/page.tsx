@@ -9,6 +9,8 @@ import {
   PrintBar,
 } from '@/components/client/contract-actions';
 import { SectionHead } from '@/components/ui/section-head';
+import { AgreementViewBeacon } from '@/components/client/agreement-view-beacon';
+import { formatDateTime } from '@/lib/formatters';
 
 /**
  * The client's agreement — one page, one signature. A short summary of
@@ -50,6 +52,8 @@ export default async function ClientContractPage({
         </h1>
       </header>
 
+      {pending && !expired ? <AgreementViewBeacon contractId={contract.id} /> : null}
+
       <div className="print:hidden">
         <ClientContractActions
           contractId={contract.id}
@@ -62,6 +66,28 @@ export default async function ClientContractPage({
           expired={expired}
         />
       </div>
+
+      {pending && contract.changeRequests.length > 0 ? (
+        <section className="rounded-2xl border border-warning/30 bg-warning/5 p-6 print:hidden">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-warning">
+            You asked for changes
+          </p>
+          <ul className="mt-2 space-y-3">
+            {contract.changeRequests.map((r, i) => (
+              <li key={i}>
+                <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+                  {formatDateTime(r.createdAt)}
+                </p>
+                <p className="mt-0.5 whitespace-pre-wrap font-sans text-sm text-ink">{r.message}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 font-sans text-xs text-ink-muted">
+            We&apos;ll send an updated agreement. Until then this one is still
+            open if you&apos;d rather sign it as it is.
+          </p>
+        </section>
+      ) : null}
 
       {note ? (
         <section className="rounded-2xl border border-copper/20 bg-copper-soft/20 p-6">

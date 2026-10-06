@@ -484,6 +484,25 @@ function describe(n: Notification): Described {
         body: [str('title'), str('reason')].filter(Boolean).join(' · ') || undefined,
         href: str('portalPath') ? normalizePath(str('portalPath')) : undefined,
       };
+    case 'agreement_changes_requested':
+      return {
+        title: `${str('clientName')} asked for changes`,
+        body: [str('title'), str('message')].filter(Boolean).join(' · ') || undefined,
+        href: str('editorPath') ? normalizePath(str('editorPath')) : undefined,
+      };
+    case 'agreement_viewed':
+      return {
+        title: `${str('clientName')} opened the agreement`,
+        body: str('title') || undefined,
+        href: str('contractPath') ? normalizePath(str('contractPath')) : undefined,
+      };
+    case 'agreement_reminder':
+      return {
+        title:
+          str('kind') === 'expiring' ? 'Agreement expiring soon' : 'Agreement waiting on you',
+        body: str('title') || undefined,
+        href: str('contractPath') ? normalizePath(str('contractPath')) : undefined,
+      };
     case 'deposit_invoice_failed':
       return {
         title: `${str('clientName')} signed — deposit invoice failed`,
