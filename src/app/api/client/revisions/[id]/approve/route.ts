@@ -4,6 +4,7 @@ import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserIds } from '@/lib/notifications';
 import { createAndSendInvoice } from '@/lib/invoices/create';
 import { projectInvoiceDueDays } from '@/lib/contracts/terms';
+import { completeUnbilledMilestone } from '@/lib/milestones/advance-on-payment';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -17,8 +18,9 @@ export const runtime = 'nodejs';
  *   - Flips revision_request status to 'approved'
  *   - Auto-fires the invoice for that milestone (using milestone.amount_cents)
  *     and links it via milestones.invoice_id, so client can pay immediately
- *   - DOES NOT mark the milestone done — that happens when the payment
- *     lands and closes the milestone its invoice is linked to
+ *   - DOES NOT mark a billed milestone done — that happens when the
+ *     payment lands and closes the milestone its invoice is linked to.
+ *     A milestone with nothing to pay ($0 phase) is completed right here.
  *   - Notifies admin
  *
  * Reuses an existing invoice if milestone.invoice_id is already set and
@@ -151,6 +153,12 @@ export async function POST(
           console.warn('[approve] auto-invoice failed:', err);
         }
       }
+    }
+
+    // Nothing to pay ($0 phase, or an unpriced milestone): approval is what
+    // completes it, and unlocks the next one.
+    if (m && !(Number(m.amount_cents ?? 0) > 0)) {
+      await completeUnbilledMilestone(r.project_id, m.id);
     }
 
     await writeAudit({

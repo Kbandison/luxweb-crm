@@ -47,8 +47,8 @@ describe('renderAgreement', () => {
     const variables = deriveContractVariables(proposal(), {
       effectiveDate: '2026-09-06',
     });
-    await expect(renderAgreement(variables, { version: '1.5' })).rejects.toThrow(
-      'Unknown agreement version "1.5"',
+    await expect(renderAgreement(variables, { version: '9.9' })).rejects.toThrow(
+      'Unknown agreement version "9.9"',
     );
   });
 
@@ -56,8 +56,8 @@ describe('renderAgreement', () => {
     const variables = deriveContractVariables(proposal(), {
       effectiveDate: '2026-09-06',
     });
-    const a = await renderAgreement(variables, { version: 'v1.4' });
-    const b = await renderAgreement(variables, { version: '1.4' });
+    const a = await renderAgreement(variables, { version: 'v1.5' });
+    const b = await renderAgreement(variables, { version: '1.5' });
     expect(a.body_md).toBe(b.body_md);
   });
 });

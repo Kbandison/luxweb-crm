@@ -2,7 +2,12 @@ import 'server-only';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { formatUSD, formatDateLong } from '@/lib/formatters';
-import { getTimelinePhases } from '@/lib/types/proposal';
+import {
+  clientParty,
+  getTimelinePhases,
+  hourlyRateCents,
+  isPhasePlan,
+} from '@/lib/types/proposal';
 import type { ProposalContent, TimelinePhase } from '@/lib/types/proposal';
 import type { ContractVariables } from '@/lib/types/contract';
 import {
@@ -40,6 +45,12 @@ export function deriveContractVariables(
     .filter((s) => s !== '—');
   const integrationsLine = integrations.length > 0 ? integrations.join(', ') : '—';
 
+  // The deposit is the kind 'deposit' row on a phase plan, or the first
+  // billable milestone on a legacy one (which always opened with it).
+  const hasDeposit = isPhasePlan(content)
+    ? milestones.some((m) => m.kind === 'deposit' && m.amount_cents > 0)
+    : milestones.some((m) => m.amount_cents > 0);
+
   return {
     effective_date: formatDateLong(opts.effectiveDate),
     proposal_date: formatDateLong(content.prepared_date),
@@ -63,6 +74,18 @@ export function deriveContractVariables(
     site_deliverables: renderSiteDeliverables(content.scope.site_deliverables),
     project_phases: renderProjectPhases(getTimelinePhases(content.timeline)),
     care_plan_clause: renderCarePlanClause(content.care_plan),
+    client_party: renderClientParty(content),
+    client_signature_party: renderSignatureParty(content),
+    hourly_rate: formatUSD(hourlyRateCents(content)),
+    out_of_scope_list: renderBullets(content.out_of_scope),
+    assumptions_block: renderAssumptions(content.assumptions),
+    work_start: hasDeposit
+      ? 'signature of this Agreement and clearance of the Deposit'
+      : 'signature of this Agreement',
+    phase_billing_clause: isPhasePlan(content)
+      ? "Each phase payment is invoiced when that phase's work is accepted under § 4."
+      : '',
+    deposit_clause: hasDeposit ? DEPOSIT_CLAUSE : '',
     deposit_amount: deposit ? formatUSD(deposit.amount_cents) : '—',
     phase1_amount: phase1 ? formatUSD(phase1.amount_cents) : '—',
     launch_amount: launch ? formatUSD(launch.amount_cents) : '—',
@@ -115,12 +138,15 @@ function flattenLine(input: string | null | undefined): string {
 function renderMilestonesTable(
   milestones: ProposalContent['investment']['milestones'],
 ): string {
-  if (milestones.length === 0) {
+  // A $0 phase isn't a payment — it's still a milestone the client
+  // approves, but it has no place in the payment schedule.
+  const billed = milestones.filter((m) => m.amount_cents > 0);
+  if (billed.length === 0) {
     return '_No payment milestones defined in the proposal._';
   }
   const header =
     '| Milestone | Amount | % | Due |\n| --- | --- | --- | --- |';
-  const rows = milestones.map((m) => {
+  const rows = billed.map((m) => {
     const label = m.label || '—';
     const amount = formatUSD(m.amount_cents);
     const percent = `${m.percent || 0}%`;
@@ -215,6 +241,81 @@ function renderCarePlanClause(
     `the Total Project Investment, and may be started or cancelled by Client ` +
     `at any time.`
   );
+}
+
+/**
+ * § 3's deposit terms, carried over unchanged from earlier revisions. Only
+ * rendered when the agreement actually has a deposit — otherwise it would
+ * describe a payment that doesn't exist.
+ */
+const DEPOSIT_CLAUSE =
+  'The Deposit is earned by Contractor upon commencement of work and is ' +
+  'non-refundable once work has begun. If Client terminates before ' +
+  'Contractor has begun any substantive work, the Deposit will be refunded ' +
+  'less any documented out-of-pocket costs already incurred specifically ' +
+  'for this Project (e.g., paid software licenses, stock photography, or ' +
+  'third-party service fees).';
+
+/**
+ * The Client line of the parties block. A business is the party, named with
+ * its description, and signs through the contact — who is named with their
+ * title so it's clear they sign on its behalf.
+ */
+function renderClientParty(content: ProposalContent): string {
+  const party = clientParty(content);
+  const person = flattenLine(content.client.name);
+  const email = flattenLine(content.client.contact_email);
+  if (party.kind !== 'business') {
+    return `**${person}**, contact: **${email}**`;
+  }
+  const business = flattenLine(party.business_name);
+  const description = optionalLine(party.business_description);
+  const title = optionalLine(party.signer_title);
+  return (
+    `**${business}**` +
+    (description ? `, ${description}` : '') +
+    `, represented by **${person}**` +
+    (title ? `, ${title}` : '') +
+    `, contact: **${email}**`
+  );
+}
+
+/** The CLIENT signature line: the person, or "Business, by Person, Title". */
+function renderSignatureParty(content: ProposalContent): string {
+  const party = clientParty(content);
+  const person = flattenLine(content.client.name);
+  if (party.kind !== 'business') return person;
+  const title = optionalLine(party.signer_title);
+  return `${flattenLine(party.business_name)}, by ${person}${title ? `, ${title}` : ''}`;
+}
+
+/** Markdown bullets, one per non-empty line; empty string when none. */
+function renderBullets(items: readonly string[] | undefined): string {
+  return (items ?? [])
+    .map((s) => flattenLine(s))
+    .filter((s) => s !== '—')
+    .map((s) => `- ${s}`)
+    .join('\n');
+}
+
+/**
+ * § 5's project assumptions — what the price and schedule depend on the
+ * client doing. Omitted entirely when the draft lists none.
+ */
+function renderAssumptions(items: readonly string[] | undefined): string {
+  const bullets = renderBullets(items);
+  if (!bullets) return '';
+  return [
+    '**Project assumptions.** The schedule and Total Project Investment assume:',
+    '',
+    bullets,
+  ].join('\n');
+}
+
+/** A trimmed single line, or '' when blank (where flattenLine gives '—'). */
+function optionalLine(input: string | null | undefined): string {
+  const line = flattenLine(input);
+  return line === '—' ? '' : line;
 }
 
 /**

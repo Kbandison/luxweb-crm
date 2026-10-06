@@ -86,15 +86,22 @@ export async function completeSigning(input: SigningInput): Promise<{
   }
 
   const milestones = content?.investment.milestones ?? [];
-  const firstBillable = milestones.findIndex((m) => m.amount_cents > 0);
+  const depositIndex =
+    content?.investment.plan_version === 2
+      ? milestones.findIndex((m) => m.kind === 'deposit' && m.amount_cents > 0)
+      : milestones.findIndex((m) => m.amount_cents > 0);
   const depositCollected =
-    firstBillable !== -1 && milestones[firstBillable].collected === true;
+    depositIndex !== -1 && milestones[depositIndex].collected === true;
+  // A phase plan without a deposit starts on signature alone (the
+  // Agreement says so); otherwise it's signature + deposit.
+  const noDepositRequired =
+    content?.investment.plan_version === 2 && depositIndex === -1;
 
-  // A collected deposit means work can start now — the Agreement starts the
-  // clock on signature + deposit. Done directly rather than through the
-  // payment effects, which would run the completion check and fire the
-  // "leave us a review" email on a fully prepaid project.
-  if (depositCollected) {
+  // Work can start now: the deposit is already in, or none is required.
+  // Done directly rather than through the payment effects, which would run
+  // the completion check and fire the "leave us a review" email on a fully
+  // prepaid project.
+  if (depositCollected || noDepositRequired) {
     await sb
       .from('projects')
       .update({ status: 'in_progress' })

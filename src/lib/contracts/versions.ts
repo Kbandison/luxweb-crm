@@ -7,7 +7,7 @@
  * Adding a revision: drop the markdown file in src/content, append the
  * version here, and bump CURRENT_AGREEMENT_VERSION.
  */
-export const AGREEMENT_VERSIONS = ['1.1', '1.2', '1.3', '1.4'] as const;
+export const AGREEMENT_VERSIONS = ['1.1', '1.2', '1.3', '1.4', '1.5'] as const;
 export type AgreementVersion = (typeof AGREEMENT_VERSIONS)[number];
 
 /**
@@ -15,7 +15,7 @@ export type AgreementVersion = (typeof AGREEMENT_VERSIONS)[number];
  * get to choose: an older draft still carrying "1.2" would otherwise render
  * a pre-LLC contract after the studio incorporated.
  */
-export const CURRENT_AGREEMENT_VERSION: AgreementVersion = '1.4';
+export const CURRENT_AGREEMENT_VERSION: AgreementVersion = '1.5';
 
 /** Strip the optional "v" prefix — contracts store "v1.4", proposals "1.4". */
 export function normalizeAgreementVersion(

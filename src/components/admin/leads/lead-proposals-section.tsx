@@ -37,16 +37,16 @@ export function LeadProposalsSection({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        const msg = j.error ?? 'Failed to create proposal.';
+        const msg = j.error ?? 'Failed to create agreement.';
         setError(msg);
-        toast.error("Couldn't create proposal", msg);
+        toast.error("Couldn't create agreement", msg);
         return;
       }
       const { id } = (await res.json()) as { id: string };
       const created = title.trim();
       setTitle('');
       setAdding(false);
-      toast.success('Proposal created', `Opening ${created} editor`);
+      toast.success('Agreement created', `Opening ${created} editor`);
       router.push(`/admin/proposals/${id}`);
     } finally {
       setBusy(false);
@@ -57,7 +57,7 @@ export function LeadProposalsSection({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
-          {proposals.length} {proposals.length === 1 ? 'proposal' : 'proposals'}
+          {proposals.length} {proposals.length === 1 ? 'agreement' : 'agreements'}
         </p>
         {!adding ? (
           <Button
@@ -79,7 +79,7 @@ export function LeadProposalsSection({
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            New proposal
+            New agreement
           </Button>
         ) : null}
       </div>
@@ -97,7 +97,7 @@ export function LeadProposalsSection({
               maxLength={200}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Signature site build · Proposal v1"
+              placeholder="Signature site build"
             />
           </div>
           {error ? (
@@ -129,7 +129,7 @@ export function LeadProposalsSection({
       {proposals.length === 0 && !adding ? (
         <div className="rounded-xl border border-dashed border-border bg-surface/60 p-6 text-center">
           <p className="font-sans text-sm text-ink-muted">
-            No proposals. Create one above to send to this lead.
+            No agreements yet. Create one above to send to this lead.
           </p>
         </div>
       ) : proposals.length > 0 ? (

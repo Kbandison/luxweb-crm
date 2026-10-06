@@ -173,7 +173,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin/outreach', label: 'Outreach', icon: IconOutreach, group: 'Pipeline', capability: 'manage_outreach' },
   { href: '/admin/clients', label: 'Clients', icon: IconUsers, shortcut: 4, group: 'Delivery', capability: 'manage_clients' },
   { href: '/admin/projects', label: 'Projects', icon: IconBriefcase, shortcut: 5, group: 'Delivery', capability: 'manage_projects' },
-  { href: '/admin/contracts', label: 'Contracts', icon: IconContract, shortcut: 6, group: 'Delivery', capability: 'manage_contracts' },
+  { href: '/admin/contracts', label: 'Agreements', icon: IconContract, shortcut: 6, group: 'Delivery', capability: 'manage_contracts' },
   { href: '/admin/team', label: 'Team', icon: IconTeam, group: 'Delivery', capability: 'manage_team' },
   { href: '/admin/care-plans', label: 'Care Plans', icon: IconRefresh, shortcut: 7, group: 'Lifecycle', capability: 'manage_care_plans' },
   { href: '/admin/revisions', label: 'Revisions', icon: IconMessageSquare, shortcut: 8, group: 'Lifecycle', capability: 'manage_revisions' },

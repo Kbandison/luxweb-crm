@@ -6,7 +6,8 @@ type Milestone = ProposalContent['investment']['milestones'][number];
  * What to invoice the client the moment they sign, or null when nothing is
  * due yet.
  *
- * The deposit is the first milestone carrying an amount. If the proposal
+ * On a phase plan the deposit is the milestone marked kind 'deposit'; on a
+ * legacy plan it's the first milestone carrying an amount. If the proposal
  * marks it collected — money the client handed over before the Agreement
  * existed — signing must raise nothing, or they get billed for it twice.
  *
@@ -32,6 +33,23 @@ export function depositForSigning(
   }
 
   const milestones = content.investment.milestones ?? [];
+
+  // Phase plan: only the deposit is due at signing. Every phase payment
+  // waits for that phase's work to be approved — so no deposit means
+  // nothing is billed until the first approval.
+  if (content.investment.plan_version === 2) {
+    const index = milestones.findIndex(
+      (m) => m.kind === 'deposit' && m.amount_cents > 0,
+    );
+    if (index === -1 || milestones[index].collected) return null;
+    return {
+      amountCents: milestones[index].amount_cents,
+      label: milestones[index].label || 'Deposit',
+      milestoneIndex: index,
+    };
+  }
+
+  // Legacy plan: the first milestone carrying an amount.
   const index = milestones.findIndex((m) => m.amount_cents > 0);
 
   if (index !== -1) {
