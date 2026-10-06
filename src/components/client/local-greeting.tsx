@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useClientValue } from '@/lib/hooks/use-client-value';
 
 // Server-rendered greetings are computed in UTC, so a 7 AM ET user sees
 // "Good afternoon" because UTC has already crossed noon. Render the
@@ -14,9 +14,6 @@ function greetingFromHour(hour: number): string {
 }
 
 export function LocalGreeting() {
-  const [hour, setHour] = useState<number | null>(null);
-  useEffect(() => {
-    setHour(new Date().getHours());
-  }, []);
+  const hour = useClientValue<number | null>(() => new Date().getHours(), null);
   return <>{hour === null ? 'Welcome' : greetingFromHour(hour)}</>;
 }

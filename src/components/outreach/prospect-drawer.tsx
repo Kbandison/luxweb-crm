@@ -59,14 +59,19 @@ export function ProspectDrawer({
   const [duplicate, setDuplicate] = useState<string | null>(null);
   const [f, setF] = useState<Fields>(() => fromProspect(prospect));
 
-  useEffect(() => {
-    if (!open) return;
+  // Open from the prospect's current values, with no leftover error.
+  function openDrawer() {
     setF(fromProspect(prospect));
     setError(null);
     setDuplicate(null);
+    setOpen(true);
+  }
+
+  useEffect(() => {
+    if (!open) return;
     const t = window.setTimeout(() => firstRef.current?.focus(), 0);
     return () => window.clearTimeout(t);
-  }, [open, prospect]);
+  }, [open]);
 
   const set = (k: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setF((prev) => ({ ...prev, [k]: e.target.value }));
@@ -127,7 +132,7 @@ export function ProspectDrawer({
 
   return (
     <>
-      <Button type="button" variant={triggerVariant} size={triggerSize} onClick={() => setOpen(true)}>
+      <Button type="button" variant={triggerVariant} size={triggerSize} onClick={openDrawer}>
         {triggerLabel ?? (mode === 'create' ? 'Add prospect' : 'Edit')}
       </Button>
       <Drawer open={open} onClose={() => setOpen(false)} side="right" width="md" labelledBy={headingId}>

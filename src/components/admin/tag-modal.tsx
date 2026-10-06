@@ -31,14 +31,17 @@ export function TagModal({ open, onClose, onSubmit, count }: TagModalProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Reset internal state every time the modal opens so a previously-typed
-  // tag doesn't bleed into the next session.
-  useEffect(() => {
+  // tag doesn't bleed into the next session — during render when `open`
+  // flips to true.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
     if (open) {
       setTag('');
       setError(null);
       setBusy(false);
     }
-  }, [open]);
+  }
 
   // Override the Dialog's default autofocus (which picks the first
   // focusable element — that would be the Cancel button) so the input is

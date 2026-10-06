@@ -61,10 +61,13 @@ export function ProjectNav({ projectId }: { projectId: string }) {
     };
   }, [open]);
 
-  // Close the dropdown when navigating to one of its entries.
-  useEffect(() => {
+  // Close the dropdown when navigating to one of its entries — adjusted
+  // during render when the path changes, rather than in an effect.
+  const [shownPath, setShownPath] = useState(pathname);
+  if (shownPath !== pathname) {
+    setShownPath(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   return (
     // flex-wrap (not overflow-x-auto) — on narrow viewports the nav

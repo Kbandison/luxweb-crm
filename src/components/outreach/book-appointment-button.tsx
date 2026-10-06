@@ -24,7 +24,17 @@ export function BookAppointmentButton({ prospect }: { prospect: ProspectRow }) {
   const [notes, setNotes] = useState('');
 
   const [slots, setSlots] = useState<Slot[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
+  // Which duration the loaded slots are for. Loading = the drawer is open
+  // and what's showing isn't for the duration asked for yet.
+  const [slotsFor, setSlotsFor] = useState<string | null>(null);
+  const loadingSlots = open && slotsFor !== duration;
+  // Each open fetches fresh availability; until it lands, show loading
+  // rather than the last visit's (possibly stale) slots.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) setSlotsFor(null);
+  }
   const [selectedIso, setSelectedIso] = useState('');
   const [customWhen, setCustomWhen] = useState('');
 
@@ -32,7 +42,6 @@ export function BookAppointmentButton({ prospect }: { prospect: ProspectRow }) {
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    setLoadingSlots(true);
     fetch(`/api/outreach/availability?duration=${Number(duration) || 30}`)
       .then((r) => r.json())
       .then((body) => {
@@ -43,7 +52,7 @@ export function BookAppointmentButton({ prospect }: { prospect: ProspectRow }) {
         if (!cancelled) setSlots([]);
       })
       .finally(() => {
-        if (!cancelled) setLoadingSlots(false);
+        if (!cancelled) setSlotsFor(duration);
       });
     return () => {
       cancelled = true;

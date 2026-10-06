@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useClientValue } from '@/lib/hooks/use-client-value';
 
 /* -------------------------------------------------------------------------
  * Types
@@ -209,7 +210,7 @@ export function CommandPalette() {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [results, setResults] = useState<SearchResponse | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [rawSelectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
 
@@ -219,15 +220,19 @@ export function CommandPalette() {
     setOpen(false);
   }, []);
 
-  // Reset transient state whenever we close the palette so the next open
-  // starts from a clean slate (no stale query, no stale selection).
-  useEffect(() => {
-    if (open) return;
-    setQuery('');
-    setDebounced('');
-    setResults(null);
-    setSelectedIndex(0);
-  }, [open]);
+  // Reset transient state whenever the palette closes so the next open
+  // starts from a clean slate (no stale query, no stale selection). Done
+  // during render when `open` flips, so it holds however it was closed.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (!open) {
+      setQuery('');
+      setDebounced('');
+      setResults(null);
+      setSelectedIndex(0);
+    }
+  }
 
   // Global ⌘K / Ctrl+K shortcut. Skip when focus is inside an editable
   // element — otherwise typing ⌘K in a normal search box would hijack the
@@ -294,11 +299,8 @@ export function CommandPalette() {
   }, [query]);
 
   useEffect(() => {
-    if (!open) return;
-    if (!debounced) {
-      setResults(null);
-      return;
-    }
+    // No query, no search — the results aren't shown (see visibleResults).
+    if (!open || !debounced) return;
     const ctrl = new AbortController();
     fetch(`/api/admin/search?q=${encodeURIComponent(debounced)}`, {
       signal: ctrl.signal,
@@ -316,6 +318,9 @@ export function CommandPalette() {
 
   /* ----------------------------- compose items ----------------------------- */
 
+  // Results only belong to a live query; with none, nothing is shown.
+  const visibleResults = debounced ? results : null;
+
   const items = useMemo<CommandItem[]>(() => {
     const q = query.trim().toLowerCase();
 
@@ -326,6 +331,7 @@ export function CommandPalette() {
       : STATIC_ITEMS;
 
     const searchItems: CommandItem[] = [];
+    const results = visibleResults;
     if (results) {
       for (const c of results.clients) {
         searchItems.push({
@@ -380,14 +386,12 @@ export function CommandPalette() {
     const combined = [...statics, ...searchItems];
     combined.sort((a, b) => groupOrder(a.type) - groupOrder(b.type));
     return combined;
-  }, [query, results]);
+  }, [query, visibleResults]);
 
-  // Keep the selected index in range as items shift around.
-  useEffect(() => {
-    if (selectedIndex >= items.length) {
-      setSelectedIndex(items.length === 0 ? 0 : items.length - 1);
-    }
-  }, [items.length, selectedIndex]);
+  // The highlighted row, kept in range as items shift around — derived
+  // rather than corrected after the fact.
+  const selectedIndex =
+    items.length === 0 ? 0 : Math.min(rawSelectedIndex, items.length - 1);
 
   /* ----------------------------- execute selection ----------------------------- */
 
@@ -402,10 +406,10 @@ export function CommandPalette() {
   function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, items.length - 1));
+      setSelectedIndex(Math.min(selectedIndex + 1, items.length - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setSelectedIndex((i) => Math.max(i - 1, 0));
+      setSelectedIndex(Math.max(selectedIndex - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       const item = items[selectedIndex];
@@ -600,12 +604,10 @@ export function CommandPalette() {
  * ------------------------------------------------------------------------- */
 
 export function CommandPaletteTrigger() {
-  const [shortcut, setShortcut] = useState('Ctrl K');
-  useEffect(() => {
-    if (typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)) {
-      setShortcut('⌘ K');
-    }
-  }, []);
+  const shortcut = useClientValue(
+    () => (/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K'),
+    'Ctrl K',
+  );
 
   return (
     <button

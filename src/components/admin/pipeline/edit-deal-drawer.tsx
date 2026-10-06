@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Drawer } from '@/components/ui/drawer';
@@ -37,15 +37,15 @@ export function EditDealDrawer({ deal }: { deal: DealCard }) {
 
   // Re-seed from the deal each time the drawer opens — the prop may have
   // changed via a server refresh while the drawer was closed.
-  useEffect(() => {
-    if (!open) return;
+  function openDrawer() {
     setTitle(deal.title);
     setValueDollars(deal.valueCents ? String(deal.valueCents / 100) : '');
     setProbability(String(deal.probability));
     setExpectedClose(deal.expectedClose ?? '');
     setError(null);
     setConfirmingDelete(false);
-  }, [open, deal]);
+    setOpen(true);
+  }
 
   async function destroy() {
     setDelBusy(true);
@@ -108,7 +108,7 @@ export function EditDealDrawer({ deal }: { deal: DealCard }) {
       <button
         type="button"
         onPointerDown={(e) => e.stopPropagation()}
-        onClick={() => setOpen(true)}
+        onClick={openDrawer}
         aria-label="Edit deal"
         title="Edit deal"
         className="shrink-0 rounded-md p-1 text-ink-subtle/70 transition-colors hover:bg-surface-2 hover:text-copper"

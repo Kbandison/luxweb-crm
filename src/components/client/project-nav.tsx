@@ -58,9 +58,13 @@ export function ClientProjectNav({ projectId }: { projectId: string }) {
     };
   }, [open]);
 
-  useEffect(() => {
+  // Close the dropdown when navigating to one of its entries — adjusted
+  // during render when the path changes, rather than in an effect.
+  const [shownPath, setShownPath] = useState(pathname);
+  if (shownPath !== pathname) {
+    setShownPath(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   return (
     <nav className="relative z-40 flex flex-wrap items-end gap-1 border-b border-border bg-surface/80 px-6 backdrop-blur md:px-10 print:hidden">

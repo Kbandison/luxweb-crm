@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { ProjectStatus } from '@/lib/queries/admin';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
+import { useIsClient } from '@/lib/hooks/use-client-value';
 import {
   PROJECT_STATUSES,
   PROJECT_STATUS_DOT,
@@ -32,13 +33,10 @@ export function ProjectStatusEditor({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<ProjectStatus | null>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const [mounted, setMounted] = useState(false);
+  // The menu portals to document.body, which only exists in the browser.
+  const mounted = useIsClient();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useLayoutEffect(() => {
     if (!open || !buttonRef.current) return;
