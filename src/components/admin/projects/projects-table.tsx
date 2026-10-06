@@ -1,6 +1,7 @@
 'use client';
 import { useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { ProjectListRow } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -22,6 +23,7 @@ export function ProjectsTable({
   currentDir: SortDir;
   searchParams: Record<string, string | string[] | undefined>;
 }) {
+  const router = useRouter();
   const { q, setQ } = useUrlSearchInput();
 
   // Local fast-path filter (snappy typing); server returns filtered rows
@@ -127,7 +129,7 @@ export function ProjectsTable({
                   onClick={(e) => {
                     const target = e.target as HTMLElement;
                     if (target.closest('a,button,input,label')) return;
-                    window.location.href = `/admin/projects/${p.id}`;
+                    router.push(`/admin/projects/${p.id}`);
                   }}
                   className="cursor-pointer border-b border-border bg-surface transition-colors hover:bg-copper-soft/15"
                 >
