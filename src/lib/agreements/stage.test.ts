@@ -31,6 +31,21 @@ describe('agreementStage', () => {
     ).toBe('signed');
   });
 
+  it('flags a live contract the client asked to change', () => {
+    expect(
+      agreementStage('sent', [{ ...c('1', 'pending_client_signature', '2026-10-01'), change_requests: 1 }]),
+    ).toBe('changes_requested');
+  });
+
+  it('closes requests left on a contract that was revised away', () => {
+    expect(
+      agreementStage('sent', [
+        { ...c('old', 'void', '2026-09-01'), change_requests: 2 },
+        c('new', 'pending_client_signature', '2026-10-01'),
+      ]),
+    ).toBe('awaiting_client');
+  });
+
   it('calls an accepted agreement with only voided contracts voided', () => {
     expect(agreementStage('accepted', [c('1', 'void', '2026-10-01')])).toBe('void');
   });

@@ -52,6 +52,11 @@ export const CLIENT_EMAIL_PREFS = [
     hint: 'When we withdraw an agreement we sent you, or void a signed one.',
   },
   {
+    key: 'agreement_reminder',
+    label: 'Agreement reminders',
+    hint: 'A nudge when an agreement is waiting on your signature or about to expire.',
+  },
+  {
     key: 'milestone_updated',
     label: 'Milestone updates',
     hint: 'When a project milestone changes status.',
@@ -105,6 +110,11 @@ export const ADMIN_EMAIL_PREFS = [
     key: 'contract_signed',
     label: 'Agreement signed',
     hint: 'Email when a client signs an agreement.',
+  },
+  {
+    key: 'agreement_changes_requested',
+    label: 'Changes requested',
+    hint: 'Email when a client asks for changes to an agreement instead of signing.',
   },
   {
     key: 'deposit_invoice_failed',

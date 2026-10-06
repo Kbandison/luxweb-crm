@@ -26,7 +26,7 @@ import { useToast } from '@/components/ui/toast';
 import { ProposalStatusPill } from './proposal-status-pill';
 import { AgreementSummary } from '@/components/contract/agreement-summary';
 import { ContractBody } from '@/components/contract/contract-body';
-import { formatDate } from '@/lib/formatters';
+import { formatDate, formatDateTime } from '@/lib/formatters';
 import { CURRENT_AGREEMENT_VERSION } from '@/lib/contracts/versions';
 import { DEFAULT_EXPIRY_DAYS } from '@/lib/agreements/expiry';
 import { OFFLINE_PAYMENT_METHODS } from '@/lib/invoices/payment-methods';
@@ -65,6 +65,11 @@ export function ProposalEditor({
     id: string;
     projectId: string | null;
     status: string;
+    firstViewedAt?: string | null;
+    lastViewedAt?: string | null;
+    viewCount?: number;
+    /** Newest first — the client's notes on the version that's out. */
+    changeRequests?: { id: string; message: string; createdAt: string }[];
   } | null;
   /** The signed-in admin's name on file — prefills the Sign & send signature. */
   senderName?: string | null;
@@ -447,8 +452,24 @@ export function ProposalEditor({
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-copper/30 bg-copper-soft/25 px-5 py-3 print:hidden">
           <div className="min-w-0 flex-1">
             <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
-              Signed by you · waiting on the client
+              Signed by you · waiting on the client ·{' '}
+              {existingContract?.firstViewedAt
+                ? `opened ${existingContract.viewCount ?? 1}× · last ${formatDateTime(existingContract.lastViewedAt ?? existingContract.firstViewedAt)}`
+                : 'not opened yet'}
             </p>
+            {existingContract?.changeRequests?.length ? (
+              <div className="mt-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2">
+                <p className="font-mono text-[10px] uppercase tracking-meta text-warning">
+                  Changes requested · {formatDateTime(existingContract.changeRequests[0].createdAt)}
+                  {existingContract.changeRequests.length > 1
+                    ? ` · ${existingContract.changeRequests.length} notes`
+                    : ''}
+                </p>
+                <p className="mt-0.5 whitespace-pre-wrap font-sans text-sm text-ink">
+                  {existingContract.changeRequests[0].message}
+                </p>
+              </div>
+            ) : null}
             <p className="mt-0.5 font-sans text-xs text-ink-muted">
               {initialExpiresAt
                 ? `Open for their signature until ${formatDate(initialExpiresAt)}. `

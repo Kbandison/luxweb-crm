@@ -766,6 +766,8 @@ export type ClientContractDetail = ClientContractListRow & {
   expiresAt: string | null;
   /** The agreement's own status — 'expired' closes signing before the cron runs. */
   agreementStatus: string;
+  /** Changes the client asked for on this contract, newest first. */
+  changeRequests: { message: string; createdAt: string }[];
 };
 
 export async function getClientProjectContracts(
@@ -812,7 +814,7 @@ export async function getClientContract(
     const { data } = await supabaseAdmin()
       .from('contracts')
       .select(
-        'id, status, agreement_version, body_md, body_sha256, content_snapshot, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, proposal_id, project_id, contacts!inner(user_id, full_name), proposals!inner(title, status, expires_at, content_json)',
+        'id, status, agreement_version, body_md, body_sha256, content_snapshot, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, proposal_id, project_id, contacts!inner(user_id, full_name), proposals!inner(title, status, expires_at, content_json), agreement_change_requests(message, created_at)',
       )
       .eq('id', contractId)
       .single();
@@ -837,6 +839,7 @@ export async function getClientContract(
         | { user_id: string | null; full_name: string }
         | { user_id: string | null; full_name: string }[];
       proposals: ProposalEmbed | ProposalEmbed[];
+      agreement_change_requests: { message: string; created_at: string }[] | null;
     };
     type ProposalEmbed = {
       title: string;
@@ -869,6 +872,9 @@ export async function getClientContract(
       content: r.content_snapshot ?? proposal?.content_json ?? null,
       expiresAt: proposal?.expires_at ?? null,
       agreementStatus: proposal?.status ?? 'sent',
+      changeRequests: [...(r.agreement_change_requests ?? [])]
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .map((q) => ({ message: q.message, createdAt: q.created_at })),
     };
   } catch {
     return null;

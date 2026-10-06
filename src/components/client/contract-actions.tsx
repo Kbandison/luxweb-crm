@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -181,9 +181,12 @@ function SignBar({
               {expiresAt ? ` Open until ${formatDateLong(expiresAt)}.` : ''}
             </p>
           </div>
-          <Button type="button" onClick={() => setOpen(true)} className="shrink-0">
-            Sign agreement
-          </Button>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <RequestChangesButton contractId={contractId} />
+            <Button type="button" onClick={() => setOpen(true)} className="shrink-0">
+              Sign agreement
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -324,6 +327,106 @@ function SignBar({
           router.refresh();
         }}
       />
+    </>
+  );
+}
+
+/**
+ * "Request changes" — instead of signing, tell the studio what should be
+ * different. The agreement stays open (they can still sign it as-is); the
+ * studio replies with an updated version.
+ */
+function RequestChangesButton({ contractId }: { contractId: string }) {
+  const router = useRouter();
+  const toast = useToast();
+  const headingId = useId();
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (message.trim().length < 3) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/client/contracts/${contractId}/request-changes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message.trim() }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(j.error ?? "Couldn't send your request.");
+        return;
+      }
+      setOpen(false);
+      setMessage('');
+      toast.success('Request sent', "We'll follow up with an updated agreement.");
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
+        Request changes
+      </Button>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        closeOnBackdropClick={!busy}
+        closeOnEscape={!busy}
+        labelledBy={headingId}
+        className="z-50 bg-ink/50 backdrop-blur-sm"
+        panelClassName="w-full max-w-md"
+      >
+        <form
+          onSubmit={submit}
+          className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-[0_32px_80px_-20px_rgba(0,0,0,0.4)]"
+        >
+          <div>
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
+              Request changes
+            </p>
+            <h2 id={headingId} className="mt-1 font-display text-xl font-medium tracking-tight text-ink">
+              What would you like changed?
+            </h2>
+            <p className="mt-1 font-sans text-sm text-ink-muted">
+              We&apos;ll read it and send you an updated agreement. Nothing is
+              signed, and you can still sign this one as it is.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`${headingId}-message`}>Your note</Label>
+            <textarea
+              id={`${headingId}-message`}
+              rows={5}
+              maxLength={5000}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="e.g. Could the launch move to January? And we'd like the booking page in the first phase."
+              className="w-full rounded-md border border-border bg-surface px-3 py-2 font-sans text-sm text-ink focus:border-copper focus:outline-none"
+            />
+          </div>
+          {error ? (
+            <p role="alert" className="font-sans text-xs text-danger">
+              {error}
+            </p>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={busy || message.trim().length < 3}>
+              {busy ? 'Sending…' : 'Send request'}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </>
   );
 }

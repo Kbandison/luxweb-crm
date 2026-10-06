@@ -121,6 +121,11 @@ export default async function AdminAgreementsListPage({
                       </td>
                       <td className="px-3 py-3">
                         <StatusPill label={meta.label} tone={meta.tone} />
+                        {a.stage === 'awaiting_client' || a.stage === 'changes_requested' ? (
+                          <p className="mt-1 font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+                            {a.firstViewedAt ? `Opened ${a.viewCount}×` : 'Not opened yet'}
+                          </p>
+                        ) : null}
                       </td>
                       <td className="px-3 py-3 text-right font-mono text-sm tabular-nums text-ink">
                         {a.totalCents ? formatUSD(a.totalCents) : '—'}
