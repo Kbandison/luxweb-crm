@@ -42,9 +42,29 @@ export async function GET(req: Request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
+  // Change orders lapse the same way. Nothing else changes when one does —
+  // the agreement it would have amended stands as signed.
+  const { data: lapsedOrders } = await sb
+    .from('change_orders')
+    .update({ status: 'expired' })
+    .eq('status', 'sent')
+    .not('expires_at', 'is', null)
+    .lt('expires_at', nowIso)
+    .select('id');
+  for (const order of (lapsedOrders ?? []) as { id: string }[]) {
+    await writeAudit({
+      actor_id: null,
+      action: 'update',
+      entity_type: 'change_order',
+      entity_id: order.id,
+      diff: { auto_expired: true, at: nowIso },
+    });
+  }
+  const expiredOrders = (lapsedOrders ?? []).length;
+
   const rows = (data ?? []) as { id: string }[];
   if (rows.length === 0) {
-    return Response.json({ ok: true, expired: 0 });
+    return Response.json({ ok: true, expired: 0, expired_change_orders: expiredOrders });
   }
 
   const ids = rows.map((r) => r.id);
@@ -82,5 +102,5 @@ export async function GET(req: Request) {
     });
   }
 
-  return Response.json({ ok: true, expired: ids.length });
+  return Response.json({ ok: true, expired: ids.length, expired_change_orders: expiredOrders });
 }

@@ -34,6 +34,8 @@ export type AgreementPdfInput = {
   bodySha256: string | null;
   contractor: PdfSigner;
   client: PdfSigner;
+  /** How the document names itself in the footer and audit trail. Defaults to "Agreement v{version}". */
+  documentLabel?: string;
 };
 
 const ET = new Intl.DateTimeFormat('en-US', {
@@ -192,9 +194,10 @@ function AuditRow({ label, signer }: { label: string; signer: PdfSigner }) {
 function AgreementPdf(props: AgreementPdfInput) {
   const blocks = parseBlocks(props.bodyMd);
   const shortHash = props.bodySha256 ? props.bodySha256.slice(0, 16) : 'n/a';
+  const label = props.documentLabel ?? `Agreement v${props.agreementVersion}`;
   return (
     <Document
-      title={pdfSafe(`${props.title} — Agreement v${props.agreementVersion}`)}
+      title={pdfSafe(`${props.title} — ${label}`)}
       author="LuxWeb Studio LLC"
       creator="LuxWeb client portal"
     >
@@ -202,7 +205,7 @@ function AgreementPdf(props: AgreementPdfInput) {
         {/* Repeats on every page — fixed elements go first so react-pdf
             lays them out before the content that wraps across pages. */}
         <Text style={s.footerLeft} fixed>
-          {pdfSafe(props.title)} · Agreement v{props.agreementVersion} · {shortHash}
+          {pdfSafe(props.title)} · {pdfSafe(label)} · {shortHash}
         </Text>
         <Text
           style={s.footerRight}
@@ -222,13 +225,13 @@ function AgreementPdf(props: AgreementPdfInput) {
         <View break>
           <Text style={s.h2}>Signature audit trail</Text>
           <Text style={s.p}>
-            This record accompanies the Agreement above. Each party signed
+            This record accompanies the document above. Each party signed
             electronically in the LuxWeb client portal by typing their full
             name and affirming they agree to be bound.
           </Text>
-          <Text style={[s.p, s.bold]}>Document fingerprint (SHA-256 of the Agreement text)</Text>
+          <Text style={[s.p, s.bold]}>Document fingerprint (SHA-256 of the document text)</Text>
           <Text style={[s.small, s.mono]}>{props.bodySha256 ?? 'Not recorded'}</Text>
-          <Text style={s.small}>Agreement version {props.agreementVersion}</Text>
+          <Text style={s.small}>{pdfSafe(label)}</Text>
           <AuditRow label="Contractor" signer={props.contractor} />
           <AuditRow label="Client" signer={props.client} />
         </View>

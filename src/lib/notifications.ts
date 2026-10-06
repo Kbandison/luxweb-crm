@@ -56,6 +56,7 @@ import AgreementChangesRequestedEmail, {
 import AgreementReminderEmail, {
   agreementReminderSubject,
 } from '@/emails/agreement-reminder-email';
+import ChangeOrderEmail, { changeOrderSubject } from '@/emails/change-order-email';
 
 /* -------------------------------------------------------------------------
  * Event shapes
@@ -269,6 +270,32 @@ export type NotifyEvent =
       contractPath: string;
     }
   | {
+      // Admin alert: an automatic invoice was blocked by the overcharge guard.
+      type: 'contract_billing_blocked';
+      userId: string;
+      contractId: string;
+      clientName: string;
+      title: string;
+      message: string;
+      path: string;
+    }
+  | {
+      // Change order. 'change_order' is the client's "ready to sign";
+      // 'change_order_update' is the studio's signed / declined alert — a
+      // separate type so it routes to the alerts inbox like other alerts.
+      type: 'change_order' | 'change_order_update';
+      kind: 'ready' | 'signed' | 'declined';
+      userId: string;
+      changeOrderId: string;
+      clientName: string;
+      number: number;
+      title: string;
+      amountCents: number;
+      expiresAt?: string | null;
+      reason?: string | null;
+      path: string;
+    }
+  | {
       // Admin alert: a client signed, but raising the deposit invoice failed.
       type: 'deposit_invoice_failed';
       userId: string;
@@ -277,6 +304,8 @@ export type NotifyEvent =
       title: string;
       message: string;
       contractPath: string;
+      /** Overrides "the deposit invoice didn't go out" (e.g. a change order's). */
+      problem?: string;
     }
   | {
       type: 'care_plan_activated';
@@ -377,7 +406,11 @@ function subjectKeyFor(event: NotifyEvent): { field: string; value: string } | n
     case 'agreement_changes_requested':
     case 'agreement_viewed':
     case 'agreement_reminder':
+    case 'contract_billing_blocked':
       return { field: 'contractId', value: event.contractId };
+    case 'change_order':
+    case 'change_order_update':
+      return { field: 'changeOrderId', value: event.changeOrderId };
     case 'care_plan_activated':
       return { field: 'subscriptionId', value: event.subscriptionId };
     case 'project_completed':
@@ -402,6 +435,7 @@ const CATEGORY_BY_TYPE: Record<NotifyEvent['type'], EmailCategory> = {
   contract_pending_client_signature: 'update',
   agreement_withdrawn: 'update',
   agreement_reminder: 'update',
+  change_order: 'update',
   milestone_updated: 'update',
   revision_updated: 'update',
   invite: 'update',
@@ -412,6 +446,8 @@ const CATEGORY_BY_TYPE: Record<NotifyEvent['type'], EmailCategory> = {
   contract_signed: 'admin',
   deposit_invoice_failed: 'admin',
   agreement_changes_requested: 'admin',
+  contract_billing_blocked: 'admin',
+  change_order_update: 'admin',
   agreement_viewed: 'admin',
   revision_requested: 'admin',
   payment_received: 'admin',
@@ -785,11 +821,42 @@ function renderTemplate(
         react: createElement(AgreementReminderEmail, props),
       };
     }
+    case 'contract_billing_blocked': {
+      const props = {
+        clientName: event.clientName,
+        title: event.title,
+        problem: 'an invoice was blocked',
+        detail: event.message,
+        contractUrl: appUrl(event.path),
+      };
+      return {
+        subject: agreementAlertSubject(props),
+        react: createElement(AgreementAlertEmail, props),
+      };
+    }
+    case 'change_order':
+    case 'change_order_update': {
+      const props = {
+        kind: event.kind,
+        recipientName,
+        clientName: event.clientName,
+        number: event.number,
+        title: event.title,
+        amountCents: event.amountCents,
+        expiresAt: event.expiresAt ?? null,
+        reason: event.reason ?? null,
+        url: appUrl(event.path),
+      };
+      return {
+        subject: changeOrderSubject(props),
+        react: createElement(ChangeOrderEmail, props),
+      };
+    }
     case 'deposit_invoice_failed': {
       const props = {
         clientName: event.clientName,
         title: event.title,
-        problem: "the deposit invoice didn't go out",
+        problem: event.problem ?? "the deposit invoice didn't go out",
         detail: event.message,
         contractUrl: appUrl(event.contractPath),
       };

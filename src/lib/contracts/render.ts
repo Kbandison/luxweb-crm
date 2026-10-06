@@ -108,7 +108,7 @@ export function deriveContractVariables(
  * a blank line in proposal.scope.design pushed the second paragraph out
  * of the deliverables bullet entirely.
  */
-function flattenLine(input: string | null | undefined): string {
+export function flattenLine(input: string | null | undefined): string {
   const raw = (input ?? '').trim();
   if (!raw) return '—';
   const paragraphs = raw
@@ -261,7 +261,7 @@ const DEPOSIT_CLAUSE =
  * its description, and signs through the contact — who is named with their
  * title so it's clear they sign on its behalf.
  */
-function renderClientParty(content: ProposalContent): string {
+export function renderClientParty(content: ProposalContent): string {
   const party = clientParty(content);
   const person = flattenLine(content.client.name);
   const email = flattenLine(content.client.contact_email);
@@ -281,7 +281,7 @@ function renderClientParty(content: ProposalContent): string {
 }
 
 /** The CLIENT signature line: the person, or "Business, by Person, Title". */
-function renderSignatureParty(content: ProposalContent): string {
+export function renderSignatureParty(content: ProposalContent): string {
   const party = clientParty(content);
   const person = flattenLine(content.client.name);
   if (party.kind !== 'business') return person;
@@ -290,7 +290,7 @@ function renderSignatureParty(content: ProposalContent): string {
 }
 
 /** Markdown bullets, one per non-empty line; empty string when none. */
-function renderBullets(items: readonly string[] | undefined): string {
+export function renderBullets(items: readonly string[] | undefined): string {
   return (items ?? [])
     .map((s) => flattenLine(s))
     .filter((s) => s !== '—')

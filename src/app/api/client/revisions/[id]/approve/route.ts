@@ -5,6 +5,7 @@ import { notify, getAdminUserIds } from '@/lib/notifications';
 import { createAndSendInvoice } from '@/lib/invoices/create';
 import { projectInvoiceDueDays } from '@/lib/contracts/terms';
 import { completeUnbilledMilestone } from '@/lib/milestones/advance-on-payment';
+import { alertBillingBlocked, checkAutomaticInvoice } from '@/lib/change-orders/billing';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -100,7 +101,7 @@ export async function POST(
     // Look up the milestone's payment info.
     const { data: ms } = await sb
       .from('milestones')
-      .select('id, title, amount_cents, invoice_id')
+      .select('id, title, amount_cents, invoice_id, source')
       .eq('id', r.milestone_id)
       .maybeSingle();
     type MR = {
@@ -108,6 +109,7 @@ export async function POST(
       title: string;
       amount_cents: number | string | null;
       invoice_id: string | null;
+      source: string | null;
     };
     const m = ms as unknown as MR | null;
 
@@ -128,6 +130,23 @@ export async function POST(
         if (existingStatus && existingStatus !== 'void') {
           needsNew = false;
           invoiceId = m.invoice_id;
+        }
+      }
+
+      // Overcharge guard: agreement and change-order payments must fit the
+      // signed contract. Manual milestones are billed outside it (§ 1.2).
+      if (needsNew && m.source !== 'manual') {
+        const fits = await checkAutomaticInvoice(r.project_id, Number(m.amount_cents));
+        if (!fits.ok) {
+          needsNew = false;
+          console.warn('[approve] invoice blocked by contract guard:', fits.message);
+          await alertBillingBlocked({
+            contractId: fits.contractId,
+            clientName: contact.full_name,
+            title: `${m.title} — ${project?.name ?? 'Project'}`,
+            message: fits.message,
+            path: `/admin/projects/${r.project_id}/invoices`,
+          });
         }
       }
 

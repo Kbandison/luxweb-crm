@@ -503,6 +503,24 @@ function describe(n: Notification): Described {
         body: str('title') || undefined,
         href: str('contractPath') ? normalizePath(str('contractPath')) : undefined,
       };
+    case 'contract_billing_blocked':
+      return {
+        title: 'Invoice blocked — past the contract',
+        body: [str('title'), str('clientName')].filter(Boolean).join(' · ') || undefined,
+        href: str('path') ? normalizePath(str('path')) : undefined,
+      };
+    case 'change_order':
+    case 'change_order_update':
+      return {
+        title:
+          str('kind') === 'ready'
+            ? `Change order #${num('number')} ready to sign`
+            : str('kind') === 'signed'
+              ? `${str('clientName')} signed change order #${num('number')}`
+              : `${str('clientName')} declined change order #${num('number')}`,
+        body: str('title') || undefined,
+        href: str('path') ? normalizePath(str('path')) : undefined,
+      };
     case 'deposit_invoice_failed':
       return {
         title: `${str('clientName')} signed — deposit invoice failed`,

@@ -9,7 +9,14 @@ import { useToast } from '@/components/ui/toast';
  * and/or the signed-copy email. Safe to press more than once: each step
  * claims its own work on the server.
  */
-export function FinishSetupButton({ contractId }: { contractId: string }) {
+export function FinishSetupButton({
+  contractId,
+  endpoint,
+}: {
+  contractId?: string;
+  /** Defaults to the contract's finish-setup endpoint. */
+  endpoint?: string;
+}) {
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -17,20 +24,21 @@ export function FinishSetupButton({ contractId }: { contractId: string }) {
   async function run() {
     setBusy(true);
     try {
-      const res = await fetch(`/api/admin/contracts/${contractId}/finish-setup`, {
+      const res = await fetch(endpoint ?? `/api/admin/contracts/${contractId}/finish-setup`, {
         method: 'POST',
       });
       const j = (await res.json().catch(() => ({}))) as {
         error?: string;
         deposit_state?: string | null;
+        invoice_state?: string | null;
         executed_copy_sent?: boolean;
       };
       if (!res.ok) {
         toast.error("Couldn't finish setup", j.error ?? 'Try again in a moment.');
         return;
       }
-      if (j.deposit_state === 'failed') {
-        toast.error('Deposit invoice still failing', 'See the error on this page.');
+      if (j.deposit_state === 'failed' || j.invoice_state === 'failed') {
+        toast.error('Invoice still failing', 'See the error on this page.');
       } else {
         toast.success('Setup finished');
       }
