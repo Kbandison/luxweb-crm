@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   loadStripe,
@@ -433,8 +433,12 @@ function UpdatePaymentMethodForm({
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Mint the SetupIntent client_secret on first render.
-  useMemo(() => {
+  // Mint the SetupIntent client_secret once the form mounts. This is a side
+  // effect (it creates a SetupIntent in Stripe), so it belongs in an effect:
+  // it used to run inside useMemo, which React may call more than once and
+  // never cleans up — so the cancelled guard never fired and a re-render
+  // could mint a second SetupIntent.
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       try {

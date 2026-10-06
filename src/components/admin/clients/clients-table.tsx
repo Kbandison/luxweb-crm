@@ -1,6 +1,7 @@
 'use client';
 import { useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { ClientRow } from '@/lib/queries/admin';
 import type { SortDir } from '@/lib/list-params';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -30,6 +31,7 @@ export function ClientsTable({
   /** Called with the currently-visible (filtered) rows. */
   onToggleAll?: (rows: ClientRow[]) => void;
 }) {
+  const router = useRouter();
   const { q, setQ } = useUrlSearchInput();
 
   // Local fast-path filter: the server already applies `q` on the next
@@ -158,7 +160,7 @@ export function ClientsTable({
                     // depth so a stray label click doesn't navigate either).
                     const target = e.target as HTMLElement;
                     if (target.closest('input,label,a,button')) return;
-                    window.location.href = `/admin/clients/${c.id}`;
+                    router.push(`/admin/clients/${c.id}`);
                   }}
                   className="cursor-pointer border-b border-border bg-surface transition-colors hover:bg-copper-soft/15"
                 >
