@@ -305,7 +305,7 @@ export function defaultProposalContent(opts: {
     care_plan: { ...DEFAULT_CARE_PLAN },
     assumptions: [
       'Client will provide final copy, imagery, and brand assets within three (3) business days of request.',
-      'One consolidated feedback round per phase; additional rounds billed at the hourly rate.',
+      'Two (2) consolidated revision rounds per phase; additional rounds billed at the hourly rate.',
       "Hosting, domain, and SSL costs are the client's responsibility.",
     ],
     why_luxweb: [],
