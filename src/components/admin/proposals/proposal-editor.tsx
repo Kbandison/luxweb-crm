@@ -620,7 +620,10 @@ function EditorForm({
               onChange={(e) => patch('prepared_date', e.target.value)}
             />
           </Field>
-          <Field label="Agreement version">
+          <Field
+            label="Agreement version"
+            hint="Latest is 1.4 — earlier versions render their own template"
+          >
             <Input
               value={content.agreement_version}
               onChange={(e) => patch('agreement_version', e.target.value)}
@@ -691,6 +694,20 @@ function EditorForm({
                   'post_launch_support_months',
                   Number(e.target.value) || 0,
                 )
+              }
+            />
+          </Field>
+          <Field
+            label="Site-specific deliverables"
+            span={2}
+            hint="One per line — what this client asked for on their site"
+          >
+            <LineArea
+              rows={4}
+              value={content.scope.site_deliverables ?? []}
+              onChange={(lines) => patchScope('site_deliverables', lines)}
+              placeholder={
+                'Online booking with deposit\nStaff bios page\nGallery of past work\nMenu with PDF download'
               }
             />
           </Field>
@@ -1114,6 +1131,23 @@ function InvestmentSection({
     }));
   }
 
+  /**
+   * Flag a milestone as already paid outside the portal. Signing skips
+   * raising an invoice for it, so the client isn't billed for money they've
+   * already handed over.
+   */
+  function setMilestoneCollected(index: number, collected: boolean) {
+    setContent((c) => ({
+      ...c,
+      investment: {
+        ...c.investment,
+        milestones: c.investment.milestones.map((m, i) =>
+          i === index ? { ...m, collected } : m,
+        ),
+      },
+    }));
+  }
+
   // Milestones are seeded from the Timeline section (one per phase). They can
   // be pruned here independently — removing one just leaves its phase unpaid
   // and doesn't touch the timeline.
@@ -1203,6 +1237,9 @@ function InvestmentSection({
             <p className="mt-1 font-sans text-xs text-ink-subtle">
               Seeded one per timeline phase and named after it. Remove any
               phase you don&apos;t bill for; the phase stays in the timeline.
+              Tick <span className="text-ink-muted">Collected</span> on
+              anything the client already paid — signing won&apos;t invoice
+              for it.
             </p>
           </div>
           {ms.length > 1 ? (
@@ -1227,7 +1264,7 @@ function InvestmentSection({
           {ms.map((m, i) => (
             <div
               key={i}
-              className="grid items-center gap-3 sm:grid-cols-[1fr_90px_140px_1fr_auto]"
+              className="grid items-center gap-3 sm:grid-cols-[1fr_90px_140px_1fr_auto_auto]"
             >
               <Input
                 value={m.label}
@@ -1254,6 +1291,20 @@ function InvestmentSection({
                 placeholder="Due (e.g., On signing)"
                 onChange={(e) => setMilestoneField(i, 'due', e.target.value)}
               />
+              <label
+                className="flex items-center gap-2 whitespace-nowrap"
+                title="Already paid outside the portal — signing won't invoice for it"
+              >
+                <input
+                  type="checkbox"
+                  checked={m.collected === true}
+                  onChange={(e) => setMilestoneCollected(i, e.target.checked)}
+                  className="h-4 w-4 rounded border-border accent-copper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/30"
+                />
+                <span className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
+                  Collected
+                </span>
+              </label>
               <Button
                 type="button"
                 variant="ghost"

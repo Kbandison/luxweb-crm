@@ -11,6 +11,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // `server-only` is provided by the Next compiler, not installed as a
+      // package, so server modules can't be imported under vitest without it.
+      'server-only': path.resolve(
+        __dirname,
+        './node_modules/next/dist/compiled/server-only/empty.js',
+      ),
     },
   },
 });

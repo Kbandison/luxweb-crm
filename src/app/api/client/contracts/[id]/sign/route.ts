@@ -5,6 +5,10 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserIds } from '@/lib/notifications';
 import { createAndSendInvoice } from '@/lib/invoices/create';
+import {
+  depositForSigning,
+  seedStatusForMilestones,
+} from '@/lib/proposals/on-sign';
 import { namesMatch } from '@/lib/signatures/match';
 import type { ProposalContent } from '@/lib/types/proposal';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -194,28 +198,34 @@ export async function POST(
           },
         });
 
-        // Seed milestones from the proposal's payment plan. First one
-        // starts 'pending' (active work). Rest start 'inactive' (locked);
-        // they auto-unlock one-by-one as payments land via the chain
-        // advance. source='proposal' enrolls them in the auto-flip;
-        // admin-added milestones default to 'manual' and stay manual-only.
+        // Seed milestones from the proposal's payment plan. Milestones the
+        // client already paid (marked collected on the proposal) start
+        // 'done' — the work they billed for is behind us. The first one
+        // still outstanding starts 'pending' (active work); the rest start
+        // 'inactive' (locked) and auto-unlock one-by-one as payments land
+        // via the chain advance. source='proposal' enrolls them in the
+        // auto-flip; admin-added milestones default to 'manual'.
         const propMs = content?.investment?.milestones ?? [];
         if (propMs.length > 0) {
+          const seedStatuses = seedStatusForMilestones(propMs);
+          const seededAt = new Date().toISOString();
           const rows = propMs.map((m, i) => {
             const dollars = (m.amount_cents / 100).toFixed(
               m.amount_cents % 100 === 0 ? 0 : 2,
             );
             const descBits = [`$${dollars}`];
             if (m.due) descBits.push(m.due);
+            if (m.collected) descBits.push('paid prior to signing');
             return {
               project_id: projectId,
               title: m.label || `Milestone ${i + 1}`,
               description: descBits.join(' · '),
-              status: i === 0 ? 'pending' : 'inactive',
+              status: seedStatuses[i],
               source: 'proposal',
               sort_order: i,
               is_client_visible: true,
               amount_cents: m.amount_cents,
+              completed_at: m.collected ? seededAt : null,
             };
           });
           try {
@@ -241,33 +251,24 @@ export async function POST(
       .eq('id', id)
       .is('project_id', null);
 
-    // Generate the deposit invoice. Use the first milestone if defined,
-    // otherwise fall back to the full proposal total.
-    let depositCents = 0;
-    let depositLabel = 'Deposit';
+    // Raise the invoice that's due at signature — normally the deposit.
+    // Returns null when the proposal marks it collected, i.e. the client
+    // already paid it outside the portal and must not be billed again.
     const content =
       (proposal?.content_json ?? null) as ProposalContent | null;
-    if (content) {
-      const ms = content.investment.milestones ?? [];
-      const first = ms.find((m) => m.amount_cents > 0);
-      if (first) {
-        depositCents = first.amount_cents;
-        depositLabel = first.label || 'Deposit';
-      } else {
-        depositCents = content.investment.total_cents;
-        depositLabel = `Project investment — ${proposal?.title ?? 'agreement'}`;
-      }
-    } else if (proposal?.total_cents != null) {
-      depositCents = Number(proposal.total_cents);
-    }
+    const deposit = depositForSigning(
+      content,
+      proposal?.total_cents == null ? null : Number(proposal.total_cents),
+      `Project investment — ${proposal?.title ?? 'agreement'}`,
+    );
 
     let depositInvoiceId: string | null = null;
-    if (depositCents > 0) {
+    if (deposit) {
       try {
         const result = await createAndSendInvoice({
           projectId,
-          amountCents: depositCents,
-          description: `${depositLabel} — ${proposal?.title ?? 'Agreement'}`,
+          amountCents: deposit.amountCents,
+          description: `${deposit.label} — ${proposal?.title ?? 'Agreement'}`,
           actorId: null,
           source: 'contract_signed_auto',
         });

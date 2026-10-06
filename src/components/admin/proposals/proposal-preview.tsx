@@ -26,6 +26,8 @@ export function ProposalPreview({
 }) {
   const preparedDate = formatDateLong(content.prepared_date);
   const timelinePhases = getTimelinePhases(content.timeline);
+  // Absent on proposals saved before the field existed.
+  const siteDeliverables = content.scope.site_deliverables ?? [];
   // Optional — older proposals predate this field, so treat it as maybe-absent.
   const carePlan = content.care_plan as ProposalCarePlan | undefined;
 
@@ -100,6 +102,18 @@ export function ProposalPreview({
 
       {/* Scope */}
       <Section number="03" title="Scope">
+        {siteDeliverables.length > 0 ? (
+          <Card padding="lg" rounded="xl" className="mb-4 print-avoid-break">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-copper">
+              Site-specific deliverables
+            </p>
+            <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-ink">
+              {siteDeliverables.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </Card>
+        ) : null}
         <dl className="grid gap-x-8 gap-y-5 rounded-xl border border-border bg-surface p-6 sm:grid-cols-2">
           <Field label="Pages" value={String(content.scope.pages_count)} mono />
           <Field
@@ -218,6 +232,11 @@ export function ProposalPreview({
                       <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
                         {m.due}
                       </p>
+                      {m.collected ? (
+                        <p className="mt-1 font-mono text-[10px] uppercase tracking-meta text-success">
+                          Received — no payment due
+                        </p>
+                      ) : null}
                     </div>
                     <div className="text-right">
                       <p className="font-mono text-sm font-medium tabular-nums text-ink">
