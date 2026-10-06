@@ -20,6 +20,9 @@ function content(
   });
   c.investment.total_cents = totalCents;
   c.investment.milestones = milestones;
+  // These cases exercise the legacy layout (first billable milestone is the
+  // deposit); the phase-plan cases set plan_version back explicitly.
+  delete c.investment.plan_version;
   return c;
 }
 
@@ -205,5 +208,47 @@ describe('milestoneSeedRows', () => {
     expect(deposit.status).toBe('done');
     expect(deposit.completed_at).toBe('2026-10-06T00:00:00.000Z');
     expect(deposit.description).toBe('$2500 · On signing · paid prior to signing');
+  });
+});
+
+describe('depositForSigning on a phase plan', () => {
+  function phasePlan(
+    milestones: ProposalContent['investment']['milestones'],
+  ): ProposalContent {
+    const c = content(milestones, 400000);
+    c.investment.plan_version = 2;
+    return c;
+  }
+  const DEP = { kind: 'deposit' as const, label: 'Deposit', percent: 50, amount_cents: 200000, due: 'On signing' };
+  const DESIGN = { kind: 'phase' as const, phase_id: 'p0', label: 'Design', percent: 25, amount_cents: 100000, due: 'On approval' };
+  const BUILD = { kind: 'phase' as const, phase_id: 'p1', label: 'Build', percent: 0, amount_cents: 0, due: 'On approval' };
+  const LAUNCH_P = { kind: 'phase' as const, phase_id: 'p2', label: 'Launch', percent: 25, amount_cents: 100000, due: 'On approval' };
+
+  it('bills the deposit row', () => {
+    expect(depositForSigning(phasePlan([DEP, DESIGN, BUILD, LAUNCH_P]), null, 'x')).toEqual({
+      amountCents: 200000,
+      label: 'Deposit',
+      milestoneIndex: 0,
+    });
+  });
+
+  it('bills nothing at signing when there is no deposit', () => {
+    // Phase payments wait for approval — never billed at signature.
+    expect(depositForSigning(phasePlan([DESIGN, BUILD, LAUNCH_P]), null, 'x')).toBeNull();
+  });
+
+  it('bills nothing when the deposit was collected', () => {
+    expect(
+      depositForSigning(phasePlan([{ ...DEP, collected: true }, DESIGN, LAUNCH_P]), null, 'x'),
+    ).toBeNull();
+  });
+
+  it('seeds the deposit pending and every phase locked, $0 phases included', () => {
+    expect(seedStatusForMilestones([DEP, DESIGN, BUILD, LAUNCH_P])).toEqual([
+      'pending',
+      'inactive',
+      'inactive',
+      'inactive',
+    ]);
   });
 });

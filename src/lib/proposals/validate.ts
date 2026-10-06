@@ -1,4 +1,9 @@
-import type { ProposalContent } from '@/lib/types/proposal';
+import {
+  clientParty,
+  getTimelinePhases,
+  isPhasePlan,
+  type ProposalContent,
+} from '@/lib/types/proposal';
 import { formatUSD } from '@/lib/formatters';
 
 /**
@@ -22,8 +27,28 @@ export function problemsBeforeSend(content: ProposalContent): string[] {
     problems.push(`"${email}" doesn't look like an email address.`);
   }
 
+  const party = clientParty(content);
+  if (party.kind === 'business' && !party.business_name?.trim()) {
+    problems.push("Add the business's legal name, or switch the client to an individual.");
+  }
+
   if (!content.prepared_date) {
     problems.push('Set the prepared date.');
+  }
+
+  const rate = content.investment?.hourly_rate_cents;
+  if (rate != null && !(rate > 0)) {
+    problems.push('Set an hourly rate — § 1.2 bills out-of-scope work at it.');
+  }
+
+  if (isPhasePlan(content)) {
+    if (getTimelinePhases(content.timeline).length === 0) {
+      problems.push('Add at least one phase to the timeline.');
+    }
+    const deposit = content.investment.milestones.find((m) => m.kind === 'deposit');
+    if (deposit && !(deposit.amount_cents > 0)) {
+      problems.push('The deposit is $0 — set an amount or remove it.');
+    }
   }
 
   const total = content.investment?.total_cents ?? 0;

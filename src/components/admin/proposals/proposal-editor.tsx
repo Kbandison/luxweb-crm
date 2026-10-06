@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type {
+  ClientParty,
   ProposalContent,
   ProposalCarePlan,
   ProposalStatus,
@@ -10,6 +11,9 @@ import type {
 } from '@/lib/types/proposal';
 import {
   DEFAULT_CARE_PLAN,
+  clientParty,
+  hourlyRateCents,
+  isPhasePlan,
   pairTimelineAndMilestones,
   withCarePlanDefaults,
 } from '@/lib/types/proposal';
@@ -21,13 +25,14 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast';
 import { ProposalStatusPill } from './proposal-status-pill';
 import { ProposalPreview } from './proposal-preview';
+import { ContractBody } from '@/components/contract/contract-body';
 import { SignAgreementButton } from './sign-agreement-button';
 import { formatDate } from '@/lib/formatters';
 import { CURRENT_AGREEMENT_VERSION } from '@/lib/contracts/versions';
 import { OFFLINE_PAYMENT_METHODS } from '@/lib/invoices/payment-methods';
 import { cn } from '@/lib/utils';
 
-type Mode = 'edit' | 'preview';
+type Mode = 'edit' | 'preview' | 'contract';
 
 export function ProposalEditor({
   proposalId,
@@ -323,6 +328,19 @@ export function ProposalEditor({
             >
               Preview
             </button>
+            <button
+              type="button"
+              onClick={() => setMode('contract')}
+              title="The Agreement exactly as this draft generates it"
+              className={cn(
+                'border-l border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta transition-colors',
+                mode === 'contract'
+                  ? 'bg-copper-soft/60 text-copper'
+                  : 'bg-surface text-ink-muted hover:text-ink',
+              )}
+            >
+              Contract
+            </button>
           </div>
           <Button
             type="button"
@@ -428,7 +446,9 @@ export function ProposalEditor({
         </div>
       ) : null}
 
-      {mode === 'preview' ? (
+      {mode === 'contract' ? (
+        <AgreementPreview proposalId={proposalId} content={content} />
+      ) : mode === 'preview' ? (
         <ProposalPreview
           title={title}
           content={content}
@@ -574,13 +594,32 @@ function EditorForm({
     value: ProposalContent['scope'][K],
   ) => void;
 }) {
-  // Adding a phase also seeds its payment milestone, linked by a stable id so
-  // the two stay paired even after milestones are pruned from the Investment
-  // section. Removing a phase removes its milestone too; removing a milestone
-  // on its own (in Investment) just leaves the phase unpaid.
+  const party = clientParty(content);
+  function setParty(next: Partial<ClientParty>) {
+    setContent((c) => ({
+      ...c,
+      client: { ...c.client, party: { ...clientParty(c), ...next } },
+    }));
+  }
+
+  // Older drafts carry a sales pitch; new agreements don't. Only show those
+  // editors when there's something in them to edit or clear.
+  const hasLegacyPitch =
+    Boolean(content.executive_summary?.trim()) ||
+    content.project_goals.length > 0 ||
+    content.why_luxweb.length > 0 ||
+    content.next_steps.length > 0;
+
+  // Adding a phase also seeds its payment milestone, linked by a stable id.
+  // Removing a phase removes its milestone too. On a phase plan every phase
+  // keeps its payment row (set it to $0 to not bill it); a legacy plan's
+  // rows can still be pruned on their own in Investment.
   function addPhase() {
     setContent((c) => {
       const id = makePhaseId();
+      const row = isPhasePlan(c)
+        ? { kind: 'phase' as const, label: '', percent: 0, amount_cents: 0, due: 'On approval', phase_id: id }
+        : { label: '', percent: 0, amount_cents: 0, due: '', phase_id: id };
       return {
         ...c,
         timeline: {
@@ -589,10 +628,7 @@ function EditorForm({
         },
         investment: {
           ...c.investment,
-          milestones: [
-            ...c.investment.milestones,
-            { label: '', percent: 0, amount_cents: 0, due: '', phase_id: id },
-          ],
+          milestones: [...c.investment.milestones, row],
         },
       };
     });
@@ -619,18 +655,65 @@ function EditorForm({
 
   return (
     <div className="space-y-12">
-      {/* Header */}
-      <FormSection title="Proposal header">
+      {/* Agreement details */}
+      <FormSection title="Agreement details">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Title" span={2}>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={200}
-              placeholder="Signature site build · Proposal v1"
+              placeholder="Signature site build"
             />
           </Field>
-          <Field label="Client name">
+          <Field label="Client signs as" span={2}>
+            <div className="inline-flex overflow-hidden rounded-md border border-border">
+              {(['individual', 'business'] as const).map((kind, i) => (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => setParty({ kind })}
+                  aria-pressed={party.kind === kind}
+                  className={cn(
+                    'px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta transition-colors',
+                    i > 0 && 'border-l border-border',
+                    party.kind === kind
+                      ? 'bg-copper-soft/60 text-copper'
+                      : 'bg-surface text-ink-muted hover:text-ink',
+                  )}
+                >
+                  {kind === 'individual' ? 'Themselves' : 'A business'}
+                </button>
+              ))}
+            </div>
+          </Field>
+          {party.kind === 'business' ? (
+            <>
+              <Field label="Business legal name">
+                <Input
+                  value={party.business_name ?? ''}
+                  onChange={(e) => setParty({ business_name: e.target.value })}
+                  placeholder="Aurora Dental LLC"
+                />
+              </Field>
+              <Field
+                label="Business description"
+                hint="Optional — how the business is described in the parties block"
+              >
+                <Input
+                  value={party.business_description ?? ''}
+                  onChange={(e) =>
+                    setParty({ business_description: e.target.value })
+                  }
+                  placeholder="a Georgia limited liability company"
+                />
+              </Field>
+            </>
+          ) : null}
+          <Field
+            label="Signer's full name"
+            hint="Must match the contact's name on file — it's what they type to sign"
+          >
             <Input
               value={content.client.name}
               onChange={(e) =>
@@ -638,6 +721,15 @@ function EditorForm({
               }
             />
           </Field>
+          {party.kind === 'business' ? (
+            <Field label="Signer's title">
+              <Input
+                value={party.signer_title ?? ''}
+                onChange={(e) => setParty({ signer_title: e.target.value })}
+                placeholder="Owner"
+              />
+            </Field>
+          ) : null}
           <Field label="Contact email">
             <Input
               type="email"
@@ -668,42 +760,16 @@ function EditorForm({
         </div>
       </FormSection>
 
-      {/* Executive summary */}
-      <FormSection title="Executive summary">
-        <TextArea
-          rows={5}
-          value={content.executive_summary}
-          onChange={(v) => patch('executive_summary', v)}
-          placeholder="One to three paragraphs framing the engagement."
-        />
-      </FormSection>
-
-      {/* Project goals */}
+      {/* Note to client */}
       <FormSection
-        title="Project goals"
-        description="Add structured goals with a short title and a sentence of detail."
+        title="Note to client"
+        description="Optional. A personal line shown above the agreement — it isn't part of the contract."
       >
-        <RepeatingList
-          items={content.project_goals}
-          onChange={(next) => patch('project_goals', next)}
-          newItem={() => ({ title: '', description: '' })}
-          addLabel="Add goal"
-          renderItem={(item, update) => (
-            <div className="grid gap-3 sm:grid-cols-[220px_1fr]">
-              <Input
-                value={item.title}
-                placeholder="Goal title"
-                onChange={(e) => update({ ...item, title: e.target.value })}
-              />
-              <Input
-                value={item.description}
-                placeholder="Description"
-                onChange={(e) =>
-                  update({ ...item, description: e.target.value })
-                }
-              />
-            </div>
-          )}
+        <TextArea
+          rows={3}
+          value={content.note_to_client ?? ''}
+          onChange={(v) => patch('note_to_client', v)}
+          placeholder="Great talking through the booking flow on Tuesday — here's everything we covered."
         />
       </FormSection>
 
@@ -787,7 +853,7 @@ function EditorForm({
       {/* Out of scope */}
       <FormSection
         title="Out of scope"
-        description="Things this engagement doesn't cover. One per line."
+        description="Things this engagement doesn't cover. One per line — printed word for word in the Agreement (§ 1.3), which always adds the ADA / WCAG exclusion."
       >
         <LineArea
           rows={4}
@@ -800,7 +866,11 @@ function EditorForm({
       {/* Timeline */}
       <FormSection
         title="Timeline"
-        description="Each phase seeds a payment milestone named after it. Add or remove phases here; set the amounts — and remove any phase you don't bill for — in the Investment section below."
+        description={
+          isPhasePlan(content)
+            ? 'Each phase is a milestone the client approves, with its own payment (which can be $0). Add or remove phases here; set the amounts in Investment below.'
+            : "Each phase seeds a payment milestone named after it. Add or remove phases here; set the amounts — and remove any phase you don't bill for — in the Investment section below."
+        }
       >
         <div className="space-y-5">
           {content.timeline.phases.length === 0 ? (
@@ -958,7 +1028,7 @@ function EditorForm({
       {/* Assumptions */}
       <FormSection
         title="Assumptions"
-        description="Things we're assuming. One per line."
+        description="What the price and schedule depend on. One per line — printed in the Agreement under Client Responsibilities (§ 5)."
       >
         <LineArea
           rows={3}
@@ -967,55 +1037,100 @@ function EditorForm({
         />
       </FormSection>
 
-      {/* Why LuxWeb */}
-      <FormSection
-        title="Why LuxWeb"
-        description="Differentiators to reinforce the pitch. Give each a short title and a sentence."
-      >
-        <RepeatingList
-          items={content.why_luxweb}
-          onChange={(next) => patch('why_luxweb', next)}
-          newItem={() => ({ title: '', description: '' })}
-          addLabel="Add reason"
-          renderItem={(item, update) => (
-            <div className="grid gap-3 sm:grid-cols-[220px_1fr]">
-              <Input
-                value={item.title}
-                placeholder="Reason title"
-                onChange={(e) => update({ ...item, title: e.target.value })}
+      {/* Legacy sales sections — older drafts only */}
+      {hasLegacyPitch ? (
+        <FormSection
+          title="Proposal pitch (older draft)"
+          description="Agreements no longer carry a sales pitch. This draft still has one, and the client sees it until you clear it. None of it is part of the contract."
+        >
+          <div className="space-y-6">
+            <Field label="Executive summary">
+              <TextArea
+                rows={4}
+                value={content.executive_summary}
+                onChange={(v) => patch('executive_summary', v)}
               />
-              <Input
-                value={item.description}
-                placeholder="Description"
-                onChange={(e) =>
-                  update({ ...item, description: e.target.value })
-                }
+            </Field>
+            <Field label="Project goals">
+              <RepeatingList
+                items={content.project_goals}
+                onChange={(next) => patch('project_goals', next)}
+                newItem={() => ({ title: '', description: '' })}
+                addLabel="Add goal"
+                renderItem={(item, update) => (
+                  <div className="grid gap-3 sm:grid-cols-[220px_1fr]">
+                    <Input
+                      value={item.title}
+                      placeholder="Goal title"
+                      onChange={(e) => update({ ...item, title: e.target.value })}
+                    />
+                    <Input
+                      value={item.description}
+                      placeholder="Description"
+                      onChange={(e) =>
+                        update({ ...item, description: e.target.value })
+                      }
+                    />
+                  </div>
+                )}
               />
-            </div>
-          )}
-        />
-      </FormSection>
-
-      {/* Next steps */}
-      <FormSection
-        title="Next steps"
-        description="What happens after sign-off. One per line."
-      >
-        <LineArea
-          rows={3}
-          value={content.next_steps}
-          onChange={(lines) => patch('next_steps', lines)}
-        />
-      </FormSection>
+            </Field>
+            <Field label="Why LuxWeb">
+              <RepeatingList
+                items={content.why_luxweb}
+                onChange={(next) => patch('why_luxweb', next)}
+                newItem={() => ({ title: '', description: '' })}
+                addLabel="Add reason"
+                renderItem={(item, update) => (
+                  <div className="grid gap-3 sm:grid-cols-[220px_1fr]">
+                    <Input
+                      value={item.title}
+                      placeholder="Reason title"
+                      onChange={(e) => update({ ...item, title: e.target.value })}
+                    />
+                    <Input
+                      value={item.description}
+                      placeholder="Description"
+                      onChange={(e) =>
+                        update({ ...item, description: e.target.value })
+                      }
+                    />
+                  </div>
+                )}
+              />
+            </Field>
+            <Field label="Next steps" hint="One per line">
+              <LineArea
+                rows={3}
+                value={content.next_steps}
+                onChange={(lines) => patch('next_steps', lines)}
+              />
+            </Field>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                setContent((c) => ({
+                  ...c,
+                  executive_summary: '',
+                  project_goals: [],
+                  why_luxweb: [],
+                  next_steps: [],
+                }))
+              }
+            >
+              Clear the pitch
+            </Button>
+          </div>
+        </FormSection>
+      ) : null}
     </div>
   );
 }
 
 /* ----------------------------- tiny helpers ----------------------------- */
 
-// Unique id for a freshly added phase ↔ milestone pair. Runs only in a
-// click handler (client), so crypto.randomUUID is available; the fallback
-// keeps it working in any odd environment.
 /** Today as YYYY-MM-DD in the studio's timezone — what a date input wants. */
 function todayInStudioTz(): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -1026,6 +1141,9 @@ function todayInStudioTz(): string {
   }).format(new Date());
 }
 
+// Unique id for a freshly added phase ↔ milestone pair. Runs only in a
+// click handler (client), so crypto.randomUUID is available; the fallback
+// keeps it working in any odd environment.
 function makePhaseId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -1227,9 +1345,34 @@ function InvestmentSection({
     }));
   }
 
-  // Milestones are seeded from the Timeline section (one per phase). They can
-  // be pruned here independently — removing one just leaves its phase unpaid
-  // and doesn't touch the timeline.
+  const phasePlan = isPhasePlan(content);
+  const hasDeposit = content.investment.milestones.some((m) => m.kind === 'deposit');
+
+  // Phase plan: the deposit is optional and sits first. Adding one starts
+  // it at $0 for the admin to set; the phase amounts aren't touched.
+  function addDeposit() {
+    setContent((c) => ({
+      ...c,
+      investment: {
+        ...c.investment,
+        milestones: [
+          { kind: 'deposit', label: 'Deposit', percent: 0, amount_cents: 0, due: 'On signing' },
+          ...c.investment.milestones,
+        ],
+      },
+    }));
+  }
+
+  function setHourlyRateCents(cents: number) {
+    setContent((c) => ({
+      ...c,
+      investment: { ...c.investment, hourly_rate_cents: cents },
+    }));
+  }
+
+  // Legacy plans: milestones were seeded one per phase and can be pruned
+  // here independently — removing one leaves its phase unpaid. Phase plans
+  // only remove the deposit this way; a phase's row goes with its phase.
   function removeMilestone(index: number) {
     setContent((c) => ({
       ...c,
@@ -1273,7 +1416,7 @@ function InvestmentSection({
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Field label="Total (USD)">
           <CurrencyInput cents={total} onCommit={setTotalCents} />
         </Field>
@@ -1305,6 +1448,12 @@ function InvestmentSection({
             }
           />
         </Field>
+        <Field label="Hourly rate" hint="Out-of-scope and post-support work (§ 1.2)">
+          <CurrencyInput
+            cents={hourlyRateCents(content)}
+            onCommit={setHourlyRateCents}
+          />
+        </Field>
       </div>
 
       <div className="mt-6">
@@ -1313,14 +1462,30 @@ function InvestmentSection({
             <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
               Payment milestones
             </p>
-            <p className="mt-1 font-sans text-xs text-ink-subtle">
-              Seeded one per timeline phase and named after it. Remove any
-              phase you don&apos;t bill for; the phase stays in the timeline.
-              Tick <span className="text-ink-muted">Collected</span> on
-              anything the client already paid — signing records it as paid
-              instead of invoicing for it.
-            </p>
+            {phasePlan ? (
+              <p className="mt-1 font-sans text-xs text-ink-subtle">
+                The deposit is billed when the client signs. Each phase is
+                billed when the client approves its work — set a phase to $0
+                to not bill it. Tick{' '}
+                <span className="text-ink-muted">Collected</span> on anything
+                the client already paid — signing records it as paid instead
+                of invoicing for it.
+              </p>
+            ) : (
+              <p className="mt-1 font-sans text-xs text-ink-subtle">
+                Seeded one per timeline phase and named after it. Remove any
+                phase you don&apos;t bill for; the phase stays in the timeline.
+                Tick <span className="text-ink-muted">Collected</span> on
+                anything the client already paid — signing records it as paid
+                instead of invoicing for it.
+              </p>
+            )}
           </div>
+          {phasePlan && !hasDeposit ? (
+            <Button type="button" variant="ghost" size="sm" onClick={addDeposit}>
+              Add deposit
+            </Button>
+          ) : null}
           {ms.length > 1 ? (
             <Button
               type="button"
@@ -1345,11 +1510,20 @@ function InvestmentSection({
               key={i}
               className="grid items-center gap-3 sm:grid-cols-[1fr_90px_140px_1fr_auto_auto]"
             >
-              <Input
-                value={m.label}
-                placeholder="Label"
-                onChange={(e) => setMilestoneField(i, 'label', e.target.value)}
-              />
+              <div className="flex items-center gap-2">
+                {phasePlan ? (
+                  <span className="w-16 shrink-0 font-mono text-[10px] uppercase tracking-meta text-copper">
+                    {m.kind === 'deposit'
+                      ? 'Deposit'
+                      : `Phase ${content.timeline.phases.findIndex((p) => p.id === m.phase_id) + 1}`}
+                  </span>
+                ) : null}
+                <Input
+                  value={m.label}
+                  placeholder="Label"
+                  onChange={(e) => setMilestoneField(i, 'label', e.target.value)}
+                />
+              </div>
               <Input
                 type="text"
                 inputMode="numeric"
@@ -1384,15 +1558,20 @@ function InvestmentSection({
                   Collected
                 </span>
               </label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeMilestone(i)}
-                aria-label="Remove milestone"
-              >
-                ×
-              </Button>
+              {!phasePlan || m.kind === 'deposit' ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeMilestone(i)}
+                  aria-label={m.kind === 'deposit' ? 'Remove deposit' : 'Remove milestone'}
+                >
+                  ×
+                </Button>
+              ) : (
+                // Keeps the grid aligned; a phase's row is removed with its phase.
+                <span aria-hidden className="w-9" />
+              )}
               {m.collected ? (
                 <div className="flex flex-wrap items-center gap-3 rounded-md border border-success/20 bg-success/5 px-3 py-2 sm:col-span-6">
                   <span className="font-mono text-[10px] uppercase tracking-meta text-success">
@@ -1547,6 +1726,80 @@ function CarePlanSection({
 // Edit-mode form groups. Preview keeps the numbered 01–N document structure;
 // the editor used to mirror that, but identical numbering across Edit/Preview
 // (with different content) was disorienting. The form is just groups now.
+/**
+ * The Agreement exactly as this draft generates it — rendered server-side
+ * from the editor's current (unsaved) content against the template Send
+ * will pin. Mounted fresh each time the Contract tab opens, and the draft
+ * can't change while it's showing, so one fetch per open is enough.
+ */
+function AgreementPreview({
+  proposalId,
+  content,
+}: {
+  proposalId: string;
+  content: ProposalContent;
+}) {
+  const [state, setState] = useState<
+    | { status: 'loading' }
+    | { status: 'ready'; body: string; version: string }
+    | { status: 'error'; message: string }
+  >({ status: 'loading' });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/admin/proposals/${proposalId}/agreement-preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content_json: content }),
+    })
+      .then(async (res) => {
+        const j = (await res.json().catch(() => ({}))) as {
+          body_md?: string;
+          version?: string;
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!res.ok || !j.body_md) {
+          setState({ status: 'error', message: j.error ?? 'Could not render the agreement.' });
+        } else {
+          setState({ status: 'ready', body: j.body_md, version: j.version ?? '' });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: 'error', message: 'Could not render the agreement.' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [proposalId, content]);
+
+  if (state.status === 'loading') {
+    return (
+      <p className="py-16 text-center font-mono text-[10px] uppercase tracking-meta text-ink-muted">
+        Rendering agreement…
+      </p>
+    );
+  }
+  if (state.status === 'error') {
+    return (
+      <p role="alert" className="py-16 text-center font-sans text-sm text-danger">
+        {state.message}
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted print:hidden">
+        Agreement v{state.version} · generated from this draft · signatures are
+        added when it&apos;s signed
+      </p>
+      <article className="rounded-2xl border border-border bg-surface p-8 md:p-10 print-plain">
+        <ContractBody body={state.body} />
+      </article>
+    </div>
+  );
+}
+
 function FormSection({
   title,
   description,

@@ -39,11 +39,12 @@ export async function POST(req: Request) {
     let dealId: string | null = null;
     let contactName = '';
     let contactEmail = '';
+    let contactCompany: string | null = null;
 
     if (parsed.data.project_id) {
       const { data: project } = await supabaseAdmin()
         .from('projects')
-        .select('id, deal_id, contact_id, contacts!inner(full_name, email)')
+        .select('id, deal_id, contact_id, contacts!inner(full_name, email, company)')
         .eq('id', parsed.data.project_id)
         .single();
       if (!project) {
@@ -53,8 +54,8 @@ export async function POST(req: Request) {
         deal_id: string | null;
         contact_id: string;
         contacts:
-          | { full_name: string; email: string | null }
-          | { full_name: string; email: string | null }[];
+          | { full_name: string; email: string | null; company: string | null }
+          | { full_name: string; email: string | null; company: string | null }[];
       };
       const p = project as unknown as Project;
       const c = flattenJoin(p.contacts);
@@ -62,10 +63,11 @@ export async function POST(req: Request) {
       dealId = p.deal_id;
       contactName = c?.full_name ?? '';
       contactEmail = c?.email ?? '';
+      contactCompany = c?.company ?? null;
     } else if (contactId) {
       const { data: contact } = await supabaseAdmin()
         .from('contacts')
-        .select('id, full_name, email')
+        .select('id, full_name, email, company')
         .eq('id', contactId)
         .single();
       if (!contact) {
@@ -73,6 +75,7 @@ export async function POST(req: Request) {
       }
       contactName = (contact.full_name as string) ?? '';
       contactEmail = (contact.email as string | null) ?? '';
+      contactCompany = (contact.company as string | null) ?? null;
     }
 
     if (!contactId) {
@@ -85,6 +88,7 @@ export async function POST(req: Request) {
     const content = defaultProposalContent({
       clientName: contactName,
       clientEmail: contactEmail,
+      company: contactCompany,
     });
 
     const { data, error } = await supabaseAdmin()

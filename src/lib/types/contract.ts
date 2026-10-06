@@ -61,6 +61,27 @@ export type ContractVariables = {
    * agreed price, or an empty string when the proposal didn't recommend one.
    */
   care_plan_clause: string;
+  // v1.5 fields — everything else the Agreement used to hardcode or leave
+  // to the proposal-as-exhibit, now rendered from the agreement draft.
+  /**
+   * The Client line of the parties block: the person, or the business they
+   * sign for (with its description, the signer and their title).
+   */
+  client_party: string;
+  /** Who signs, as printed by the CLIENT signature line. */
+  client_signature_party: string;
+  /** § 1.2 rate, formatted — e.g. "$100". */
+  hourly_rate: string;
+  /** § 1.3 exclusions as markdown bullets (the ADA line stays in the template). */
+  out_of_scope_list: string;
+  /** § 5 "Project assumptions" block, or empty when there are none. */
+  assumptions_block: string;
+  /** When work starts — signature, plus the deposit if there is one. */
+  work_start: string;
+  /** § 3 note that phase payments bill on acceptance (phase plans only). */
+  phase_billing_clause: string;
+  /** § 3 deposit terms, or empty when the agreement has no deposit. */
+  deposit_clause: string;
   // Legacy variables — kept so older agreement template revisions still
   // resolve cleanly. The current v1.2 template renders {{milestones_table}}
   // instead of these three individual amounts.

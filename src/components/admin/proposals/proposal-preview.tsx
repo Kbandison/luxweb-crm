@@ -1,5 +1,5 @@
 import type { ProposalCarePlan, ProposalContent } from '@/lib/types/proposal';
-import { getTimelinePhases } from '@/lib/types/proposal';
+import { clientParty, getTimelinePhases } from '@/lib/types/proposal';
 import { Card } from '@/components/ui/card';
 import { formatDateLong, formatDateTimeLongTz, formatUSD } from '@/lib/formatters';
 
@@ -30,6 +30,19 @@ export function ProposalPreview({
   const siteDeliverables = content.scope.site_deliverables ?? [];
   // Optional — older proposals predate this field, so treat it as maybe-absent.
   const carePlan = content.care_plan as ProposalCarePlan | undefined;
+  const party = clientParty(content);
+  const preparedFor =
+    party.kind === 'business' && party.business_name?.trim()
+      ? party.business_name
+      : content.client.name;
+  // $0 phases are milestones the client approves, not payments — same as
+  // the Agreement's payment table.
+  const payments = content.investment.milestones.filter((m) => m.amount_cents > 0);
+  const note = content.note_to_client?.trim();
+  // Sections number in the order they appear, so hiding the ones a draft
+  // doesn't use (e.g. no pitch) doesn't leave gaps like 03, 04, 05…
+  let sectionCount = 0;
+  const nextNumber = () => String(++sectionCount).padStart(2, '0');
 
   return (
     <article className="space-y-10 font-sans text-ink">
@@ -48,7 +61,13 @@ export function ProposalPreview({
               Prepared for
             </dt>
             <dd className="mt-1 text-sm text-ink">
-              {content.client.name || '—'}
+              {preparedFor || '—'}
+              {party.kind === 'business' && preparedFor !== content.client.name ? (
+                <span className="block text-xs text-ink-muted">
+                  {content.client.name}
+                  {party.signer_title ? `, ${party.signer_title}` : ''}
+                </span>
+              ) : null}
             </dd>
           </div>
           <div>
@@ -68,9 +87,18 @@ export function ProposalPreview({
         </dl>
       </section>
 
+      {/* Note to client — personal, not part of the agreement */}
+      {note ? (
+        <section className="rounded-2xl border border-copper/20 bg-copper-soft/20 p-6 print-avoid-break">
+          <p className="whitespace-pre-wrap font-sans text-base leading-relaxed text-ink">
+            {note}
+          </p>
+        </section>
+      ) : null}
+
       {/* Executive summary */}
       {content.executive_summary ? (
-        <Section number="01" title="Executive summary">
+        <Section number={nextNumber()} title="Executive summary">
           <p className="whitespace-pre-wrap text-base leading-relaxed text-ink">
             {content.executive_summary}
           </p>
@@ -79,7 +107,7 @@ export function ProposalPreview({
 
       {/* Goals */}
       {content.project_goals.length > 0 ? (
-        <Section number="02" title="Project goals">
+        <Section number={nextNumber()} title="Project goals">
           <ul className="space-y-4">
             {content.project_goals.map((g, i) => (
               <li
@@ -101,7 +129,7 @@ export function ProposalPreview({
       ) : null}
 
       {/* Scope */}
-      <Section number="03" title="Scope">
+      <Section number={nextNumber()} title="Scope">
         {siteDeliverables.length > 0 ? (
           <Card padding="lg" rounded="xl" className="mb-4 print-avoid-break">
             <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-copper">
@@ -159,7 +187,7 @@ export function ProposalPreview({
 
       {/* Out of scope */}
       {content.out_of_scope.length > 0 ? (
-        <Section number="04" title="Out of scope">
+        <Section number={nextNumber()} title="Out of scope">
           <ul className="list-disc space-y-1 rounded-xl border border-border bg-surface p-6 pl-10 text-sm text-ink">
             {content.out_of_scope.map((item, i) => (
               <li key={i}>{item}</li>
@@ -169,7 +197,7 @@ export function ProposalPreview({
       ) : null}
 
       {/* Timeline */}
-      <Section number="05" title="Timeline">
+      <Section number={nextNumber()} title="Timeline">
         {timelinePhases.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
             {timelinePhases.map((phase, i) => (
@@ -203,7 +231,7 @@ export function ProposalPreview({
       </Section>
 
       {/* Investment */}
-      <Section number="06" title="Investment">
+      <Section number={nextNumber()} title="Investment">
         <Card padding="xl" rounded="xl" className="print-avoid-break">
           <div className="text-center">
             <p className="font-mono text-[10px] uppercase tracking-meta-hero text-copper">
@@ -214,13 +242,13 @@ export function ProposalPreview({
             </p>
           </div>
 
-          {content.investment.milestones.length > 0 ? (
+          {payments.length > 0 ? (
             <div className="mt-8">
               <p className="font-mono text-[10px] font-medium uppercase tracking-meta text-ink-muted">
                 Payment schedule
               </p>
               <ul className="mt-3 divide-y divide-border border-y border-border">
-                {content.investment.milestones.map((m, i) => (
+                {payments.map((m, i) => (
                   <li
                     key={i}
                     className="flex items-center justify-between gap-3 py-3"
@@ -261,7 +289,7 @@ export function ProposalPreview({
 
       {/* Recommended care plan */}
       {carePlan?.recommended ? (
-        <Section number="07" title="Recommended care plan">
+        <Section number={nextNumber()} title="Recommended care plan">
           <Card padding="lg" rounded="xl" className="print-avoid-break">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h4 className="font-display text-xl font-medium text-ink">
@@ -313,7 +341,7 @@ export function ProposalPreview({
 
       {/* Assumptions */}
       {content.assumptions.length > 0 ? (
-        <Section number="08" title="Assumptions">
+        <Section number={nextNumber()} title="Assumptions">
           <ul className="list-disc space-y-1 rounded-xl border border-border bg-surface p-6 pl-10 text-sm text-ink">
             {content.assumptions.map((a, i) => (
               <li key={i}>{a}</li>
@@ -324,7 +352,7 @@ export function ProposalPreview({
 
       {/* Why LuxWeb */}
       {content.why_luxweb.length > 0 ? (
-        <Section number="09" title="Why LuxWeb">
+        <Section number={nextNumber()} title="Why LuxWeb">
           <ul className="space-y-4">
             {content.why_luxweb.map((item, i) => {
               // Tolerate legacy rows stored as string[] before the titled
@@ -364,7 +392,7 @@ export function ProposalPreview({
 
       {/* Next steps */}
       {content.next_steps.length > 0 ? (
-        <Section number="10" title="Next steps">
+        <Section number={nextNumber()} title="Next steps">
           <ol className="list-decimal space-y-1 rounded-xl border border-border bg-surface p-6 pl-10 text-sm text-ink">
             {content.next_steps.map((a, i) => (
               <li key={i}>{a}</li>

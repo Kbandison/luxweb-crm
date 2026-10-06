@@ -1279,6 +1279,11 @@ import type { CarePlanStatus } from '@/lib/care-plan/types';
 import type { RevisionStatus } from '@/lib/types/revision';
 import type { InvoiceStatus } from '@/lib/status-meta';
 import { flattenJoin } from '@/lib/array-join';
+import {
+  agreementStage,
+  liveContract,
+  type AgreementStage,
+} from '@/lib/agreements/stage';
 export type { InvoiceStatus };
 
 export type ProposalRow = {
@@ -1392,42 +1397,90 @@ export async function getContactContracts(
   }
 }
 
-export type ContractListRow = ContractRow & {
+export type AgreementListRow = {
+  id: string;
+  title: string;
+  stage: AgreementStage;
   contactName: string;
   contactCompany: string | null;
-  proposalTitle: string | null;
+  totalCents: number | null;
+  /** The live contract's page when there is one, otherwise the draft's. */
+  href: string;
+  /** Most recent thing that happened to it — for sorting and the date column. */
+  lastActivityAt: string;
+  signedAt: string | null;
 };
 
-/** Global contracts list for the /admin/contracts index page. */
-export async function getAllContracts(): Promise<ContractListRow[]> {
+/**
+ * Every agreement — drafts through signed — for the /admin/contracts index.
+ * One row per agreement, combining the draft (crm.proposals) with the
+ * contracts generated from it, so nothing that hasn't been counter-signed
+ * yet is invisible.
+ */
+export async function getAllAgreements(): Promise<AgreementListRow[]> {
   try {
     const { data } = await supabaseAdmin()
-      .from('contracts')
+      .from('proposals')
       .select(
-        `id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name,
+        `id, title, status, total_cents, project_id, created_at, sent_at, accepted_at,
          contacts!inner(full_name, company),
-         proposals(title)`,
+         contracts(id, status, project_id, created_at, signed_at)`,
       )
       .order('created_at', { ascending: false });
-    type Row = ContractSelectRow & {
+    type ContractEmbed = {
+      id: string;
+      status: string;
+      project_id: string | null;
+      created_at: string;
+      signed_at: string | null;
+    };
+    type Row = {
+      id: string;
+      title: string;
+      status: string;
+      total_cents: number | string | null;
+      project_id: string | null;
+      created_at: string;
+      sent_at: string | null;
+      accepted_at: string | null;
       contacts:
         | { full_name: string; company: string | null }
-        | { full_name: string; company: string | null }[]
-        | null;
-      proposals: { title: string } | { title: string }[] | null;
+        | { full_name: string; company: string | null }[];
+      contracts: ContractEmbed[] | null;
     };
     const rows = (data ?? []) as unknown as Row[];
-    return rows.map((r) => {
-      const base = toContractRow(r);
-      const contact = flattenJoin(r.contacts);
-      const prop = flattenJoin(r.proposals);
-      return {
-        ...base,
-        contactName: contact?.full_name ?? '—',
-        contactCompany: contact?.company ?? null,
-        proposalTitle: prop?.title ?? null,
-      };
-    });
+    return rows
+      .map((r) => {
+        const contracts = r.contracts ?? [];
+        const live = liveContract(contracts);
+        const contact = flattenJoin(r.contacts);
+        const projectId = live?.project_id ?? r.project_id;
+        const href = live
+          ? projectId
+            ? `/admin/projects/${projectId}/contracts/${live.id}`
+            : `/admin/contracts/${live.id}`
+          : r.project_id
+            ? `/admin/projects/${r.project_id}/proposals/${r.id}`
+            : `/admin/proposals/${r.id}`;
+        const dates = [
+          r.created_at,
+          r.sent_at,
+          r.accepted_at,
+          ...contracts.flatMap((c) => [c.created_at, c.signed_at]),
+        ].filter((d): d is string => Boolean(d));
+        return {
+          id: r.id,
+          title: r.title,
+          stage: agreementStage(r.status, contracts),
+          contactName: contact?.full_name ?? '—',
+          contactCompany: contact?.company ?? null,
+          totalCents: r.total_cents == null ? null : Number(r.total_cents),
+          href,
+          lastActivityAt: dates.sort().at(-1) ?? r.created_at,
+          signedAt: live?.status === 'signed' ? live.signed_at : null,
+        };
+      })
+      .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
   } catch {
     return [];
   }

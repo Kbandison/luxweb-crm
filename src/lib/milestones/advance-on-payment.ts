@@ -138,17 +138,23 @@ export function pickMilestoneForInvoice(
     return { close: null, linkLegacy: false, unlock: null };
   }
 
-  // Only the proposal chain unlocks in sequence; a manual milestone closing
-  // doesn't open anything.
-  const next = isProposalRow(target)
-    ? sorted.find((r) => isProposalRow(r) && r.sort_order > target.sort_order)
-    : undefined;
+  return { close: target, linkLegacy, unlock: nextToUnlock(sorted, target) };
+}
 
-  return {
-    close: target,
-    linkLegacy,
-    unlock: next && next.status === 'inactive' ? next : null,
-  };
+/**
+ * The milestone that opens when `closing` completes: the next proposal
+ * milestone in order, if it's still locked. Only the proposal chain unlocks
+ * in sequence — a manual milestone closing doesn't open anything.
+ */
+function nextToUnlock(
+  sorted: MilestoneRow[],
+  closing: MilestoneRow,
+): MilestoneRow | null {
+  if (!isProposalRow(closing)) return null;
+  const next = sorted.find(
+    (r) => isProposalRow(r) && r.sort_order > closing.sort_order,
+  );
+  return next && next.status === 'inactive' ? next : null;
 }
 
 /**
@@ -201,5 +207,48 @@ export async function closeMilestoneForInvoice(
     revalidateProject(projectId);
   } catch (err) {
     console.warn('[close-milestone-for-invoice] failed:', err);
+  }
+}
+
+/**
+ * Complete a milestone that has nothing to pay — a $0 phase, or an unpriced
+ * one — when the client approves it. Paying is what completes a billed
+ * milestone; with no payment coming, approval has to, or the milestone sits
+ * in progress forever and the phases after it never unlock.
+ */
+export async function completeUnbilledMilestone(
+  projectId: string,
+  milestoneId: string,
+): Promise<void> {
+  try {
+    const sb = supabaseAdmin();
+    const { data } = await sb
+      .from('milestones')
+      .select('id, title, status, sort_order, source, invoice_id, amount_cents')
+      .eq('project_id', projectId);
+    const sorted = ((data ?? []) as MilestoneRow[]).sort(
+      (a, b) => a.sort_order - b.sort_order,
+    );
+    const target = sorted.find((r) => r.id === milestoneId);
+    if (!target || target.status === 'done') return;
+
+    await sb
+      .from('milestones')
+      .update({ status: 'done', completed_at: new Date().toISOString() })
+      .eq('id', target.id)
+      .neq('status', 'done');
+    const unlock = nextToUnlock(sorted, target);
+    if (unlock) {
+      await sb
+        .from('milestones')
+        .update({ status: 'pending' })
+        .eq('id', unlock.id)
+        .eq('status', 'inactive');
+    }
+
+    await checkProjectCompletion(projectId);
+    revalidateProject(projectId);
+  } catch (err) {
+    console.warn('[complete-unbilled-milestone] failed:', err);
   }
 }

@@ -140,7 +140,7 @@ export function LeadDetail({
             </div>
           )}
 
-          <Section number="03" title="Proposals" />
+          <Section number="03" title="Agreements" />
           <LeadProposalsSection contactId={lead.id} proposals={proposals} />
 
           <Section number="04" title="Contracts" />
