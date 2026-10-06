@@ -1,12 +1,5 @@
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Dialog } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { SuccessModal } from '@/components/ui/success-modal';
-import { useToast } from '@/components/ui/toast';
 import { formatDateLong } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -29,218 +22,33 @@ export function PrintBar() {
 type Status = 'sent' | 'accepted' | 'rejected' | 'expired';
 
 export function ClientProposalActions({
-  proposalId,
   status,
   acceptedAt,
-  expectedSignerName,
 }: {
-  proposalId: string;
   status: Status;
   acceptedAt: string | null;
-  /** The contact's on-file full_name. Typed signature must match. */
-  expectedSignerName: string;
 }) {
   return (
     <div>
       {status === 'sent' ? (
-        <AcceptBar
-          proposalId={proposalId}
-          expectedSignerName={expectedSignerName}
-        />
+        // Sent agreements are signed on their contract page, which this
+        // view forwards to — reaching here means it isn't ready yet.
+        <StatusBanner tone="warning" label="Not ready to sign yet">
+          We&apos;re finalizing this agreement and will email you when
+          it&apos;s ready.
+        </StatusBanner>
       ) : status === 'accepted' ? (
         <AcceptedBanner acceptedAt={acceptedAt} />
       ) : status === 'rejected' ? (
-        <StatusBanner tone="danger" label="You declined this proposal">
+        <StatusBanner tone="danger" label="This agreement was declined">
           Reach out to the team if you&apos;d like to revisit.
         </StatusBanner>
       ) : (
-        <StatusBanner tone="warning" label="This proposal has expired">
+        <StatusBanner tone="warning" label="This agreement has expired">
           Contact the team for an updated version.
         </StatusBanner>
       )}
     </div>
-  );
-}
-
-function AcceptBar({
-  proposalId,
-  expectedSignerName,
-}: {
-  proposalId: string;
-  expectedSignerName: string;
-}) {
-  const router = useRouter();
-  const toast = useToast();
-  const [open, setOpen] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [agreed, setAgreed] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-
-  async function accept(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!fullName.trim() || !agreed) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/client/proposals/${proposalId}/accept`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          full_name: fullName.trim(),
-          agreed: true,
-        }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        const msg = j.error ?? 'Failed to accept.';
-        setError(msg);
-        toast.error("Couldn't accept proposal", msg);
-        return;
-      }
-      setOpen(false);
-      setConfirmOpen(true);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <>
-      <div className="relative isolate overflow-hidden rounded-2xl border border-copper/30 bg-copper-soft/25 p-6">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-gradient-to-br from-copper/25 via-gold/10 to-transparent blur-2xl"
-        />
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
-              Ready for your sign-off
-            </p>
-            <p className="mt-1 font-display text-lg font-medium text-ink">
-              Review the proposal below, then accept when ready.
-            </p>
-            <p className="mt-1 font-sans text-sm text-ink-muted">
-              Accepting locks in the scope + investment. The team will kick off
-              next steps within one business day.
-            </p>
-          </div>
-          <Button type="button" onClick={() => setOpen(true)} className="shrink-0">
-            Accept proposal
-          </Button>
-        </div>
-      </div>
-
-      <Dialog
-        open={open}
-        onClose={() => setOpen(false)}
-        closeOnBackdropClick={!busy}
-        closeOnEscape={!busy}
-        labelledBy="proposal-accept-title"
-        className="z-50 bg-ink/50 backdrop-blur-sm"
-        panelClassName="w-full max-w-md"
-      >
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_32px_80px_-20px_rgba(0,0,0,0.4)]">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-gradient-to-br from-copper/18 via-gold/8 to-transparent blur-2xl"
-          />
-          <header className="relative px-6 pb-4 pt-6">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
-              Accept proposal
-            </p>
-            <h2
-              id="proposal-accept-title"
-              className="mt-1 font-display text-xl font-medium tracking-tight text-ink"
-            >
-              Type your name to sign
-            </h2>
-            <p className="mt-1 font-sans text-sm text-ink-muted">
-              Your typed name, IP address, and a timestamp will be captured as
-              your electronic acceptance.
-            </p>
-          </header>
-          <form onSubmit={accept} className="relative space-y-4 px-6 pb-6">
-            <div className="space-y-1.5">
-              <Label htmlFor="accept_name">Full legal name</Label>
-              <Input
-                id="accept_name"
-                required
-                autoFocus
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder={expectedSignerName}
-              />
-              <p className="font-sans text-xs text-ink-subtle">
-                Type <span className="font-mono text-ink">{expectedSignerName}</span>{' '}
-                exactly to sign. (Update your profile first if your legal name
-                differs.)
-              </p>
-            </div>
-
-            <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2/40 p-3">
-              <input
-                type="checkbox"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border accent-copper"
-              />
-              <span className="font-sans text-xs leading-relaxed text-ink">
-                I agree to the scope, investment, and terms outlined in this
-                proposal and its accompanying agreement.
-              </span>
-            </label>
-
-            {error ? (
-              <p role="alert" className="font-sans text-xs text-danger">
-                {error}
-              </p>
-            ) : null}
-
-            <footer className="flex items-center justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setOpen(false)}
-                disabled={busy}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={busy || !fullName.trim() || !agreed}
-              >
-                {busy ? 'Signing…' : 'Sign & accept'}
-              </Button>
-            </footer>
-          </form>
-        </div>
-      </Dialog>
-
-      <SuccessModal
-        open={confirmOpen}
-        title="Proposal accepted"
-        description={
-          <>
-            You&apos;re locked in on the scope and investment. The team will
-            counter-sign the agreement and send it back for your signature
-            shortly — keep an eye on your email.
-          </>
-        }
-        primaryLabel="Got it"
-        onPrimary={() => {
-          setConfirmOpen(false);
-          router.refresh();
-        }}
-        onClose={() => {
-          setConfirmOpen(false);
-          router.refresh();
-        }}
-      />
-    </>
   );
 }
 

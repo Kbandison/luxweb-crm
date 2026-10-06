@@ -1,6 +1,9 @@
 import { notFound, redirect } from 'next/navigation';
 import { getSession } from '@/lib/supabase/session';
-import { getClientProposalById } from '@/lib/queries/client';
+import {
+  getClientProposalById,
+  getLiveContractIdForProposal,
+} from '@/lib/queries/client';
 import { ProposalPreview } from '@/components/admin/proposals/proposal-preview';
 import {
   ClientProposalActions,
@@ -8,9 +11,10 @@ import {
 } from '@/components/client/proposal-actions';
 
 /**
- * Canonical portal proposal view. Works for proposals attached directly
- * to the viewer's contact (pre-project leads) as well as project-scoped
- * ones. Ownership verified via contacts.user_id.
+ * An agreement link. Agreements are reviewed and signed on their contract
+ * page, so this forwards there whenever one is live. What's left to render
+ * here is history: an agreement that was declined, expired, or withdrawn,
+ * and older proposals from before the one-signature flow.
  */
 export default async function PortalProposalPage({
   params,
@@ -24,14 +28,15 @@ export default async function PortalProposalPage({
   const proposal = await getClientProposalById(pid, session.userId);
   if (!proposal) notFound();
 
+  const liveContractId = await getLiveContractIdForProposal(pid, session.userId);
+  if (liveContractId) redirect(`/portal/contracts/${liveContractId}`);
+
   return (
     <main className="mx-auto w-full max-w-5xl space-y-10 px-6 py-10 md:px-10 md:py-12">
       <div className="print:hidden">
         <ClientProposalActions
-          proposalId={proposal.id}
           status={proposal.status}
           acceptedAt={proposal.acceptedAt}
-          expectedSignerName={proposal.contactFullName}
         />
       </div>
       {proposal.status === 'accepted' ? <PrintBar /> : null}

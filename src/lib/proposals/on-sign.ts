@@ -1,4 +1,5 @@
 import type { ProposalContent } from '@/lib/types/proposal';
+import { paidAtForDate } from '@/lib/invoices/paid-at';
 
 type Milestone = ProposalContent['investment']['milestones'][number];
 
@@ -162,4 +163,76 @@ export function milestoneSeedRows(
       completed_at: m.collected ? seededAt : null,
     };
   });
+}
+
+export type SigningPlan = {
+  /**
+   * What signing does about the deposit: raise an invoice ('pending'), or
+   * nothing because it was already paid ('collected') or there isn't one
+   * ('not_required').
+   */
+  depositState: 'pending' | 'collected' | 'not_required';
+  /** Work starts at signature — the deposit is already in, or none is due. */
+  startNow: boolean;
+  milestones: {
+    sort_order: number;
+    title: string;
+    description: string;
+    status: 'done' | 'pending' | 'inactive';
+    amount_cents: number;
+    completed_at: string | null;
+  }[];
+  prepaid: {
+    sort_order: number;
+    description: string;
+    amount_cents: number;
+    paid_at: string;
+    method: string;
+  }[];
+};
+
+/**
+ * Everything a client's signature writes, worked out up front so the
+ * database can apply it in one transaction (crm.complete_signing). Pure —
+ * the money and milestone rules are tested here, not in SQL.
+ */
+export function signingPlan(
+  content: ProposalContent | null,
+  opts: { title: string; totalCents: number | null; signedAt: string },
+): SigningPlan {
+  const milestones = content?.investment.milestones ?? [];
+  const deposit = depositForSigning(
+    content,
+    opts.totalCents,
+    `Project investment — ${opts.title}`,
+  );
+  const depositIndex =
+    content?.investment.plan_version === 2
+      ? milestones.findIndex((m) => m.kind === 'deposit' && m.amount_cents > 0)
+      : milestones.findIndex((m) => m.amount_cents > 0);
+  const depositState: SigningPlan['depositState'] = deposit
+    ? 'pending'
+    : depositIndex !== -1 && milestones[depositIndex].collected
+      ? 'collected'
+      : 'not_required';
+
+  return {
+    depositState,
+    startNow: depositState !== 'pending',
+    milestones: milestoneSeedRows(milestones, '', opts.signedAt).map((row) => ({
+      sort_order: row.sort_order,
+      title: row.title,
+      description: row.description,
+      status: row.status,
+      amount_cents: row.amount_cents,
+      completed_at: row.completed_at,
+    })),
+    prepaid: collectedPayments(content, opts.signedAt.slice(0, 10)).map((p) => ({
+      sort_order: p.milestoneIndex,
+      description: `${p.label} — ${opts.title}`,
+      amount_cents: p.amountCents,
+      paid_at: paidAtForDate(p.paidOn),
+      method: p.method,
+    })),
+  };
 }

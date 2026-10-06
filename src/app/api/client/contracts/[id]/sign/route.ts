@@ -1,10 +1,11 @@
+import { after } from 'next/server';
 import { z } from 'zod';
 import { requireClient } from '@/lib/auth/guards';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserIds } from '@/lib/notifications';
-import { completeSigning } from '@/lib/contracts/after-sign';
+import { sendExecutedCopy, signAgreement } from '@/lib/contracts/after-sign';
 import { namesMatch } from '@/lib/signatures/match';
 import type { ProposalContent } from '@/lib/types/proposal';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -15,16 +16,19 @@ export const runtime = 'nodejs';
 const Schema = z.object({
   full_name: z.string().min(2).max(200),
   agreed: z.literal(true),
+  /**
+   * Fingerprint of the agreement text the client was shown. Must match the
+   * contract's — proof they signed exactly what's on file.
+   */
+  body_sha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
 });
 
 /**
- * Client signs the agreement. Marks the contract as signed, then (see
- * completeSigning):
- *   - Puts it on a project — the one it's already on, an empty shell
- *     project for the contact, or a new one — and seeds milestones.
- *   - Records anything the client paid before signing as a paid invoice.
- *   - Raises the deposit invoice on the Agreement's Net terms.
- *   - Notifies admin.
+ * The client signs the agreement — the one signature in the flow. The studio
+ * signed when sending, so this executes it. See signAgreement: the contract,
+ * the agreement's acceptance, the project, milestones and prepaid payments
+ * land in one transaction; the deposit invoice follows; the signed PDF goes
+ * to both parties after the response.
  */
 export async function POST(
   req: Request,
@@ -48,7 +52,7 @@ export async function POST(
     const { data: row } = await sb
       .from('contracts')
       .select(
-        'id, status, agreement_version, proposal_id, project_id, contact_id, contacts!inner(full_name, user_id), proposals!inner(title, total_cents, content_json, deal_id)',
+        'id, status, agreement_version, body_sha256, content_snapshot, proposal_id, project_id, contact_id, contacts!inner(full_name, user_id), proposals!inner(title, total_cents, content_json, deal_id, status, expires_at)',
       )
       .eq('id', id)
       .single();
@@ -60,6 +64,8 @@ export async function POST(
     type Shape = {
       status: string;
       agreement_version: string;
+      body_sha256: string | null;
+      content_snapshot: ProposalContent | null;
       proposal_id: string;
       project_id: string | null;
       contact_id: string;
@@ -70,14 +76,18 @@ export async function POST(
         | {
             title: string;
             total_cents: number | string | null;
-            content_json: unknown;
+            content_json: ProposalContent | null;
             deal_id: string | null;
+            status: string;
+            expires_at: string | null;
           }
         | {
             title: string;
             total_cents: number | string | null;
-            content_json: unknown;
+            content_json: ProposalContent | null;
             deal_id: string | null;
+            status: string;
+            expires_at: string | null;
           }[];
     };
     const r = row as unknown as Shape;
@@ -88,14 +98,35 @@ export async function POST(
       return Response.json({ error: 'Not found' }, { status: 404 });
     }
 
-    // Accept either the new pending_client_signature status or the legacy
-    // pending_signature value (single-sig flow).
     if (
       r.status !== 'pending_client_signature' &&
       r.status !== 'pending_signature'
     ) {
       return Response.json(
-        { error: `Contract is ${r.status}, no longer accepting signature.` },
+        {
+          error:
+            r.status === 'signed'
+              ? 'This agreement is already signed.'
+              : 'This agreement is no longer open for signing.',
+        },
+        { status: 409 },
+      );
+    }
+
+    if (proposal?.expires_at && new Date(proposal.expires_at) <= new Date()) {
+      return Response.json(
+        { error: 'This agreement has expired. Contact us for an updated one.' },
+        { status: 410 },
+      );
+    }
+
+    // The text they read must be the text on file.
+    if (r.body_sha256 && parsed.data.body_sha256 !== r.body_sha256) {
+      return Response.json(
+        {
+          error:
+            'The agreement changed since this page loaded. Reload to see the current version before signing.',
+        },
         { status: 409 },
       );
     }
@@ -109,6 +140,14 @@ export async function POST(
       );
     }
 
+    const content = r.content_snapshot ?? proposal?.content_json ?? null;
+    if (!content) {
+      return Response.json(
+        { error: 'This agreement is missing its details. Contact us.' },
+        { status: 409 },
+      );
+    }
+
     const ip =
       req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
       req.headers.get('x-real-ip') ??
@@ -116,109 +155,76 @@ export async function POST(
     const userAgent = req.headers.get('user-agent') ?? null;
     const signedAt = new Date().toISOString();
 
-    // Conditional on the status we just checked, so two submits in flight
-    // (two tabs, a retry on a slow connection) can't both sign — each one
-    // used to go on to create a project and send a deposit invoice.
-    const { data: signedRows, error } = await sb
-      .from('contracts')
-      .update({
-        status: 'signed',
-        signed_at: signedAt,
-        signed_name: parsed.data.full_name,
-        signed_ip: ip,
-        signed_user_agent: userAgent,
-      })
-      .eq('id', id)
-      .in('status', ['pending_client_signature', 'pending_signature'])
-      .select('id');
-
-    if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
-    }
-    if ((signedRows ?? []).length === 0) {
-      return Response.json(
-        { error: 'This agreement was already signed.' },
-        { status: 409 },
-      );
-    }
-
-    await writeAudit({
-      actor_id: session.userId,
-      action: 'sign',
-      entity_type: 'contract',
-      entity_id: id,
-      diff: {
-        signed_name: parsed.data.full_name,
-        ip,
-        user_agent: userAgent,
-        signed_at: signedAt,
-        agreement_version: r.agreement_version,
-        by: 'client',
-      },
-    });
-
-    // Project, milestones, prepaid payments, deposit invoice.
-    let completed: Awaited<ReturnType<typeof completeSigning>>;
+    let result: Awaited<ReturnType<typeof signAgreement>>;
     try {
-      completed = await completeSigning({
+      result = await signAgreement({
         contractId: id,
-        contractProjectId: r.project_id,
-        proposalId: r.proposal_id,
-        contactId: r.contact_id,
         clientUserId: session.userId,
+        contactId: r.contact_id,
+        contractProjectId: r.project_id,
+        signature: { name: parsed.data.full_name, ip, userAgent, signedAt },
         proposal: {
           title: proposal?.title ?? '',
-          totalCents:
-            proposal?.total_cents == null ? null : Number(proposal.total_cents),
-          content: (proposal?.content_json ?? null) as ProposalContent | null,
+          totalCents: proposal?.total_cents == null ? null : Number(proposal.total_cents),
           dealId: proposal?.deal_id ?? null,
         },
+        content,
       });
     } catch (err) {
-      // The signature stands; the setup behind it didn't finish. Say so
-      // plainly instead of a generic error that reads like signing failed.
-      console.error('[contract sign] post-sign setup failed:', err);
+      // The transaction rolled back — nothing was signed. Safe to retry.
+      console.error('[contract sign] failed:', err);
       await writeAudit({
         actor_id: session.userId,
-        action: 'post_sign_setup_failed',
+        action: 'sign_failed',
         entity_type: 'contract',
         entity_id: id,
         diff: { message: err instanceof Error ? err.message : String(err) },
       });
       return Response.json(
-        {
-          error:
-            "Your signature was recorded, but we couldn't finish setting up your project. We'll take it from here and be in touch.",
-        },
+        { error: "We couldn't record your signature. Nothing was signed — please try again." },
         { status: 500 },
       );
     }
-    const { projectId, depositStatus, depositInvoiceId } = completed;
 
-    // Notify admin(s) that the contract is fully signed.
-    const adminIds = await getAdminUserIds();
-    if (adminIds.length > 0) {
-      const contractPath = `/admin/projects/${projectId}/contracts/${id}`;
-      await Promise.all(
-        adminIds.map((userId) =>
-          notify({
-            type: 'contract_signed',
-            userId,
-            contractId: id,
-            proposalId: r.proposal_id,
-            title: proposal?.title ?? 'Contract',
-            totalCents:
-              proposal?.total_cents == null
-                ? null
-                : Number(proposal.total_cents),
-            clientName: contact.full_name,
-            signedAt,
-            agreementVersion: r.agreement_version,
-            contractPath,
-          }),
-        ),
+    if (!result.ok) {
+      return Response.json(
+        {
+          error:
+            result.reason === 'already_signed'
+              ? 'This agreement is already signed.'
+              : 'This agreement is no longer open for signing.',
+        },
+        { status: 409 },
       );
     }
+
+    const { projectId, depositState, depositInvoiceId } = result;
+
+    // Studio alert.
+    const adminIds = await getAdminUserIds();
+    await Promise.all(
+      adminIds.map((userId) =>
+        notify({
+          type: 'contract_signed',
+          userId,
+          contractId: id,
+          proposalId: r.proposal_id,
+          title: proposal?.title ?? 'Agreement',
+          totalCents: proposal?.total_cents == null ? null : Number(proposal.total_cents),
+          clientName: contact.full_name,
+          signedAt,
+          agreementVersion: r.agreement_version,
+          contractPath: `/admin/projects/${projectId}/contracts/${id}`,
+        }),
+      ),
+    );
+
+    // The executed PDF to both parties — after the response, so the client
+    // isn't waiting on a PDF render and two emails to see their signature
+    // land. A failure leaves executed_copy_sent_at empty for Finish setup.
+    after(async () => {
+      await sendExecutedCopy(id);
+    });
 
     revalidateProject(projectId);
 
@@ -227,7 +233,16 @@ export async function POST(
       signed_at: signedAt,
       project_id: projectId,
       deposit_invoice_id: depositInvoiceId,
-      deposit_status: depositStatus,
+      // Mapped to the client's success message: 'invoiced' → pay now;
+      // 'collected' → already received; 'failed'/'pending' → on its way.
+      deposit_status:
+        depositState === 'invoiced'
+          ? 'invoiced'
+          : depositState === 'collected'
+            ? 'collected'
+            : depositState === 'not_required'
+              ? 'none'
+              : 'failed',
     });
   } catch (err) {
     if (err instanceof Response) return err;

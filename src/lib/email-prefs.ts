@@ -42,19 +42,14 @@ export const CLIENT_EMAIL_PREFS = [
     hint: 'Nudges when an invoice is past its due date.',
   },
   {
-    key: 'proposal_sent',
-    label: 'New proposals',
-    hint: 'When a proposal is ready for your review.',
-  },
-  {
-    key: 'proposal_accepted_client',
-    label: 'Proposal confirmations',
-    hint: 'Your own confirmation after you accept a proposal.',
-  },
-  {
     key: 'contract_pending_client_signature',
     label: 'Agreement ready to sign',
-    hint: 'When we counter-sign and the agreement is waiting on you.',
+    hint: 'When we send you an agreement to review and sign.',
+  },
+  {
+    key: 'agreement_withdrawn',
+    label: 'Agreement changes',
+    hint: 'When we withdraw an agreement we sent you, or void a signed one.',
   },
   {
     key: 'milestone_updated',
@@ -102,24 +97,19 @@ export const ADMIN_EMAIL_PREFS = [
     hint: 'Email when a client payment fails or passes its due date.',
   },
   {
-    key: 'proposal_sent',
-    label: 'Proposal sent',
-    hint: 'Email when a proposal is shared with a client.',
-  },
-  {
-    key: 'proposal_accepted',
-    label: 'Proposal accepted',
-    hint: 'Email when a client signs a proposal.',
-  },
-  {
     key: 'new_lead',
     label: 'New lead',
     hint: 'Email when a new inquiry hits the leads inbox.',
   },
   {
     key: 'contract_signed',
-    label: 'Contract signed',
-    hint: 'Email when a client counter-signs the agreement.',
+    label: 'Agreement signed',
+    hint: 'Email when a client signs an agreement.',
+  },
+  {
+    key: 'deposit_invoice_failed',
+    label: 'Agreement follow-up failed',
+    hint: "Email when a client signs but the deposit invoice couldn't be raised.",
   },
   {
     key: 'milestone_updated',

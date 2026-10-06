@@ -57,6 +57,8 @@ export async function sendEmail(opts: {
   react: ReactElement;
   tag: string;
   category: EmailCategory;
+  /** Files to attach — e.g. the executed agreement PDF. */
+  attachments?: { filename: string; content: Buffer }[];
 }) {
   const from = FROM_BY_CATEGORY[opts.category];
   // Admin alerts deep-link the unsubscribe header to admin settings; all
@@ -84,5 +86,6 @@ export async function sendEmail(opts: {
     react: opts.react,
     tags: [{ name: 'type', value: opts.tag }],
     headers: Object.keys(headers).length > 0 ? headers : undefined,
+    attachments: opts.attachments,
   });
 }

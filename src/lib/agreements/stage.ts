@@ -21,8 +21,10 @@ export const AGREEMENT_STAGE_META: Record<
 > = {
   draft: { label: 'Draft', tone: 'bg-ink/5 text-ink-muted', group: 'active' },
   sent: { label: 'Sent — awaiting client', tone: 'bg-copper/15 text-copper', group: 'active' },
+  // Legacy only: accepted under the old two-step flow, never counter-signed.
+  // Agreements now get their contract when they're signed and sent.
   needs_countersign: {
-    label: 'Accepted — counter-sign',
+    label: 'Accepted — no contract',
     tone: 'bg-warning/15 text-warning',
     group: 'active',
   },

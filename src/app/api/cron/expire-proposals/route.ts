@@ -1,10 +1,14 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
+import { withdrawUnsigned } from '@/lib/contracts/after-sign';
 
 export const runtime = 'nodejs';
 
 /**
- * Cron: flip `sent` proposals past their `expires_at` to `expired`.
+ * Cron: flip `sent` agreements past their `expires_at` to `expired`, and
+ * void the unsigned contracts that went out with them. Send sets the expiry
+ * (14 days by default); signing also refuses an expired agreement on its
+ * own, so the window between expiry and this daily run is closed too.
  *
  * Scheduled daily via vercel.json. Protected by `CRON_SECRET` env var
  * (Vercel-style Bearer token). Without the secret set, the endpoint
@@ -51,6 +55,18 @@ export async function GET(req: Request) {
 
   if (updErr) {
     return Response.json({ error: updErr.message }, { status: 500 });
+  }
+
+  // An expired offer can't be signed: void the unsigned contract that went
+  // out with it. The client was told the expiry date when it was sent, and
+  // the agreement page shows it as expired, so no email.
+  for (const id of ids) {
+    await withdrawUnsigned({
+      proposalId: id,
+      reason: 'Expired',
+      actorId: null,
+      notifyClient: false,
+    });
   }
 
   // Audit log each expiration so the admin trail explains the status

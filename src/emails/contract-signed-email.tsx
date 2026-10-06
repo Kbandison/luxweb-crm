@@ -55,8 +55,8 @@ export default function ContractSignedEmail(props: ContractSignedEmailProps) {
       <EmailButton href={contractUrl}>Open contract</EmailButton>
 
       <Text className="mt-6 text-sm text-ink-muted">
-        Second signature captured — client has now assented to both pricing
-        (proposal) and legal terms (agreement).
+        Both signatures are in — the agreement is executed. The signed PDF
+        is on its way to the client and to the alerts inbox.
       </Text>
     </BaseLayout>
   );

@@ -1414,8 +1414,8 @@ export type AgreementListRow = {
 /**
  * Every agreement — drafts through signed — for the /admin/contracts index.
  * One row per agreement, combining the draft (crm.proposals) with the
- * contracts generated from it, so nothing that hasn't been counter-signed
- * yet is invisible.
+ * contracts generated from it, so drafts and unsigned agreements show up
+ * alongside signed ones.
  */
 export async function getAllAgreements(): Promise<AgreementListRow[]> {
   try {
@@ -1483,6 +1483,20 @@ export async function getAllAgreements(): Promise<AgreementListRow[]> {
       .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
   } catch {
     return [];
+  }
+}
+
+/** A user's full name on file — what their typed signature must match. */
+export async function getUserFullName(userId: string): Promise<string | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('users')
+      .select('full_name')
+      .eq('id', userId)
+      .maybeSingle();
+    return (data as { full_name: string | null } | null)?.full_name ?? null;
+  } catch {
+    return null;
   }
 }
 
@@ -1994,6 +2008,16 @@ export type ContractDetail = ContractRow & {
   adminSignedUserAgent: string | null;
   proposalTitle: string;
   clientName: string;
+  bodySha256: string | null;
+  /** What signing did about the deposit — see crm_agreements_one_session.sql. */
+  depositState: string | null;
+  depositError: string | null;
+  depositInvoiceId: string | null;
+  executedCopySentAt: string | null;
+  voidReason: string | null;
+  voidedAt: string | null;
+  /** When the agreement stops being open for signature. */
+  expiresAt: string | null;
 };
 
 type ContractSelectRow = {
@@ -2058,9 +2082,7 @@ export async function getProjectContracts(
 
 /**
  * Look up the ACTIVE (non-void) contract row that was generated from this
- * proposal, if any. Used by the proposal editor to decide whether to show
- * "Sign agreement" (no active contract yet — or the last one was voided)
- * or "View agreement" (already counter-signed and live).
+ * proposal, if any. The editor links to it from its sent/signed banners.
  *
  * Void contracts are preserved in the DB for audit history but are
  * intentionally ignored here so admin can regenerate after a void.
@@ -2090,7 +2112,7 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     const { data } = await supabaseAdmin()
       .from('contracts')
       .select(
-        'id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, admin_signed_ip, admin_signed_user_agent, body_md, proposals!inner(title), contacts!inner(full_name)',
+        'id, proposal_id, project_id, agreement_version, status, created_at, signed_at, signed_name, signed_ip, signed_user_agent, admin_signed_name, admin_signed_at, admin_signed_ip, admin_signed_user_agent, body_md, body_sha256, deposit_state, deposit_error, deposit_invoice_id, executed_copy_sent_at, void_reason, voided_at, proposals!inner(title, expires_at), contacts!inner(full_name)',
       )
       .eq('id', id)
       .single();
@@ -2103,7 +2125,16 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
       admin_signed_ip: string | null;
       admin_signed_user_agent: string | null;
       body_md: string;
-      proposals: { title: string } | { title: string }[];
+      body_sha256: string | null;
+      deposit_state: string | null;
+      deposit_error: string | null;
+      deposit_invoice_id: string | null;
+      executed_copy_sent_at: string | null;
+      void_reason: string | null;
+      voided_at: string | null;
+      proposals:
+        | { title: string; expires_at: string | null }
+        | { title: string; expires_at: string | null }[];
       contacts: { full_name: string } | { full_name: string }[];
     };
     const r = data as unknown as Shape;
@@ -2118,8 +2149,16 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
       adminSignedAt: r.admin_signed_at,
       adminSignedIp: r.admin_signed_ip,
       adminSignedUserAgent: r.admin_signed_user_agent,
-      proposalTitle: proposal?.title ?? 'Proposal',
+      proposalTitle: proposal?.title ?? 'Agreement',
       clientName: contact?.full_name ?? '—',
+      bodySha256: r.body_sha256,
+      depositState: r.deposit_state,
+      depositError: r.deposit_error,
+      depositInvoiceId: r.deposit_invoice_id,
+      executedCopySentAt: r.executed_copy_sent_at,
+      voidReason: r.void_reason,
+      voidedAt: r.voided_at,
+      expiresAt: proposal?.expires_at ?? null,
     };
   } catch {
     return null;

@@ -24,11 +24,11 @@ import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast';
 import { ProposalStatusPill } from './proposal-status-pill';
-import { ProposalPreview } from './proposal-preview';
+import { AgreementSummary } from '@/components/contract/agreement-summary';
 import { ContractBody } from '@/components/contract/contract-body';
-import { SignAgreementButton } from './sign-agreement-button';
 import { formatDate } from '@/lib/formatters';
 import { CURRENT_AGREEMENT_VERSION } from '@/lib/contracts/versions';
+import { DEFAULT_EXPIRY_DAYS } from '@/lib/agreements/expiry';
 import { OFFLINE_PAYMENT_METHODS } from '@/lib/invoices/payment-methods';
 import { cn } from '@/lib/utils';
 
@@ -44,10 +44,9 @@ export function ProposalEditor({
   initialSentAt,
   initialRevision = 1,
   initialAcceptedAt,
-  initialAcceptedByName,
-  initialAcceptedByIp,
-  initialAcceptedByUserAgent,
   existingContract = null,
+  senderName = null,
+  initialExpiresAt = null,
 }: {
   proposalId: string;
   /** Where the editor's back/after-delete navigation goes. */
@@ -60,17 +59,17 @@ export function ProposalEditor({
   /** v1, v2, … — bumps every Revise & Resend. Default 1 for old rows. */
   initialRevision?: number;
   initialAcceptedAt?: string | null;
-  initialAcceptedByName?: string | null;
-  initialAcceptedByIp?: string | null;
-  initialAcceptedByUserAgent?: string | null;
-  /** The contract generated from this proposal, if one exists. When null
-   *  and the proposal is accepted, the editor surfaces a "Sign agreement"
-   *  CTA so admin can counter-sign without bouncing through the project. */
+  /** The live contract issued when this agreement was signed and sent —
+   *  linked from the sent/signed banners. */
   existingContract?: {
     id: string;
     projectId: string | null;
     status: string;
   } | null;
+  /** The signed-in admin's name on file — prefills the Sign & send signature. */
+  senderName?: string | null;
+  /** When a sent agreement stops being open for signature. */
+  initialExpiresAt?: string | null;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -80,6 +79,7 @@ export function ProposalEditor({
   const revision = initialRevision;
   const isAccepted = status === 'accepted';
   const isSent = status === 'sent';
+  const isExpired = status === 'expired';
   // Locked: accepted (permanent) or sent (until Revise & Resend unlocks it).
   const isLocked = isAccepted || isSent;
   // Force preview mode when locked.
@@ -96,6 +96,9 @@ export function ProposalEditor({
   const [error, setError] = useState<string | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
   const [sendBusy, setSendBusy] = useState(false);
+  const [signName, setSignName] = useState(senderName ?? '');
+  const [signAgreed, setSignAgreed] = useState(false);
+  const [expiryDays, setExpiryDays] = useState(DEFAULT_EXPIRY_DAYS);
   // What the server refused to send over (422) — shown as a list above the
   // form, since the toolbar's one-line error slot can't hold several.
   const [sendProblems, setSendProblems] = useState<string[]>([]);
@@ -145,6 +148,12 @@ export function ProposalEditor({
       setSendProblems([]);
       const res = await fetch(`/api/admin/proposals/${proposalId}/send`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: signName.trim(),
+          agreed: true,
+          expires_in_days: expiryDays,
+        }),
       });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as {
@@ -167,7 +176,10 @@ export function ProposalEditor({
         toast.error("Couldn't send proposal", msg);
         return;
       }
-      toast.success('Proposal sent', 'Client has been notified.');
+      toast.success(
+        'Signed & sent',
+        `The client has ${expiryDays} days to review and sign.`,
+      );
     } finally {
       setSendBusy(false);
       setSendOpen(false);
@@ -378,20 +390,22 @@ export function ProposalEditor({
               onClick={() => setSendOpen(true)}
               disabled={sendBusy}
             >
-              {revision > 1 ? 'Re-send' : 'Send'}
+              {revision > 1 ? 'Sign & re-send' : 'Sign & send'}
             </Button>
           ) : null}
-          {isSent ? (
+          {isSent || isExpired ? (
             <>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setRejectOpen(true)}
-                disabled={rejectBusy}
-              >
-                Mark declined
-              </Button>
+              {isSent ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setRejectOpen(true)}
+                  disabled={rejectBusy}
+                >
+                  Mark declined
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 size="sm"
@@ -409,12 +423,11 @@ export function ProposalEditor({
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-success/30 bg-success/5 px-5 py-3 print:hidden">
           <div className="min-w-0 flex-1">
             <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-success">
-              Locked — accepted by the client
+              Signed by both parties
             </p>
             <p className="mt-0.5 font-sans text-xs text-ink-muted">
-              {existingContract
-                ? 'Agreement already counter-signed. Open it to view both signatures and the contract status.'
-                : 'Counter-sign the agreement next, then the client signs to lock the legal terms and trigger the deposit invoice.'}
+              Locked. Open the agreement for both signatures, the PDF, and its
+              status.
             </p>
           </div>
           {existingContract ? (
@@ -428,20 +441,46 @@ export function ProposalEditor({
             >
               View agreement →
             </Link>
-          ) : (
-            <SignAgreementButton proposalId={proposalId} />
-          )}
+          ) : null}
         </div>
       ) : isSent ? (
-        <div className="rounded-xl border border-copper/30 bg-copper-soft/25 px-5 py-3 print:hidden">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
-            Sent · v{revision} — locked while client reviews
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-copper/30 bg-copper-soft/25 px-5 py-3 print:hidden">
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
+              Signed by you · waiting on the client
+            </p>
+            <p className="mt-0.5 font-sans text-xs text-ink-muted">
+              {initialExpiresAt
+                ? `Open for their signature until ${formatDate(initialExpiresAt)}. `
+                : ''}
+              Locked while they review. To change it, use{' '}
+              <span className="text-ink">Revise &amp; resend</span> — the sent
+              version is withdrawn, the client is told, and this unlocks as v
+              {revision + 1}.
+            </p>
+          </div>
+          {existingContract ? (
+            <Link
+              href={
+                existingContract.projectId
+                  ? `/admin/projects/${existingContract.projectId}/contracts/${existingContract.id}`
+                  : `/admin/contracts/${existingContract.id}`
+              }
+              className="shrink-0 rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:border-copper/40 hover:text-copper"
+            >
+              View agreement →
+            </Link>
+          ) : null}
+        </div>
+      ) : isExpired ? (
+        <div className="rounded-xl border border-warning/30 bg-warning/5 px-5 py-3 print:hidden">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-warning">
+            Expired{initialExpiresAt ? ` ${formatDate(initialExpiresAt)}` : ''}
           </p>
           <p className="mt-0.5 font-sans text-xs text-ink-muted">
-            The client is looking at this exact version. To make changes,
-            click <span className="text-ink">Revise &amp; resend</span> — the
-            current content snapshots into the audit log and the proposal
-            unlocks for editing as v{revision + 1}.
+            The client didn&apos;t sign in time. Use{' '}
+            <span className="text-ink">Revise &amp; resend</span> to update it
+            and send a fresh one.
           </p>
         </div>
       ) : null}
@@ -449,20 +488,28 @@ export function ProposalEditor({
       {mode === 'contract' ? (
         <AgreementPreview proposalId={proposalId} content={content} />
       ) : mode === 'preview' ? (
-        <ProposalPreview
-          title={title}
-          content={content}
-          signature={
-            isAccepted
-              ? {
-                  acceptedAt: initialAcceptedAt ?? null,
-                  acceptedByName: initialAcceptedByName ?? null,
-                  acceptedByIp: initialAcceptedByIp ?? null,
-                  acceptedByUserAgent: initialAcceptedByUserAgent ?? null,
-                }
-              : undefined
-          }
-        />
+        // What the client sees above the terms on their agreement page.
+        <div className="space-y-8">
+          <header className="space-y-2">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-meta-hero text-copper">
+              Client view · Agreement v{isLocked ? content.agreement_version : CURRENT_AGREEMENT_VERSION}
+            </p>
+            <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
+              {title}
+            </h1>
+          </header>
+          {content.note_to_client?.trim() ? (
+            <section className="rounded-2xl border border-copper/20 bg-copper-soft/20 p-6">
+              <p className="whitespace-pre-wrap font-sans text-base leading-relaxed text-ink">
+                {content.note_to_client}
+              </p>
+            </section>
+          ) : null}
+          <AgreementSummary content={content} />
+          <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle print:hidden">
+            The full agreement follows on their page — see the Contract tab.
+          </p>
+        </div>
       ) : (
         <>
           {sendProblems.length > 0 ? (
@@ -494,21 +541,57 @@ export function ProposalEditor({
       <ConfirmDialog
         open={sendOpen}
         tone="default"
-        title="Send this proposal?"
+        title="Sign & send this agreement?"
         description={
-          <>
-            Saves any unsaved edits, then locks the proposal as{' '}
-            <span className="font-mono text-ink">Sent</span>. The client will be
-            able to view and accept it from their portal.
-            <br />
-            <span className="font-mono text-[11px] text-ink-subtle">
-              (Email dispatch via Resend wires up in Step 9 — for now the
-              client sees the new proposal on their portal dashboard.)
-            </span>
-          </>
+          <div className="space-y-4">
+            <p>
+              Saves your edits, signs the agreement on behalf of LuxWeb Studio
+              LLC, and sends it to the client. They review it and sign once —
+              then pay the deposit, if there is one. Check the{' '}
+              <span className="font-mono text-ink">Contract</span> tab first:
+              that&apos;s exactly what you&apos;re signing.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="send-sign-name">Your full name</Label>
+              <Input
+                id="send-sign-name"
+                value={signName}
+                onChange={(e) => setSignName(e.target.value)}
+                placeholder={senderName ?? 'As it appears on your profile'}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="send-expiry">Open for signature</Label>
+              <select
+                id="send-expiry"
+                value={expiryDays}
+                onChange={(e) => setExpiryDays(Number(e.target.value))}
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 font-sans text-sm text-ink focus:border-copper focus:outline-none"
+              >
+                {[7, 14, 30].map((d) => (
+                  <option key={d} value={d}>
+                    {d} days{d === DEFAULT_EXPIRY_DAYS ? ' (standard)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <label className="flex items-start gap-2 text-ink">
+              <input
+                type="checkbox"
+                checked={signAgreed}
+                onChange={(e) => setSignAgreed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-border accent-copper"
+              />
+              <span className="text-sm">
+                I&apos;ve reviewed the agreement and sign it on behalf of LuxWeb
+                Studio LLC.
+              </span>
+            </label>
+          </div>
         }
-        confirmLabel="Save & send"
+        confirmLabel="Sign & send"
         busy={sendBusy}
+        confirmDisabled={!signAgreed || signName.trim().length < 2}
         onCancel={() => (sendBusy ? undefined : setSendOpen(false))}
         onConfirm={send}
       />
@@ -516,7 +599,7 @@ export function ProposalEditor({
       <ConfirmDialog
         open={deleteOpen}
         tone="danger"
-        title="Delete proposal"
+        title="Delete agreement draft"
         description={
           <>
             <span className="font-mono text-ink">{title}</span> will be
@@ -524,7 +607,7 @@ export function ProposalEditor({
             record.
           </>
         }
-        confirmLabel="Delete proposal"
+        confirmLabel="Delete draft"
         busy={deleteBusy}
         onCancel={() => (deleteBusy ? undefined : setDeleteOpen(false))}
         onConfirm={destroy}
@@ -536,12 +619,12 @@ export function ProposalEditor({
         title="Revise & resend?"
         description={
           <>
-            Unlocks the proposal for editing and bumps it to{' '}
-            <span className="font-mono text-ink">v{revision + 1}</span>. The
-            current content (v{revision}) is snapshotted to the audit log
-            so you can prove what the client originally saw. After your
-            edits, click <span className="text-ink">Re-send</span> to email
-            them the updated version.
+            Withdraws the version you sent — its link stops working
+            {isSent ? ' and the client is emailed that an update is coming' : ''}{' '}
+            — and unlocks the agreement as{' '}
+            <span className="font-mono text-ink">v{revision + 1}</span>. What
+            they were sent (v{revision}) is kept in the audit log. When
+            you&apos;re done, <span className="text-ink">Sign &amp; re-send</span>.
           </>
         }
         confirmLabel="Unlock for editing"
@@ -553,12 +636,12 @@ export function ProposalEditor({
       <ConfirmDialog
         open={rejectOpen}
         tone="danger"
-        title="Mark proposal declined?"
+        title="Mark agreement declined?"
         description={
           <>
-            The proposal moves to <span className="font-mono text-ink">Declined</span>{' '}
-            and stops appearing in active queues. The client can no longer accept
-            it from their portal. The record stays in the audit log.
+            The agreement moves to <span className="font-mono text-ink">Declined</span>{' '}
+            and the version you sent is withdrawn — the client can no longer
+            sign it. The record stays in the audit log.
           </>
         }
         confirmLabel="Mark declined"
@@ -1041,7 +1124,7 @@ function EditorForm({
       {hasLegacyPitch ? (
         <FormSection
           title="Proposal pitch (older draft)"
-          description="Agreements no longer carry a sales pitch. This draft still has one, and the client sees it until you clear it. None of it is part of the contract."
+          description="Agreements no longer carry a sales pitch, and clients don't see it — this older draft still has one. Clear it to tidy up; none of it is part of the contract."
         >
           <div className="space-y-6">
             <Field label="Executive summary">

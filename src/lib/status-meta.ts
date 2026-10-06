@@ -15,8 +15,8 @@ export type { ProposalStatus, ContractStatus };
 
 export const PROPOSAL_STATUS_LABEL: Record<ProposalStatus, string> = {
   draft: 'Draft',
-  sent: 'Awaiting review',
-  accepted: 'Accepted',
+  sent: 'Awaiting signature',
+  accepted: 'Signed',
   rejected: 'Declined',
   expired: 'Expired',
 };
