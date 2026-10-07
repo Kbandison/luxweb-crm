@@ -1263,11 +1263,25 @@ function centsToDollarStr(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
-// Free-text dollar input → integer cents. Tolerates "5,000.50".
-function dollarStrToCents(s: string): number {
-  const cleaned = s.replace(/[^0-9.]/g, '');
+// Integer cents → what a dollar box shows: "5,000", or "1,250.50" when
+// there are cents (the same shape formatUSD uses), and empty for $0 so
+// typing starts from a clean box.
+function centsToInputStr(cents: number): string {
+  if (cents === 0) return '';
+  return (cents / 100).toLocaleString('en-US', {
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+// Free-text dollar input → integer cents. Tolerates "$5,000.50"; empty is
+// $0. Null when it isn't an amount ("1.2.3", "abc").
+function dollarStrToCents(s: string): number | null {
+  const cleaned = s.replace(/[$,\s]/g, '');
+  if (cleaned === '') return 0;
+  if (!/^\d*\.?\d*$/.test(cleaned)) return null;
   const n = Number(cleaned);
-  if (!Number.isFinite(n) || n < 0) return 0;
+  if (!Number.isFinite(n)) return null;
   return Math.round(n * 100);
 }
 
@@ -1290,21 +1304,29 @@ function CurrencyInput({
   onCommit: (newCents: number) => void;
   placeholder?: string;
 }) {
-  const [text, setText] = useState<string>(() => centsToDollarStr(cents));
+  const [text, setText] = useState<string>(() => centsToInputStr(cents));
   // Track the last cents value WE committed so we can ignore our own echo
   // and only re-sync display when cents truly changed externally.
   const lastCentsRef = useRef(cents);
+  // Set on focus so the mouseup that follows a focusing click doesn't
+  // collapse the select-all to a caret.
+  const keepSelectionRef = useRef(false);
 
   useEffect(() => {
     if (cents !== lastCentsRef.current) {
       lastCentsRef.current = cents;
-      setText(centsToDollarStr(cents));
+      setText(centsToInputStr(cents));
     }
   }, [cents]);
 
   function commit() {
     const newCents = dollarStrToCents(text);
-    setText(centsToDollarStr(newCents));
+    // Not an amount: put back what's saved rather than committing $0.
+    if (newCents === null) {
+      setText(centsToInputStr(cents));
+      return;
+    }
+    setText(centsToInputStr(newCents));
     // Tabbing through without a change isn't an edit — committing it
     // anyway rebuilt everything downstream of the field.
     if (newCents === cents) return;
@@ -1316,9 +1338,20 @@ function CurrencyInput({
     <Input
       type="text"
       inputMode="decimal"
-      placeholder={placeholder}
+      placeholder={placeholder ?? '0'}
       value={text}
       onChange={(e) => setText(e.target.value)}
+      // Focusing selects the whole amount, so typing replaces it. Clicking
+      // into "175.00" and typing 199 used to append — "175.00199" — which
+      // parsed back to $175 (or "0.005000" to one cent).
+      onFocus={(e) => {
+        e.currentTarget.select();
+        keepSelectionRef.current = true;
+      }}
+      onMouseUp={(e) => {
+        if (keepSelectionRef.current) e.preventDefault();
+        keepSelectionRef.current = false;
+      }}
       onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
@@ -1423,6 +1456,11 @@ function InvestmentSection({
       const milestones = c.investment.milestones.map((m, i) =>
         i === index ? { ...m, amount_cents } : m,
       );
+      // No total yet: there's nothing to take a share of, so leave the
+      // other rows' percents (a new agreement's seeded split) alone.
+      if (c.investment.total_cents <= 0) {
+        return { ...c, investment: { ...c.investment, milestones } };
+      }
       const percents = percentsOf(
         milestones.map((m) => m.amount_cents),
         c.investment.total_cents,
