@@ -33,6 +33,12 @@ function hourLabel(h: number): string {
   return h < 12 ? `${h} AM` : `${h - 12} PM`;
 }
 
+/** A 0–1 rate as a percent for the input. Not rounded to a whole number —
+ *  the input steps by 0.5, and 12.5% used to show (and re-save) as 13. */
+function percentLabel(rate: number): string {
+  return String(Math.round(rate * 10000) / 100);
+}
+
 export function OutreachSettingsDrawer({ settings }: { settings: OutreachSettings }) {
   const router = useRouter();
   const toast = useToast();
@@ -44,10 +50,27 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
   const [hours, setHours] = useState<Record<number, DayHours>>(() => ({ ...settings.slotHours }));
   const [dialTarget, setDialTarget] = useState(String(settings.dailyDialTarget));
   const [bookedTarget, setBookedTarget] = useState(String(settings.weeklyBookedTarget));
-  const [commission, setCommission] = useState(String(Math.round(settings.commissionRate * 100)));
+  const [commission, setCommission] = useState(percentLabel(settings.commissionRate));
   const [retireAfter, setRetireAfter] = useState(String(settings.autoRetireAfter));
   const [script, setScript] = useState(settings.callScript);
   const [objections, setObjections] = useState(settings.objectionNotes);
+
+  // Re-seed from the saved settings each time the drawer opens — a cancelled
+  // edit shouldn't linger, and the props may have changed since mount.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) {
+      setTz(settings.slotTimezone);
+      setHours({ ...settings.slotHours });
+      setDialTarget(String(settings.dailyDialTarget));
+      setBookedTarget(String(settings.weeklyBookedTarget));
+      setCommission(percentLabel(settings.commissionRate));
+      setRetireAfter(String(settings.autoRetireAfter));
+      setScript(settings.callScript);
+      setObjections(settings.objectionNotes);
+    }
+  }
 
   const tzOptions = TIMEZONES.includes(tz) ? TIMEZONES : [tz, ...TIMEZONES];
 
@@ -81,7 +104,9 @@ export function OutreachSettingsDrawer({ settings }: { settings: OutreachSetting
           slot_hours: hours,
           daily_dial_target: Math.max(0, Math.round(Number(dialTarget) || 0)),
           weekly_booked_target: Math.max(0, Math.round(Number(bookedTarget) || 0)),
-          commission_rate: Math.max(0, Math.min(100, Number(commission) || 0)) / 100,
+          // Whole hundredths of a percent — the column is numeric(5,4).
+          commission_rate:
+            Math.round(Math.max(0, Math.min(100, Number(commission) || 0)) * 100) / 10000,
           auto_retire_after: Math.max(0, Math.min(50, Math.round(Number(retireAfter) || 0))),
           call_script: script.trim() || null,
           objection_notes: objections.trim() || null,

@@ -1,4 +1,5 @@
 import { CURRENT_AGREEMENT_VERSION } from '@/lib/contracts/versions';
+import { todayInStudioTz } from '@/lib/formatters';
 
 /**
  * A single work phase in the proposal timeline. `id` is a stable key that
@@ -223,7 +224,7 @@ export function defaultProposalContent(opts: {
         : { kind: 'individual' },
     },
     note_to_client: '',
-    prepared_date: new Date().toISOString().slice(0, 10),
+    prepared_date: todayInStudioTz(),
     // The sales pitch (summary, goals, why LuxWeb, next steps) is no longer
     // part of a new agreement. The fields stay for older proposals that
     // carry them.

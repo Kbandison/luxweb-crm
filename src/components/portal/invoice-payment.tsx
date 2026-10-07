@@ -7,6 +7,7 @@ import {
   loadStripe,
   type Stripe as StripeJs,
   type StripeElementStyle,
+  type StripeExpressCheckoutElementConfirmEvent,
 } from '@stripe/stripe-js';
 import { cn } from '@/lib/utils';
 import {
@@ -108,6 +109,9 @@ function PaymentForm({
   const [error, setError] = useState<string | null>(null);
   const [walletReady, setWalletReady] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
+  // Some methods settle asynchronously ('processing'). The charge is in
+  // flight, so Pay stays locked — a second click could pay twice.
+  const [processing, setProcessing] = useState(false);
 
   // Stripe returns a relative return URL as-is to the wallet sheet; wallets
   // need an absolute URL so they can redirect back after 3DS or bank hand-off.
@@ -116,7 +120,9 @@ function PaymentForm({
     return new URL(returnUrl, window.location.origin).toString();
   }, [returnUrl]);
 
-  async function onExpressConfirm() {
+  async function onExpressConfirm(
+    event: StripeExpressCheckoutElementConfirmEvent,
+  ) {
     if (!stripe || !elements) return;
     setError(null);
     setSubmitting(true);
@@ -124,12 +130,14 @@ function PaymentForm({
     // Validates the active express checkout payment method (Apple/Google/Link).
     const { error: submitError } = await elements.submit();
     if (submitError) {
+      // Close the wallet sheet now — otherwise it spins until it times out.
+      event.paymentFailed({ reason: 'fail' });
       setError(submitError.message ?? 'Wallet validation failed');
       setSubmitting(false);
       return;
     }
 
-    const { error: stripeError } = await stripe.confirmPayment({
+    const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
       elements,
       clientSecret,
       confirmParams: { return_url: absoluteReturnUrl },
@@ -138,6 +146,12 @@ function PaymentForm({
 
     if (stripeError) {
       setError(stripeError.message ?? 'Payment failed');
+      setSubmitting(false);
+      return;
+    }
+
+    if (paymentIntent?.status === 'processing') {
+      setProcessing(true);
       setSubmitting(false);
       return;
     }
@@ -180,7 +194,9 @@ function PaymentForm({
       return;
     }
 
-    // 3DS redirected and came back, or processing — usually handled by Stripe.
+    if (paymentIntent?.status === 'processing') setProcessing(true);
+
+    // 3DS redirected and came back — usually handled by Stripe.
     setSubmitting(false);
   }
 
@@ -276,6 +292,16 @@ function PaymentForm({
         </p>
       ) : null}
 
+      {processing ? (
+        <p
+          role="status"
+          className="rounded-md border border-copper/30 bg-copper-soft/25 px-3 py-2 font-sans text-sm text-ink"
+        >
+          Your payment is processing — we&apos;ll email a receipt when it
+          clears.
+        </p>
+      ) : null}
+
       <div className="flex items-center justify-between gap-3">
         <Link
           href={cancelHref}
@@ -287,7 +313,7 @@ function PaymentForm({
           type="submit"
           variant="primary"
           size="lg"
-          disabled={!stripe || submitting}
+          disabled={!stripe || submitting || processing}
         >
           {submitting ? 'Processing…' : 'Pay invoice'}
         </Button>

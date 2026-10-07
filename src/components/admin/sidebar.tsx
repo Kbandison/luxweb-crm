@@ -36,10 +36,14 @@ export function Sidebar({ userEmail, userName, role }: SidebarProps) {
         target &&
         (target.tagName === 'INPUT' ||
           target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
           target.isContentEditable)
       ) {
         return;
       }
+      // And while a modal or drawer is open — navigating away would throw
+      // out whatever is being edited in it. (Dialog unmounts when closed.)
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       const digit = Number(e.key);
       if (!Number.isInteger(digit)) return;
       const item = navItems.find((n) => n.shortcut === digit);

@@ -11,6 +11,7 @@ import {
   CREDENTIAL_KIND_LABEL,
   type CredentialKind,
 } from '@/lib/types/credential';
+import { credentialHref } from '@/lib/credentials/fields';
 import { cn } from '@/lib/utils';
 
 /**
@@ -173,8 +174,11 @@ export function ClientCredentialsList({
             if (!res.ok) {
               const j = (await res.json().catch(() => ({}))) as {
                 error?: string;
+                issues?: { message: string }[];
               };
-              const msg = j.error ?? 'Failed to save';
+              // Prefer the first validation issue ("URL must use http or
+              // https") over the generic "Invalid payload".
+              const msg = j.issues?.[0]?.message ?? j.error ?? 'Failed to save';
               toast.error("Couldn't save credential", msg);
               throw new Error(msg);
             }
@@ -193,6 +197,8 @@ function Row({ item }: { item: ClientCredentialItem }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // An SFTP host LuxWeb shared isn't a web link — keep it plain text.
+  const href = credentialHref(item.kind, item.url);
 
   async function handleReveal() {
     setBusy(true);
@@ -238,16 +244,18 @@ function Row({ item }: { item: ClientCredentialItem }) {
             <p className="mt-1 truncate font-mono text-xs text-ink-muted">
               {item.username}
               {item.username && item.url ? ' · ' : ''}
-              {item.url ? (
+              {href ? (
                 <a
-                  href={item.url}
+                  href={href}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-copper hover:underline"
                 >
                   {item.url}
                 </a>
-              ) : null}
+              ) : (
+                item.url
+              )}
             </p>
           ) : null}
           {item.notes ? (
@@ -382,9 +390,12 @@ function AddCredentialDialog({
               {cfg.showUrl ? (
                 <div className="space-y-1.5">
                   <Label htmlFor="cl_cred_url">{cfg.urlLabel ?? 'URL'}</Label>
+                  {/* Plain text, not type="url": the browser would block
+                      a bare domain (example.com) the server accepts. */}
                   <Input
                     id="cl_cred_url"
-                    type={form.kind === 'url' ? 'url' : 'text'}
+                    type="text"
+                    inputMode="url"
                     required={cfg.urlRequired}
                     maxLength={2000}
                     placeholder={cfg.urlPlaceholder}

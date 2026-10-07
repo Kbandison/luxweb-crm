@@ -247,6 +247,11 @@ function ReassignSelect({
     }
   }
 
+  // A deactivated setter isn't in `setters`; list them anyway, or the select
+  // falls back to "Unassigned" and misreports who holds the prospect.
+  const ownerMissing =
+    prospect.ownerId !== null && !setters.some((s) => s.userId === prospect.ownerId);
+
   return (
     <select
       value={prospect.ownerId ?? ''}
@@ -256,6 +261,11 @@ function ReassignSelect({
       className="h-9 rounded-md border border-border bg-surface px-2 text-sm text-ink focus-visible:border-copper focus-visible:outline-none"
     >
       <option value="">Unassigned</option>
+      {ownerMissing ? (
+        <option value={prospect.ownerId ?? ''}>
+          {prospect.ownerName ?? 'Former setter'} (inactive)
+        </option>
+      ) : null}
       {setters.map((s) => (
         <option key={s.userId} value={s.userId}>
           {s.name}
@@ -286,7 +296,9 @@ function LogCallForm({ prospectId }: { prospectId: string }) {
           disposition,
           spoke_with_dm: spoke,
           note: note.trim() || null,
-          next_action_at: nextAt || null,
+          // datetime-local has no zone; as a bare string the timestamptz
+          // column would read it as UTC and the callback lands hours early.
+          next_action_at: nextAt ? new Date(nextAt).toISOString() : null,
         }),
       });
       const body = await res.json().catch(() => ({}));

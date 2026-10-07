@@ -216,7 +216,7 @@ export function NewDealDrawer({ contacts }: { contacts: ContactRow[] }) {
                   id="value"
                   type="number"
                   min={0}
-                  step="100"
+                  step="0.01"
                   value={valueDollars}
                   onChange={(e) => setValueDollars(e.target.value)}
                   placeholder="5000"

@@ -136,6 +136,9 @@ export function TagsManager({ tags }: { tags: TagUsage[] }) {
           </p>
           <Input
             className="mt-4"
+            // Contact saves cap each tag at 40 — a longer rename would make
+            // every tagged contact unsaveable.
+            maxLength={40}
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
             placeholder="New tag name"

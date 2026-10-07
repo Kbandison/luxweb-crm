@@ -141,6 +141,11 @@ export function ClientFilesList({
       } else {
         toast.success('File deleted');
       }
+    } catch {
+      toast.error(
+        "Couldn't delete file",
+        "Couldn't reach the server — check your connection and try again.",
+      );
     } finally {
       setConfirmBusy(false);
       setConfirming(null);
@@ -240,7 +245,20 @@ export function ClientFilesList({
                 <div className="h-1 w-16 overflow-hidden rounded-full bg-border">
                   <div className="h-full w-full animate-pulse rounded-full bg-copper" />
                 </div>
-              ) : null}
+              ) : (
+                <button
+                  type="button"
+                  aria-label={`Dismiss ${u.fileName}`}
+                  onClick={() =>
+                    setUploading((list) => list.filter((x) => x.id !== u.id))
+                  }
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 hover:text-ink"
+                >
+                  <span aria-hidden className="text-base leading-none">
+                    ×
+                  </span>
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -262,13 +280,15 @@ export function ClientFilesList({
               {initial.map((f) => (
                 <li
                   key={f.id}
-                  className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-surface-2/50"
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 transition-colors hover:bg-surface-2/50"
                 >
                   <FileGlyph type={f.contentType} />
+                  {/* The name keeps at least 10rem; on a narrow screen the
+                      actions wrap to their own line instead of crushing it. */}
                   <button
                     type="button"
                     onClick={() => setPreviewId(f.id)}
-                    className="min-w-0 flex-1 text-left"
+                    className="min-w-0 grow basis-40 text-left"
                   >
                     <p className="truncate font-sans text-sm font-medium text-ink hover:text-copper">
                       {f.fileName}
@@ -278,31 +298,33 @@ export function ClientFilesList({
                       {f.uploadedByMe ? ' · By you' : null}
                     </p>
                   </button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setPreviewId(f.id)}
-                  >
-                    Preview
-                  </Button>
-                  {f.previewUrl ? (
-                    <a
-                      href={f.previewUrl}
-                      download
-                      className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-                    >
-                      Download
-                    </a>
-                  ) : null}
-                  {f.uploadedByMe ? (
+                  <div className="ml-auto flex shrink-0 items-center gap-4">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setConfirming(f)}
+                      onClick={() => setPreviewId(f.id)}
                     >
-                      Delete
+                      Preview
                     </Button>
-                  ) : null}
+                    {f.previewUrl ? (
+                      <a
+                        href={f.previewUrl}
+                        download
+                        className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+                      >
+                        Download
+                      </a>
+                    ) : null}
+                    {f.uploadedByMe ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirming(f)}
+                      >
+                        Delete
+                      </Button>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>

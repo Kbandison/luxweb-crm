@@ -73,6 +73,15 @@ export function CarePlanCard({ plan, publishableKey }: CarePlanCardProps) {
   async function postAction(action: 'cancel' | 'resume') {
     setBusy(true);
     setError(null);
+    function fail(msg: string) {
+      setError(msg);
+      toast.error(
+        action === 'cancel'
+          ? "Couldn't cancel care plan"
+          : "Couldn't resume care plan",
+        msg,
+      );
+    }
     try {
       const res = await fetch(`/api/client/care-plan/${plan.id}`, {
         method: 'POST',
@@ -81,14 +90,7 @@ export function CarePlanCard({ plan, publishableKey }: CarePlanCardProps) {
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        const msg = j.error ?? 'Action failed';
-        setError(msg);
-        toast.error(
-          action === 'cancel'
-            ? "Couldn't cancel care plan"
-            : "Couldn't resume care plan",
-          msg,
-        );
+        fail(j.error ?? 'Action failed');
         return;
       }
       setConfirming(null);
@@ -96,6 +98,8 @@ export function CarePlanCard({ plan, publishableKey }: CarePlanCardProps) {
         action === 'cancel' ? 'Care plan canceled' : 'Care plan resumed',
       );
       router.refresh();
+    } catch {
+      fail("Couldn't reach the server — check your connection and try again.");
     } finally {
       setBusy(false);
     }

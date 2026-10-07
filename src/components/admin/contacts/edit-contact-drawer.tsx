@@ -6,6 +6,7 @@ import { Drawer } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
+import { isValidEmail } from '@/lib/validation/email';
 
 /**
  * Slide-in drawer for editing a contact's identity, contact info, and
@@ -71,12 +72,19 @@ export function EditContactDrawer({
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    const tags = tagsInput
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    // Same limits the server enforces, caught here with a real message
+    // instead of a bare "Invalid payload".
+    const problem = contactFieldProblem(email.trim(), source.trim(), tags);
+    if (problem) {
+      setError(problem);
+      return;
+    }
     setBusy(true);
     try {
-      const tags = tagsInput
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
       const score = Math.max(
         0,
         Math.min(100, Math.floor(Number(leadScore) || 0)),
@@ -218,6 +226,7 @@ export function EditContactDrawer({
                 <Label htmlFor="edit_phone">Phone</Label>
                 <Input
                   id="edit_phone"
+                  maxLength={60}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
@@ -229,6 +238,7 @@ export function EditContactDrawer({
                 <Label htmlFor="edit_company">Company</Label>
                 <Input
                   id="edit_company"
+                  maxLength={200}
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
                 />
@@ -237,6 +247,7 @@ export function EditContactDrawer({
                 <Label htmlFor="edit_source">Source</Label>
                 <Input
                   id="edit_source"
+                  maxLength={80}
                   value={source}
                   onChange={(e) => setSource(e.target.value)}
                 />
@@ -252,7 +263,7 @@ export function EditContactDrawer({
                 placeholder="design, signature-site, priority"
               />
               <p className="font-sans text-xs text-ink-subtle">
-                Comma-separated. Max 20.
+                Comma-separated. Max 20, 40 characters each.
               </p>
             </div>
 
@@ -295,4 +306,21 @@ export function EditContactDrawer({
       </Drawer>
     </>
   );
+}
+
+/** Client-side mirror of the contact schema's email, source + tag rules. */
+function contactFieldProblem(
+  email: string,
+  source: string,
+  tags: string[],
+): string | null {
+  if (email && !isValidEmail(email)) {
+    return 'Enter a full email address, like jane@acme.com.';
+  }
+  // maxLength stops typing past it, but an older record can already hold more.
+  if (source.length > 80) return 'Source is 80 characters max.';
+  if (tags.length > 20) return `Up to 20 tags — you have ${tags.length}.`;
+  const long = tags.find((t) => t.length > 40);
+  if (long) return `Tags are 40 characters max — "${long}" is too long.`;
+  return null;
 }

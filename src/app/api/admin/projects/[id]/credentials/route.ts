@@ -4,7 +4,11 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { encryptSecret } from '@/lib/credentials/crypto';
 import { CREDENTIAL_KINDS } from '@/lib/types/credential';
-import { isSafeHttpUrl } from '@/lib/validation/url';
+import {
+  CREDENTIAL_KIND_FIELDS,
+  credentialUrlError,
+  normalizeCredentialUrl,
+} from '@/lib/credentials/fields';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -15,12 +19,8 @@ const Schema = z
     kind: z.enum(CREDENTIAL_KINDS),
     label: z.string().min(1).max(200),
     username: z.string().max(500).nullable().optional(),
-    url: z
-      .string()
-      .max(2000)
-      .refine(isSafeHttpUrl, { message: 'URL must use http or https' })
-      .nullable()
-      .optional(),
+    // Checked against the kind below — SFTP takes a host, not a web URL.
+    url: z.string().max(2000).nullable().optional(),
     // Optional at the schema level — URL-kind credentials don't have one.
     secret: z.string().max(20000).optional(),
     notes: z.string().max(5000).nullable().optional(),
@@ -29,7 +29,12 @@ const Schema = z
   .refine(
     (v) => v.kind === 'url' || (v.secret && v.secret.length > 0),
     { message: 'Secret is required for this credential type', path: ['secret'] },
-  );
+  )
+  .superRefine((v, ctx) => {
+    if (!CREDENTIAL_KIND_FIELDS[v.kind].url) return; // dropped on insert
+    const message = credentialUrlError(v.kind, v.url);
+    if (message) ctx.addIssue({ code: 'custom', message, path: ['url'] });
+  });
 
 export async function POST(
   req: Request,
@@ -49,12 +54,17 @@ export async function POST(
       );
     }
 
+    // Only keep the fields this kind's form shows — values typed before a
+    // type switch are still in the payload.
+    const fields = CREDENTIAL_KIND_FIELDS[parsed.data.kind];
+
     // URL-kind credentials have no secret to encrypt — we store empty
     // ciphertext/iv/tag so the existing DB columns stay non-null. Reveal
     // endpoints surface an empty string for these rows.
-    const enc = parsed.data.secret
-      ? encryptSecret(parsed.data.secret)
-      : { ciphertext: '', iv: '', tag: '' };
+    const enc =
+      fields.secret && parsed.data.secret
+        ? encryptSecret(parsed.data.secret)
+        : { ciphertext: '', iv: '', tag: '' };
 
     const { data, error } = await supabaseAdmin()
       .from('project_credentials')
@@ -62,9 +72,9 @@ export async function POST(
         project_id: projectId,
         kind: parsed.data.kind,
         label: parsed.data.label,
-        username: parsed.data.username ?? null,
-        url: parsed.data.url ?? null,
-        notes: parsed.data.notes ?? null,
+        username: fields.username ? (parsed.data.username ?? null) : null,
+        url: normalizeCredentialUrl(parsed.data.kind, parsed.data.url),
+        notes: fields.notes ? (parsed.data.notes ?? null) : null,
         visible_to_client: parsed.data.visible_to_client ?? false,
         secret_ciphertext: enc.ciphertext,
         secret_iv: enc.iv,

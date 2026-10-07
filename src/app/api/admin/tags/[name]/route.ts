@@ -7,8 +7,10 @@ import { safeError } from '@/lib/safe-error';
 
 export const runtime = 'nodejs';
 
+// 40 matches the contact schemas' per-tag cap — a longer name would leave
+// every renamed contact failing validation on its next save.
 const RenameSchema = z.object({
-  new_name: z.string().min(1).max(80),
+  new_name: z.string().trim().min(1).max(40),
 });
 
 /**
@@ -57,8 +59,10 @@ export async function PATCH(
     const matched = (rows ?? []) as Row[];
 
     for (const r of matched) {
-      const updated = (r.tags ?? []).map((t) =>
-        t === oldName ? newName : t,
+      // Dedupe: a contact that already carries newName would otherwise end
+      // up with it twice.
+      const updated = Array.from(
+        new Set((r.tags ?? []).map((t) => (t === oldName ? newName : t))),
       );
       await sb.from('contacts').update({ tags: updated }).eq('id', r.id);
     }

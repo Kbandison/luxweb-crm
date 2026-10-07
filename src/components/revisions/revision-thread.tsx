@@ -14,6 +14,9 @@ import {
 } from '@/lib/types/revision';
 import { cn } from '@/lib/utils';
 
+const NETWORK_ERROR =
+  "Couldn't reach the server — check your connection and try again.";
+
 export type RevisionThreadProps = {
   revision: {
     id: string;
@@ -86,6 +89,8 @@ export function RevisionThread({
         return;
       }
       setApproveOpen(true);
+    } catch {
+      toast.error("Couldn't approve", NETWORK_ERROR);
     } finally {
       setApproveBusy(false);
     }
@@ -119,6 +124,9 @@ export function RevisionThread({
         'The team has been notified and will iterate.',
       );
       router.refresh();
+    } catch {
+      setError(NETWORK_ERROR);
+      toast.error("Couldn't send feedback", NETWORK_ERROR);
     } finally {
       setBusy(false);
     }
@@ -149,6 +157,9 @@ export function RevisionThread({
       setReply('');
       toast.success('Reply posted');
       router.refresh();
+    } catch {
+      setError(NETWORK_ERROR);
+      toast.error("Couldn't post reply", NETWORK_ERROR);
     } finally {
       setBusy(false);
     }
@@ -182,6 +193,9 @@ export function RevisionThread({
         'They can review the milestone again from their portal.',
       );
       router.refresh();
+    } catch {
+      setError(NETWORK_ERROR);
+      toast.error("Couldn't notify client", NETWORK_ERROR);
     } finally {
       setReopenBusy(false);
     }
@@ -205,6 +219,9 @@ export function RevisionThread({
       }
       toast.success('Status updated');
       router.refresh();
+    } catch {
+      setError(NETWORK_ERROR);
+      toast.error("Couldn't update status", NETWORK_ERROR);
     } finally {
       setStatusBusy(false);
     }

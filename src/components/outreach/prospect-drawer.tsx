@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 import type { ProspectRow } from '@/lib/queries/outreach';
+import { isValidEmail } from '@/lib/validation/email';
 
 type Fields = {
   full_name: string;
@@ -77,6 +78,11 @@ export function ProspectDrawer({
     setF((prev) => ({ ...prev, [k]: e.target.value }));
 
   async function save(allowDuplicate: boolean) {
+    // type="email" lets "rob@apex" through; the API's check doesn't.
+    if (f.email.trim() && !isValidEmail(f.email.trim())) {
+      setError('Enter a full email address, like rob@apexauto.com.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -89,8 +95,13 @@ export function ProspectDrawer({
         website_problem: f.website_problem.trim() || null,
         source: f.source.trim() || null,
         notes: f.notes.trim() || null,
-        // Sent only when filled — see the note in the create route.
-        ...(f.website.trim() ? { website: f.website.trim() } : {}),
+        // Sent only when filled — see the note in the create route — or as
+        // null to clear one that was set (the column exists if it held one).
+        ...(f.website.trim()
+          ? { website: f.website.trim() }
+          : prospect?.website
+            ? { website: null }
+            : {}),
         ...(allowDuplicate ? { allow_duplicate: true } : {}),
       };
       const res = await fetch(

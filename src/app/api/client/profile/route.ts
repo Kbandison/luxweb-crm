@@ -3,20 +3,16 @@ import { requireClient } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
+import { CLIENT_EMAIL_PREFS, pickEmailPrefs } from '@/lib/email-prefs';
 
 export const runtime = 'nodejs';
 
-// Closed allow-list of notification preference keys. New email types must
-// be added here AND to the disabled-on-bounce payload in the Resend webhook.
+// Toggles are stored only for keys the settings catalogue renders
+// (src/lib/email-prefs.ts); anything else in the payload is dropped.
 const EmailPrefsSchema = z
-  .object({
-    message: z.boolean().optional(),
-    invoice_sent: z.boolean().optional(),
-    invoice_paid: z.boolean().optional(),
-    proposal_sent: z.boolean().optional(),
-    milestone_updated: z.boolean().optional(),
-  })
-  .strict();
+  .record(z.string().max(64), z.boolean())
+  .refine((o) => Object.keys(o).length <= 100)
+  .transform((o) => pickEmailPrefs(o, CLIENT_EMAIL_PREFS));
 
 const UpdateSchema = z.object({
   full_name: z.string().min(1).max(200).optional(),
@@ -46,8 +42,11 @@ export async function PATCH(req: Request) {
         .select('full_name')
         .eq('id', session.userId)
         .single();
-      const currentName = (currentUser?.full_name as string | null) ?? null;
-      const nextName = parsed.data.full_name;
+      // Compare whitespace-insensitively: a stored name with a stray space
+      // must not read as a rename (and 409) when the form sends it trimmed.
+      const tidy = (s: string | null) => s?.trim().replace(/\s+/g, ' ') ?? null;
+      const currentName = tidy((currentUser?.full_name as string | null) ?? null);
+      const nextName = tidy(parsed.data.full_name);
 
       // No-op rename: accept silently so the UI doesn't see spurious 409s.
       if (currentName !== nextName) {

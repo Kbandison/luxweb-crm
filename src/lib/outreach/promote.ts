@@ -2,6 +2,7 @@ import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { notify, getAdminUserIds } from '@/lib/notifications';
+import { isValidEmail } from '@/lib/validation/email';
 
 /**
  * Promote a qualified prospect into the real pipeline: create a contact +
@@ -42,8 +43,11 @@ export async function promoteProspectToLead(
         full_name: pr.full_name,
         company: pr.company,
         phone: pr.phone,
-        email: pr.email,
-        source: pr.source ?? 'outreach',
+        // Contacts are held to stricter rules than prospects (the contact
+        // edit form re-validates both): a malformed email or a source past
+        // 80 chars would make the promoted lead unsaveable.
+        email: pr.email && isValidEmail(pr.email.trim()) ? pr.email.trim() : null,
+        source: (pr.source ?? 'outreach').slice(0, 80),
         tags: ['outreach'],
         owner_id: pr.owner_id,
       })

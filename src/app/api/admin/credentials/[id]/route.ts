@@ -3,8 +3,12 @@ import { requireCapability } from '@/lib/auth/guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { encryptSecret } from '@/lib/credentials/crypto';
-import { CREDENTIAL_KINDS } from '@/lib/types/credential';
-import { isSafeHttpUrl } from '@/lib/validation/url';
+import { CREDENTIAL_KINDS, type CredentialKind } from '@/lib/types/credential';
+import {
+  CREDENTIAL_KIND_FIELDS,
+  credentialUrlError,
+  normalizeCredentialUrl,
+} from '@/lib/credentials/fields';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -14,12 +18,8 @@ const PatchSchema = z.object({
   kind: z.enum(CREDENTIAL_KINDS).optional(),
   label: z.string().min(1).max(200).optional(),
   username: z.string().max(500).nullable().optional(),
-  url: z
-    .string()
-    .max(2000)
-    .refine(isSafeHttpUrl, { message: 'URL must use http or https' })
-    .nullable()
-    .optional(),
+  // Checked against the (new or stored) kind below — SFTP takes a host.
+  url: z.string().max(2000).nullable().optional(),
   secret: z.string().min(1).max(20000).optional(),
   notes: z.string().max(5000).nullable().optional(),
   visible_to_client: z.boolean().optional(),
@@ -43,16 +43,54 @@ export async function PATCH(
       );
     }
 
+    // The url's rules and the fields worth keeping depend on the kind, which
+    // the patch may change or omit — so read the stored row first.
+    const { data: existing } = await supabaseAdmin()
+      .from('project_credentials')
+      .select('kind, url')
+      .eq('id', id)
+      .maybeSingle();
+    if (!existing) {
+      return Response.json({ error: 'Not found' }, { status: 404 });
+    }
+    const kind = (parsed.data.kind ?? existing.kind) as CredentialKind;
+    const fields = CREDENTIAL_KIND_FIELDS[kind];
+    const kindChanged = parsed.data.kind !== undefined;
+
     const update: Record<string, unknown> = {};
-    if (parsed.data.kind !== undefined) update.kind = parsed.data.kind;
+    if (kindChanged) update.kind = kind;
     if (parsed.data.label !== undefined) update.label = parsed.data.label;
-    if (parsed.data.username !== undefined)
+    if (parsed.data.url !== undefined || kindChanged) {
+      // A kind switch re-checks the stored url too (e.g. an SFTP host
+      // turning into a clickable Login URL).
+      const url =
+        parsed.data.url !== undefined
+          ? parsed.data.url
+          : (existing.url as string | null);
+      const message = fields.url ? credentialUrlError(kind, url) : null;
+      if (message) {
+        return Response.json(
+          { error: message, issues: [{ message, path: ['url'] }] },
+          { status: 400 },
+        );
+      }
+      update.url = normalizeCredentialUrl(kind, url);
+    }
+    // Fields this kind's form doesn't show are cleared — the edit form hides
+    // them on a type switch but still sends what was in them.
+    if (!fields.username) update.username = null;
+    else if (parsed.data.username !== undefined)
       update.username = parsed.data.username;
-    if (parsed.data.url !== undefined) update.url = parsed.data.url;
-    if (parsed.data.notes !== undefined) update.notes = parsed.data.notes;
+    if (!fields.notes) update.notes = null;
+    else if (parsed.data.notes !== undefined) update.notes = parsed.data.notes;
     if (parsed.data.visible_to_client !== undefined)
       update.visible_to_client = parsed.data.visible_to_client;
-    if (parsed.data.secret !== undefined) {
+    if (!fields.secret) {
+      // Same empty triple a URL-kind credential gets on create.
+      update.secret_ciphertext = '';
+      update.secret_iv = '';
+      update.secret_tag = '';
+    } else if (parsed.data.secret !== undefined) {
       const enc = encryptSecret(parsed.data.secret);
       update.secret_ciphertext = enc.ciphertext;
       update.secret_iv = enc.iv;
@@ -75,7 +113,7 @@ export async function PATCH(
       entity_id: id,
       diff: {
         fields: Object.keys(parsed.data).filter((k) => k !== 'secret'),
-        rotated_secret: parsed.data.secret !== undefined,
+        rotated_secret: fields.secret && parsed.data.secret !== undefined,
       },
     });
 

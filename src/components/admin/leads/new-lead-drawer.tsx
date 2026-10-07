@@ -6,6 +6,7 @@ import { Drawer } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
+import { isValidEmail } from '@/lib/validation/email';
 
 export function NewLeadDrawer({
   endpoint = '/api/admin/contacts',
@@ -51,12 +52,19 @@ export function NewLeadDrawer({
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    const tags = tagsInput
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    // Same limits the server enforces, caught here with a real message
+    // instead of a bare "Invalid payload".
+    const problem = leadFieldProblem(email.trim(), tags);
+    if (problem) {
+      setError(problem);
+      return;
+    }
     setBusy(true);
     try {
-      const tags = tagsInput
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
       const score = Number(leadScore) || 0;
 
       const res = await fetch(endpoint, {
@@ -64,7 +72,7 @@ export function NewLeadDrawer({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           full_name: fullName,
-          email: email || null,
+          email: email.trim() || null,
           phone: phone || null,
           company: company || null,
           source: source || null,
@@ -204,6 +212,7 @@ export function NewLeadDrawer({
                 <Label htmlFor="phone">Phone</Label>
                 <Input
                   id="phone"
+                  maxLength={60}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+1 ..."
@@ -216,6 +225,7 @@ export function NewLeadDrawer({
                 <Label htmlFor="company">Company</Label>
                 <Input
                   id="company"
+                  maxLength={200}
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
                 />
@@ -224,6 +234,7 @@ export function NewLeadDrawer({
                 <Label htmlFor="source">Source</Label>
                 <Input
                   id="source"
+                  maxLength={80}
                   value={source}
                   onChange={(e) => setSource(e.target.value)}
                   placeholder="referral, inbound, event…"
@@ -240,7 +251,7 @@ export function NewLeadDrawer({
                 placeholder="design, signature-site, priority"
               />
               <p className="font-sans text-xs text-ink-subtle">
-                Comma-separated. Max 20.
+                Comma-separated. Max 20, 40 characters each.
               </p>
             </div>
 
@@ -281,4 +292,15 @@ export function NewLeadDrawer({
       </Drawer>
     </>
   );
+}
+
+/** Client-side mirror of the contact schema's email + tag rules. */
+function leadFieldProblem(email: string, tags: string[]): string | null {
+  if (email && !isValidEmail(email)) {
+    return 'Enter a full email address, like jane@acme.com.';
+  }
+  if (tags.length > 20) return `Up to 20 tags — you have ${tags.length}.`;
+  const long = tags.find((t) => t.length > 40);
+  if (long) return `Tags are 40 characters max — "${long}" is too long.`;
+  return null;
 }

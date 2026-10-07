@@ -17,10 +17,12 @@ import {
 // server routes. Layer 3 = `lib/queries/client.ts` with visibility-safe
 // SELECTs. A bug in any one layer is caught by the next.
 
+// Pages a signed-in user is bounced away from. /reset-password is NOT one:
+// the reset email's /auth/callback signs the user in and then lands them
+// there, so bouncing signed-in users would hide the form it exists to show.
 const AUTH_PATHS = new Set([
   '/login',
   '/forgot-password',
-  '/reset-password',
   '/accept-invite',
 ]);
 

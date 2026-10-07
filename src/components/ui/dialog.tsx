@@ -28,6 +28,11 @@ export type DialogProps = {
   className?: string;
   /** Inner panel wrapper class. */
   panelClassName?: string;
+  /**
+   * Picks the element to focus on open. Return null/undefined to fall back
+   * to the panel's first focusable. Read once, when the autofocus runs.
+   */
+  initialFocus?: (panel: HTMLElement) => HTMLElement | null | undefined;
   children: React.ReactNode;
 };
 
@@ -48,6 +53,7 @@ export function Dialog({
   closeOnEscape = true,
   className,
   panelClassName,
+  initialFocus,
   children,
 }: DialogProps) {
   const panelRef = React.useRef<HTMLDivElement | null>(null);
@@ -61,9 +67,11 @@ export function Dialog({
   // close button — yanking focus away on every keystroke.
   const onCloseRef = React.useRef(onClose);
   const closeOnEscapeRef = React.useRef(closeOnEscape);
+  const initialFocusRef = React.useRef(initialFocus);
   React.useEffect(() => {
     onCloseRef.current = onClose;
     closeOnEscapeRef.current = closeOnEscape;
+    initialFocusRef.current = initialFocus;
   });
 
   React.useEffect(() => {
@@ -80,12 +88,15 @@ export function Dialog({
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Autofocus first focusable inside the panel. setTimeout 0 so the
-    // browser commits the DOM before we query for elements.
+    // Autofocus the caller's pick, else the first focusable inside the
+    // panel. setTimeout 0 so the browser commits the DOM before we query
+    // for elements.
     const id = window.setTimeout(() => {
       const panel = panelRef.current;
       if (!panel) return;
-      const first = panel.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      const first =
+        initialFocusRef.current?.(panel) ??
+        panel.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
       if (first) {
         first.focus();
       } else {
@@ -150,8 +161,16 @@ export function Dialog({
       aria-modal="true"
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
+      // A centered panel taller than the viewport (a sign dialog on a
+      // landscape phone) must still reach its submit button: the overlay
+      // scrolls, and the panel centers with auto margins, which collapse to
+      // 0 when it overflows — so it sits at the top inside the padding
+      // instead of spilling above the viewport where it can't be scrolled
+      // to. Both apply only while the overlay keeps `items-center`; callers
+      // that override it (drawers, the command palette) are left as they
+      // were — a drawer's off-screen start must not become scrollable.
       className={cn(
-        'fixed inset-0 z-[60] flex items-center justify-center bg-ink/70 p-4',
+        'fixed inset-0 z-[60] flex items-center justify-center bg-ink/70 p-4 [&.items-center]:overflow-y-auto [&.items-center>*]:my-auto',
         className,
       )}
       onMouseDown={(e) => {
@@ -159,7 +178,11 @@ export function Dialog({
         // overlay itself, not on the panel. Prevents drag-out-of-input
         // selections from accidentally closing the modal.
         if (!closeOnBackdropClick) return;
-        if (e.target === e.currentTarget) onClose();
+        if (e.target !== e.currentTarget) return;
+        // Grabbing the overlay's scrollbar isn't a backdrop click.
+        const el = e.currentTarget;
+        if (e.clientX - el.getBoundingClientRect().left >= el.clientWidth) return;
+        onClose();
       }}
     >
       <div

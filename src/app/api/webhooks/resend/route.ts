@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { ALL_EMAIL_PREF_KEYS } from '@/lib/email-prefs';
 
 export const runtime = 'nodejs';
 
@@ -102,13 +103,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const disabled = {
-      message: false,
-      invoice_sent: false,
-      invoice_paid: false,
-      proposal_sent: false,
-      milestone_updated: false,
-    };
+    // Every toggle off — a bounced or complaining address gets nothing
+    // more until its owner turns emails back on.
+    const disabled = Object.fromEntries(
+      ALL_EMAIL_PREF_KEYS.map((key) => [key, false]),
+    );
     await supabaseAdmin()
       .from('users')
       .update({ email_prefs: disabled })

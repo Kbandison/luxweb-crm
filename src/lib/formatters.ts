@@ -105,6 +105,20 @@ export function formatDateLong(input: string | Date | null | undefined): string 
   return DATE_LONG.format(parseDisplayDate(input));
 }
 
+/**
+ * Today as YYYY-MM-DD in the studio's timezone — what a date input or a
+ * date column wants. Server code runs in UTC, where slicing toISOString()
+ * hands out tomorrow's date after about 8pm Eastern.
+ */
+export function todayInStudioTz(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
 export function formatDateTime(input: string | Date | null | undefined): string {
   if (!input) return '—';
   return DATETIME.format(new Date(input));
