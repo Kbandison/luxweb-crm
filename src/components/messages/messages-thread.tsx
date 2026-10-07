@@ -177,7 +177,11 @@ export function MessagesThread({
       createdAt: new Date().toISOString(),
     };
     setMessages((m) => [...m, optimistic]);
+    const draft = body;
     setBody('');
+    // A failed send drops the bubble, so hand the text back — unless
+    // they've already started typing something else.
+    const restoreDraft = () => setBody((cur) => (cur === '' ? draft : cur));
 
     try {
       const res = await fetch('/api/messages/send', {
@@ -191,6 +195,7 @@ export function MessagesThread({
         setError(msg);
         toast.error("Couldn't send message", msg);
         setMessages((m) => m.filter((x) => x.id !== tempId));
+        restoreDraft();
         return;
       }
       await refresh();
@@ -198,6 +203,7 @@ export function MessagesThread({
       setError('Network error. Try again.');
       toast.error("Couldn't send message", 'Network error. Try again.');
       setMessages((m) => m.filter((x) => x.id !== tempId));
+      restoreDraft();
     } finally {
       setBusy(false);
     }

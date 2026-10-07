@@ -89,6 +89,13 @@ export function ProspectList({
     });
   }, [prospects, filter, search, now]);
 
+  // Bulk actions see only selected rows still on screen — a pick made under
+  // another filter or search must not DNC/delete prospects now hidden.
+  const selectedIds = useMemo(
+    () => visible.filter((p) => selected.has(p.id)).map((p) => p.id),
+    [visible, selected],
+  );
+
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -126,7 +133,7 @@ export function ProspectList({
       const res = await fetch('/api/outreach/prospects/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: [...selected], action, owner_id: ownerId }),
+        body: JSON.stringify({ ids: selectedIds, action, owner_id: ownerId }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -185,10 +192,10 @@ export function ProspectList({
         />
       </div>
 
-      {selected.size > 0 ? (
+      {selectedIds.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-copper/40 bg-copper-soft px-4 py-2.5">
           <span className="font-sans text-xs font-medium text-ink">
-            {selected.size} selected
+            {selectedIds.length} selected
           </span>
           <Button
             type="button"
@@ -285,7 +292,7 @@ export function ProspectList({
 
       <ConfirmDialog
         open={bulkConfirm === 'delete'}
-        title={`Delete ${selected.size} prospect${selected.size === 1 ? '' : 's'}?`}
+        title={`Delete ${selectedIds.length} prospect${selectedIds.length === 1 ? '' : 's'}?`}
         description="This deletes them and their call history."
         confirmLabel="Delete"
         tone="danger"

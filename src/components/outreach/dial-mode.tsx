@@ -88,7 +88,9 @@ export function DialMode({
           disposition: outcome,
           spoke_with_dm: spoke,
           note: note.trim() || null,
-          next_action_at: nextAt || null,
+          // datetime-local has no zone; as a bare string the timestamptz
+          // column would read it as UTC and the callback lands hours early.
+          next_action_at: nextAt ? new Date(nextAt).toISOString() : null,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -279,13 +281,12 @@ export function DialMode({
         />
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+          {/* Picking an option doesn't log by itself: on Windows, arrow and
+              letter keys fire change while the select is focused, which
+              logged "Not interested" / "DNC" by accident. */}
           <select
             value={disposition}
-            onChange={(e) => {
-              const v = e.target.value;
-              setDisposition(v);
-              if (v) void log(v);
-            }}
+            onChange={(e) => setDisposition(e.target.value)}
             disabled={busy}
             aria-label="Other outcome"
             className="h-9 rounded-md border border-border bg-surface px-2 text-sm text-ink focus-visible:border-copper focus-visible:outline-none"
@@ -297,7 +298,17 @@ export function DialMode({
               </option>
             ))}
           </select>
-          <BookAppointmentButton prospect={p} />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={busy || !disposition}
+            onClick={() => void log(disposition)}
+          >
+            Log
+          </Button>
+          {/* Keyed so a half-typed booking doesn't carry to the next prospect. */}
+          <BookAppointmentButton key={p.id} prospect={p} />
           <Button
             type="button"
             variant="ghost"

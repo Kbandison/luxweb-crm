@@ -615,17 +615,23 @@ export async function getPayoutLedger(): Promise<PayoutLedgerRow[]> {
   }
 }
 
-/** Active team members, for attributing a payment to someone. */
-export async function getPayableMembers(): Promise<Array<{ id: string; name: string }>> {
+export type PayableMember = { id: string; name: string; active: boolean };
+
+/**
+ * Team members, for attributing a payment to someone. Inactive ones are
+ * included so payouts already attributed to them still show who was paid;
+ * pickers offer only active members for new attributions.
+ */
+export async function getPayableMembers(): Promise<PayableMember[]> {
   try {
     const { data } = await supabaseAdmin()
       .from('team_members')
-      .select('id, full_name')
-      .eq('status', 'active')
+      .select('id, full_name, status')
       .order('full_name');
     return ((data ?? []) as Record<string, unknown>[]).map((m) => ({
       id: m.id as string,
       name: (m.full_name as string) ?? 'Unknown',
+      active: m.status === 'active',
     }));
   } catch {
     return [];

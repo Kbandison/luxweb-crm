@@ -11,6 +11,9 @@ import { useToast } from '@/components/ui/toast';
 import { formatUSD, formatDate } from '@/lib/formatters';
 import type { BankAccountRow, PaymentRequestRow } from '@/lib/queries/finances';
 
+// Mirrors MAX_PAYOUT_CENTS in src/lib/mercury/payments.ts (server-only).
+const MAX_PAYOUT_CENTS = 5_000_000;
+
 type Recipient = {
   id: string;
   name: string;
@@ -54,6 +57,9 @@ export function PayoutPanel({
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [recipients, setRecipients] = useState<Recipient[] | null>(null);
+  // A failed load stays null (not an empty list) so it can be retried.
+  const [recipientsFailed, setRecipientsFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
 
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
@@ -65,20 +71,30 @@ export function PayoutPanel({
     if (!open || recipients !== null) return;
     let active = true;
     fetch('/api/admin/finances/recipients')
-      .then((r) => (r.ok ? r.json() : { recipients: [] }))
+      .then((r) => {
+        if (!r.ok) throw new Error(`recipients ${r.status}`);
+        return r.json();
+      })
       .then((d) => {
         if (active) setRecipients((d.recipients ?? []) as Recipient[]);
       })
       .catch(() => {
-        if (active) setRecipients([]);
+        if (active) setRecipientsFailed(true);
       });
     return () => {
       active = false;
     };
-  }, [open, recipients]);
+  }, [open, recipients, loadAttempt]);
+
+  function retryRecipients() {
+    setRecipientsFailed(false);
+    setLoadAttempt((n) => n + 1);
+  }
 
   const amountCents = Math.round(Number(amount.replace(/[^0-9.]/g, '')) * 100);
-  const valid = accountId && recipientId && Number.isFinite(amountCents) && amountCents > 0;
+  const overCap = amountCents > MAX_PAYOUT_CENTS;
+  const valid =
+    accountId && recipientId && Number.isFinite(amountCents) && amountCents > 0 && !overCap;
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -122,7 +138,14 @@ export function PayoutPanel({
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <Button type="button" size="sm" onClick={() => setOpen(true)}>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => {
+            if (recipientsFailed) retryRecipients();
+            setOpen(true);
+          }}
+        >
           Request a payout
         </Button>
       </div>
@@ -212,7 +235,11 @@ export function PayoutPanel({
                 disabled={recipients === null}
               >
                 <option value="">
-                  {recipients === null ? 'Loading…' : 'Choose a recipient'}
+                  {recipients !== null
+                    ? 'Choose a recipient'
+                    : recipientsFailed
+                      ? "Couldn't load recipients"
+                      : 'Loading…'}
                 </option>
                 {(recipients ?? []).map((r) => (
                   <option key={r.id} value={r.id}>
@@ -220,10 +247,23 @@ export function PayoutPanel({
                   </option>
                 ))}
               </select>
-              <p className="font-sans text-xs text-ink-subtle">
-                Recipients come from Mercury. Add new ones there — the CRM
-                doesn&apos;t store bank details.
-              </p>
+              {recipientsFailed ? (
+                <p className="font-sans text-xs text-danger">
+                  Couldn&apos;t load recipients from Mercury.{' '}
+                  <button
+                    type="button"
+                    onClick={retryRecipients}
+                    className="underline underline-offset-2 hover:text-ink"
+                  >
+                    Try again
+                  </button>
+                </p>
+              ) : (
+                <p className="font-sans text-xs text-ink-subtle">
+                  Recipients come from Mercury. Add new ones there — the CRM
+                  doesn&apos;t store bank details.
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -235,6 +275,11 @@ export function PayoutPanel({
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="500.00"
               />
+              {overCap ? (
+                <p className="font-sans text-xs text-danger">
+                  Payouts are capped at $50,000 each.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-1.5">

@@ -29,10 +29,12 @@ export function useUrlSearchInput(options?: { debounceMs?: number }): {
   const [q, setQLocal] = useState<string>(urlQ);
 
   // If the URL changes from elsewhere (back/forward, link click), sync local
-  // state — but only when we aren't mid-typing (no pending debounce).
+  // state — but only when we aren't mid-typing (no pending debounce), and
+  // not when the URL is just our own trimmed commit: writing that back
+  // ate the space after the last word ("acme " + "corp" → "acmecorp").
   const pendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (pendingRef.current == null && urlQ !== q) {
+    if (pendingRef.current == null && urlQ !== q.trim()) {
       setQLocal(urlQ);
     }
     // We deliberately don't depend on `q` here — we only want this to fire

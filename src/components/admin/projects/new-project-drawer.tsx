@@ -224,7 +224,7 @@ export function NewProjectDrawer({ contacts }: { contacts: ContactRow[] }) {
                   id="p_budget"
                   type="number"
                   min={0}
-                  step="100"
+                  step="0.01"
                   value={budgetDollars}
                   onChange={(e) => setBudgetDollars(e.target.value)}
                   placeholder="optional"

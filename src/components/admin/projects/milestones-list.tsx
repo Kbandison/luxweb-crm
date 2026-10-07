@@ -84,17 +84,23 @@ export function MilestonesList({
 
   async function patch(id: string, body: Record<string, unknown>) {
     setPendingId(id);
-    const res = await fetch(`/api/admin/milestones/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    setPendingId(null);
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      toast.error("Couldn't update milestone", j.error ?? 'Update failed.');
-    } else {
-      toast.success('Milestone updated');
+    try {
+      const res = await fetch(`/api/admin/milestones/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't update milestone", j.error ?? 'Update failed.');
+      } else {
+        toast.success('Milestone updated');
+      }
+    } catch {
+      toast.error("Couldn't update milestone", 'Network error. Try again.');
+    } finally {
+      // Always clear, or a thrown fetch leaves the row dimmed and disabled.
+      setPendingId(null);
     }
     router.refresh();
   }
@@ -110,7 +116,14 @@ export function MilestonesList({
     if (raw === '') {
       payload = { amount_cents: null };
     } else {
-      const parsed = Number.parseFloat(raw);
+      // Allow "$1,500.00" formatting, then require a plain number.
+      // parseFloat read "1,500" as 1 — and this amount is billed
+      // automatically on client approval. Commas must be thousands
+      // separators, so "1,50" or "1.500,00" are rejected, not guessed at.
+      const cleaned = raw.replace(/[$\s]/g, '');
+      const parsed = /^((\d{1,3}(,\d{3})+|\d+)(\.\d*)?|\.\d+)$/.test(cleaned)
+        ? Number(cleaned.replace(/,/g, ''))
+        : Number.NaN;
       if (!Number.isFinite(parsed) || parsed < 0) {
         toast.error('Invalid amount', 'Enter a number like 1500 or 1500.00.');
         return;
@@ -118,16 +131,22 @@ export function MilestonesList({
       payload = { amount_cents: Math.round(parsed * 100) };
     }
     setPendingId(id);
-    const res = await fetch(`/api/admin/milestones/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    setPendingId(null);
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      toast.error("Couldn't save amount", j.error ?? 'Update failed.');
+    try {
+      const res = await fetch(`/api/admin/milestones/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't save amount", j.error ?? 'Update failed.');
+        return;
+      }
+    } catch {
+      toast.error("Couldn't save amount", 'Network error. Try again.');
       return;
+    } finally {
+      setPendingId(null);
     }
     setAmountEditId(null);
     setAmountDraft('');
@@ -137,22 +156,27 @@ export function MilestonesList({
 
   async function submitForReview(id: string) {
     setPendingId(id);
-    const res = await fetch(
-      `/api/admin/projects/${projectId}/milestones/${id}/submit-for-review`,
-      { method: 'POST' },
-    );
-    setPendingId(null);
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      toast.error(
-        "Couldn't submit for review",
-        j.error ?? 'Failed to submit.',
+    try {
+      const res = await fetch(
+        `/api/admin/projects/${projectId}/milestones/${id}/submit-for-review`,
+        { method: 'POST' },
       );
-    } else {
-      toast.success(
-        'Submitted for client review',
-        'Client has been emailed and will see the approval card on their portal.',
-      );
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error(
+          "Couldn't submit for review",
+          j.error ?? 'Failed to submit.',
+        );
+      } else {
+        toast.success(
+          'Submitted for client review',
+          'Client has been emailed and will see the approval card on their portal.',
+        );
+      }
+    } catch {
+      toast.error("Couldn't submit for review", 'Network error. Try again.');
+    } finally {
+      setPendingId(null);
     }
     router.refresh();
   }
@@ -234,6 +258,7 @@ export function MilestonesList({
               <textarea
                 id="m_description"
                 rows={2}
+                maxLength={2000}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Optional context for the team or client."

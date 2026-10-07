@@ -13,6 +13,7 @@ import { FilePreview } from './file-preview';
 import { formatDateTime } from '@/lib/formatters';
 
 const MAX_BYTES = 50 * 1024 * 1024;
+const MAX_NAME_LENGTH = 255; // the sign route's file_name cap
 const BUCKET = 'project-files';
 
 type UploadingItem = {
@@ -20,7 +21,18 @@ type UploadingItem = {
   fileName: string;
   sizeBytes: number;
   progress: 'signing' | 'uploading' | 'failed';
+  error?: string;
 };
+
+/** Why the sign route would refuse this file, checked before we ask it. */
+function rejectReason(file: File): string | null {
+  if (file.size === 0) return 'is empty';
+  if (file.size > MAX_BYTES) return 'is larger than 50MB';
+  if (file.name.length > MAX_NAME_LENGTH) {
+    return `has a name over ${MAX_NAME_LENGTH} characters`;
+  }
+  return null;
+}
 
 export function FilesList({
   projectId,
@@ -42,10 +54,6 @@ export function FilesList({
   const [confirmBusy, setConfirmBusy] = useState(false);
 
   async function uploadFile(file: File) {
-    if (file.size > MAX_BYTES) {
-      setError(`“${file.name}” is larger than 50MB.`);
-      return;
-    }
     const tmpId = `tmp-${Date.now()}-${file.name}`;
     setUploading((u) => [
       ...u,
@@ -56,7 +64,6 @@ export function FilesList({
         progress: 'signing',
       },
     ]);
-    setError(null);
 
     try {
       // 1. Ask the server for a signed upload URL + pre-created DB row.
@@ -99,34 +106,57 @@ export function FilesList({
       toast.success('File uploaded', file.name);
       router.refresh();
     } catch (e) {
-      setUploading((u) =>
-        u.map((x) => (x.id === tmpId ? { ...x, progress: 'failed' } : x)),
-      );
+      // The reason stays on the failed row (dismissable) rather than the
+      // shared banner, where the next file in the batch would replace it.
       const msg = e instanceof Error ? e.message : 'Upload failed.';
-      setError(msg);
+      setUploading((u) =>
+        u.map((x) =>
+          x.id === tmpId ? { ...x, progress: 'failed', error: msg } : x,
+        ),
+      );
       toast.error("Couldn't upload file", msg);
     }
   }
 
   function onFilesPicked(files: FileList | null) {
     if (!files) return;
-    Array.from(files).forEach((f) => void uploadFile(f));
+    // Vet the whole batch first so every skipped file is named — a per-file
+    // setError let a later valid file wipe an earlier rejection.
+    const skipped: string[] = [];
+    const accepted: File[] = [];
+    for (const f of Array.from(files)) {
+      const reason = rejectReason(f);
+      if (reason) {
+        const name = f.name.length > 60 ? `${f.name.slice(0, 57)}…` : f.name;
+        skipped.push(`“${name}” ${reason}`);
+      } else {
+        accepted.push(f);
+      }
+    }
+    setError(skipped.length > 0 ? `Skipped: ${skipped.join('; ')}.` : null);
+    accepted.forEach((f) => void uploadFile(f));
     if (inputRef.current) inputRef.current.value = '';
   }
 
   async function toggleVisible(f: ProjectFile) {
     setPendingId(f.id);
-    const res = await fetch(`/api/admin/files/${f.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_client_visible: !f.isClientVisible }),
-    });
-    setPendingId(null);
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      toast.error("Couldn't update visibility", j.error ?? 'Update failed.');
-    } else {
-      toast.success('File visibility updated');
+    try {
+      const res = await fetch(`/api/admin/files/${f.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_client_visible: !f.isClientVisible }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't update visibility", j.error ?? 'Update failed.');
+      } else {
+        toast.success('File visibility updated');
+      }
+    } catch {
+      toast.error("Couldn't update visibility", 'Network error. Try again.');
+    } finally {
+      // Always clear, or a thrown fetch leaves the row dimmed and disabled.
+      setPendingId(null);
     }
     router.refresh();
   }
@@ -233,19 +263,36 @@ export function FilesList({
                 <p className="truncate font-sans text-sm font-medium text-ink">
                   {u.fileName}
                 </p>
-                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-meta text-copper">
+                <p
+                  className={cn(
+                    'mt-0.5 font-mono text-[10px] uppercase tracking-meta',
+                    u.progress === 'failed' ? 'text-danger' : 'text-copper',
+                  )}
+                >
                   {u.progress === 'signing' ? 'Preparing upload…' : null}
                   {u.progress === 'uploading'
                     ? `Uploading · ${formatBytes(u.sizeBytes)}`
                     : null}
-                  {u.progress === 'failed' ? 'Failed — try again' : null}
+                  {u.progress === 'failed'
+                    ? `Failed — ${u.error ?? 'try again'}`
+                    : null}
                 </p>
               </div>
               {u.progress !== 'failed' ? (
                 <div className="h-1 w-16 overflow-hidden rounded-full bg-border">
                   <div className="h-full w-full animate-pulse rounded-full bg-copper" />
                 </div>
-              ) : null}
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setUploading((list) => list.filter((x) => x.id !== u.id))
+                  }
+                >
+                  Dismiss
+                </Button>
+              )}
             </li>
           ))}
         </ul>

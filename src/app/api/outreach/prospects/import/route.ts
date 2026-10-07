@@ -5,23 +5,54 @@ import { writeAudit } from '@/lib/audit';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
 import { loadProspectIndex } from '@/lib/outreach/dedupe';
+import { MAX_IMPORT_ROWS } from '@/lib/outreach/csv-import';
+import { lenientEmail } from '@/lib/validation/ingest';
 
 export const runtime = 'nodejs';
-
-const MAX_ROWS = 2000;
 
 const RowSchema = z.object({
   full_name: z.string().min(1).max(200),
   company: z.string().max(200).optional().nullable(),
   phone: z.string().max(60).optional().nullable(),
-  email: z.string().max(200).optional().nullable(),
+  email: lenientEmail,
   industry: z.string().max(120).optional().nullable(),
+  website: z.string().max(500).optional().nullable(),
   website_problem: z.string().max(1000).optional().nullable(),
   source: z.string().max(120).optional().nullable(),
   notes: z.string().max(4000).optional().nullable(),
 });
 
-const Schema = z.object({ rows: z.array(RowSchema).max(MAX_ROWS) });
+const Schema = z.object({ rows: z.array(RowSchema).max(MAX_IMPORT_ROWS) });
+
+/**
+ * The first validation problem in words. The whole file is rejected on one
+ * bad cell, so "Invalid payload" left the setter hunting through 2,000 rows.
+ * `row` is the 0-based index into `rows` so the client can map it back to
+ * the spreadsheet's row number.
+ */
+function describeIssue(issue: z.ZodError['issues'][number]): {
+  row: number | null;
+  message: string;
+} {
+  const [, index, field] = issue.path;
+  if (typeof index !== 'number') {
+    return {
+      row: null,
+      message:
+        issue.code === 'too_big'
+          ? `Too many rows — ${MAX_IMPORT_ROWS.toLocaleString()} max per import.`
+          : 'Invalid payload',
+    };
+  }
+  const name = typeof field === 'string' ? field.replace(/_/g, ' ') : 'row';
+  const problem =
+    issue.code === 'too_big'
+      ? `is too long (max ${String(issue.maximum)} characters)`
+      : issue.code === 'too_small'
+        ? 'is required'
+        : 'is invalid';
+  return { row: index, message: `${name} ${problem}` };
+}
 
 /**
  * POST /api/outreach/prospects/import — bulk-add prospects from a parsed CSV.
@@ -42,8 +73,14 @@ export async function POST(req: Request) {
     const raw = await req.json().catch(() => ({}));
     const parsed = Schema.safeParse(raw);
     if (!parsed.success) {
+      const { row, message } = describeIssue(parsed.error.issues[0]);
       return Response.json(
-        { error: 'Invalid payload', issues: parsed.error.issues },
+        {
+          error: row === null ? message : `Row ${row + 1}: ${message}`,
+          row,
+          message,
+          issues: parsed.error.issues,
+        },
         { status: 400 },
       );
     }
@@ -73,6 +110,9 @@ export async function POST(req: Request) {
         phone: row.phone ?? null,
         email: row.email ?? null,
         industry: row.industry ?? null,
+        // Only when filled — same reason as the single-prospect create route
+        // (a CRM without crm_prospects_external.sql has no website column).
+        ...(row.website ? { website: row.website } : {}),
         website_problem: row.website_problem ?? null,
         source: row.source ?? 'import',
         notes: row.notes ?? null,

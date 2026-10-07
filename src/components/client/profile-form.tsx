@@ -33,25 +33,34 @@ export function ClientProfileForm({
     e.preventDefault();
     setBusy(true);
     setError(null);
+    function fail(msg: string) {
+      setError(msg);
+      setSavedAt(null);
+      toast.error("Couldn't save profile", msg);
+    }
+    // Only send the name when it was edited — the route locks renames once
+    // the client has signed anything, and a toggle-only save mustn't trip it.
+    const name = fullName.trim();
+    const nameChanged = name !== initialFullName.trim();
     try {
       const res = await fetch('/api/client/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          full_name: fullName.trim(),
+          ...(nameChanged ? { full_name: name } : {}),
           email_prefs: prefs,
         }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        const msg = j.error ?? 'Failed to save.';
-        setError(msg);
-        toast.error("Couldn't save profile", msg);
+        fail(j.error ?? 'Failed to save.');
         return;
       }
       setSavedAt(new Date());
       toast.success('Profile saved');
       router.refresh();
+    } catch {
+      fail("Couldn't reach the server — check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -142,13 +151,13 @@ export function ClientProfileForm({
             <p className="font-mono text-[10px] uppercase tracking-meta text-copper">
               Saving…
             </p>
-          ) : savedAt ? (
-            <p className="font-mono text-[10px] uppercase tracking-meta text-success">
-              Saved {savedAt.toLocaleTimeString()}
-            </p>
           ) : error ? (
             <p className="font-mono text-[10px] uppercase tracking-meta text-danger">
               {error}
+            </p>
+          ) : savedAt ? (
+            <p className="font-mono text-[10px] uppercase tracking-meta text-success">
+              Saved {savedAt.toLocaleTimeString()}
             </p>
           ) : (
             <p className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">

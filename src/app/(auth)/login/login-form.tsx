@@ -10,12 +10,29 @@ import { Label } from '@/components/ui/label';
 
 type Mode = 'password' | 'magic';
 
-export function LoginForm() {
+/** Copy for the `?error=` markers /auth/callback and the proxy redirect with. */
+function linkErrorMessage(code: string | null): string | null {
+  if (!code) return null;
+  if (code === 'no_role') {
+    return `There's no portal account for that login. Email ${STUDIO.email} if you need access.`;
+  }
+  // 'callback' — most often a magic or reset link opened on a different
+  // device or browser than the one that asked for it (PKCE can't finish).
+  return "That sign-in link didn't work — it may have expired, or been opened on a different device or browser than the one that requested it. Request a new one below, from this browser.";
+}
+
+export function LoginForm({ linkError = null }: { linkError?: string | null }) {
   const [mode, setMode] = useState<Mode>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    linkErrorMessage(linkError),
+  );
   const [notice, setNotice] = useState<string | null>(null);
+  // Covers the request itself; isPending covers the navigation after it.
+  // Without it a double-click sends two magic links and the second one's
+  // rate-limit error shows up next to the first one's success notice.
+  const [busy, setBusy] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -23,25 +40,30 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     setNotice(null);
+    setBusy(true);
     const supabase = supabaseBrowser();
 
-    if (mode === 'password') {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) return setError(error.message);
-      // Root page reads session, redirects by role.
-      startTransition(() => router.replace('/'));
-    } else {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${location.origin}/auth/callback`,
-        },
-      });
-      if (error) return setError(error.message);
-      setNotice(`Check ${email} for a sign-in link.`);
+    try {
+      if (mode === 'password') {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) return setError(error.message);
+        // Root page reads session, redirects by role.
+        startTransition(() => router.replace('/'));
+      } else {
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo: `${location.origin}/auth/callback`,
+          },
+        });
+        if (error) return setError(error.message);
+        setNotice(`Check ${email} for a sign-in link.`);
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -118,8 +140,14 @@ export function LoginForm() {
           <p className="font-sans text-xs text-success">{notice}</p>
         )}
 
-        <Button type="submit" className="w-full" disabled={isPending}>
-          {mode === 'password' ? 'Sign in' : 'Send magic link'}
+        <Button type="submit" className="w-full" disabled={busy || isPending}>
+          {mode === 'password'
+            ? busy
+              ? 'Signing in…'
+              : 'Sign in'
+            : busy
+              ? 'Sending…'
+              : 'Send magic link'}
         </Button>
       </form>
 

@@ -3,41 +3,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
-
-/** Minimal RFC-4180-ish CSV parser (handles quotes, commas, newlines). */
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let field = '';
-  let row: string[] = [];
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i++;
-        } else inQuotes = false;
-      } else field += c;
-    } else if (c === '"') inQuotes = true;
-    else if (c === ',') {
-      row.push(field);
-      field = '';
-    } else if (c === '\r') {
-      /* ignore */
-    } else if (c === '\n') {
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = '';
-    } else field += c;
-  }
-  if (field.length > 0 || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows;
-}
+import { MAX_IMPORT_ROWS, parseCsv } from '@/lib/outreach/csv-import';
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -48,6 +14,7 @@ const FIELD_MATCHERS: Array<[RegExp, string]> = [
   [/^(phone|phonenumber|number)$/, 'phone'],
   [/^(email|emailaddress)$/, 'email'],
   [/^(industry|niche)$/, 'industry'],
+  [/^(website|websiteurl|site|url|domain)$/, 'website'],
   [/(websiteproblem|problemspotted|problem|angle)/, 'website_problem'],
   [/^(source|leadsource)$/, 'source'],
   [/(notes|whattheyactuallysaid|said|comment)/, 'notes'],
@@ -90,12 +57,16 @@ export function OutreachImportButton() {
     setBusy(true);
     try {
       const text = await file.text();
-      const grid = parseCsv(text).filter((r) => r.some((c) => c.trim()));
+      // Keep each record's spreadsheet row number (header = row 1) so a
+      // server error can point at the row the setter will actually see.
+      const grid = parseCsv(text)
+        .map((cells, i) => ({ cells, sheetRow: i + 1 }))
+        .filter((r) => r.cells.some((c) => c.trim()));
       if (grid.length < 2) {
         toast.error('Empty file', 'No rows found under the header.');
         return;
       }
-      const fieldByCol = mapHeaders(grid[0]);
+      const fieldByCol = mapHeaders(grid[0].cells);
       if (!fieldByCol.includes('full_name')) {
         toast.error(
           'No name column',
@@ -103,16 +74,24 @@ export function OutreachImportButton() {
         );
         return;
       }
-      const rows = grid.slice(1).map((cells) => {
+      const records = grid.slice(1).map(({ cells, sheetRow }) => {
         const rec: Record<string, string> = {};
         fieldByCol.forEach((field, i) => {
           if (field && cells[i]?.trim()) rec[field] = cells[i].trim();
         });
-        return rec;
-      }).filter((r) => r.full_name);
+        return { rec, sheetRow };
+      }).filter((r) => r.rec.full_name);
+      const rows = records.map((r) => r.rec);
 
       if (rows.length === 0) {
         toast.error('Nothing to import', 'No rows had a contact name.');
+        return;
+      }
+      if (rows.length > MAX_IMPORT_ROWS) {
+        toast.error(
+          'File too large',
+          `${rows.length.toLocaleString()} prospects — import up to ${MAX_IMPORT_ROWS.toLocaleString()} at a time. Split the file and try again.`,
+        );
         return;
       }
 
@@ -123,7 +102,16 @@ export function OutreachImportButton() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error("Couldn't import", body.error ?? 'Try again.');
+        // The server names the failing row by its index in `rows`; translate
+        // that to the spreadsheet row number.
+        const sheetRow =
+          typeof body.row === 'number' ? records[body.row]?.sheetRow : undefined;
+        toast.error(
+          "Couldn't import",
+          sheetRow && body.message
+            ? `Row ${sheetRow}: ${body.message}. Nothing was imported.`
+            : (body.error ?? 'Try again.'),
+        );
         return;
       }
       toast.success(`Imported ${body.imported}`, skipMessage(body));

@@ -7,6 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 
+const NETWORK_ERROR =
+  "Couldn't reach the server — check your connection and try again.";
+
 /**
  * Sign or decline a change order. Signing sends the fingerprint of the text
  * on the page; if the change is billed on signing, it goes straight to the
@@ -31,6 +34,13 @@ export function ChangeOrderActions({
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Both dialogs share `error` — clear it on open so one's failure doesn't
+  // show up in the other (or linger into the next attempt).
+  function openDialog(next: 'sign' | 'decline') {
+    setError(null);
+    setMode(next);
+  }
 
   async function sign(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -59,6 +69,8 @@ export function ChangeOrderActions({
       }
       toast.success('Change order signed', 'Your signed copy is on its way by email.');
       router.refresh();
+    } catch {
+      setError(NETWORK_ERROR);
     } finally {
       setBusy(false);
     }
@@ -82,6 +94,8 @@ export function ChangeOrderActions({
       setMode(null);
       toast.success('Declined', "We've let the team know.");
       router.refresh();
+    } catch {
+      setError(NETWORK_ERROR);
     } finally {
       setBusy(false);
     }
@@ -100,10 +114,10 @@ export function ChangeOrderActions({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="secondary" onClick={() => setMode('decline')}>
+          <Button type="button" variant="secondary" onClick={() => openDialog('decline')}>
             Decline
           </Button>
-          <Button type="button" onClick={() => setMode('sign')}>
+          <Button type="button" onClick={() => openDialog('sign')}>
             Sign change order
           </Button>
         </div>

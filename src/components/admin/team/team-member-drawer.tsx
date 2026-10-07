@@ -88,9 +88,17 @@ export function TeamMemberDrawer({
     setError(null);
   }
 
+  // Re-seed from the saved member every time the drawer opens, so abandoned
+  // edits (or the last person created) never carry into the next session —
+  // and a cancelled edit can't be written by a later Save.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) resetToMember();
+  }
+
   function close() {
     setOpen(false);
-    if (mode === 'create') resetToMember();
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -226,6 +234,7 @@ export function TeamMemberDrawer({
                 <Label htmlFor="tm_phone">Phone</Label>
                 <Input
                   id="tm_phone"
+                  maxLength={60}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+1 ..."

@@ -68,7 +68,15 @@ export function TimerWidget({
   async function stop() {
     setBusy(true);
     try {
-      const res = await fetch('/api/staff/timer/stop', { method: 'POST' });
+      // Send the contractor's own calendar date — the server's UTC date
+      // would log evening work as tomorrow.
+      const d = new Date();
+      const localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const res = await fetch('/api/staff/timer/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ local_date: localDate }),
+      });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         toast.error("Couldn't stop timer", body.error ?? 'Try again.');

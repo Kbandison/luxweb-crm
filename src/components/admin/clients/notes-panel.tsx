@@ -60,6 +60,10 @@ export function NotesPanel({
       setBody('');
       toast.success('Note added');
       router.refresh();
+    } catch {
+      const msg = 'Network error. Try again.';
+      setError(msg);
+      toast.error("Couldn't add note", msg);
     } finally {
       setBusy(false);
     }
@@ -67,19 +71,26 @@ export function NotesPanel({
 
   async function togglePrivate(note: NoteRow) {
     setPendingId(note.id);
-    const res = await fetch(`/api/admin/notes/${note.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_private: !note.isPrivate }),
-    });
-    setPendingId(null);
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      toast.error("Couldn't update note", j.error ?? 'Update failed.');
-    } else {
-      toast.success('Note visibility updated');
+    // try/finally: a thrown fetch used to skip the reset and leave this
+    // note's buttons disabled until reload.
+    try {
+      const res = await fetch(`/api/admin/notes/${note.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_private: !note.isPrivate }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error("Couldn't update note", j.error ?? 'Update failed.');
+      } else {
+        toast.success('Note visibility updated');
+      }
+      router.refresh();
+    } catch {
+      toast.error("Couldn't update note", 'Network error. Try again.');
+    } finally {
+      setPendingId(null);
     }
-    router.refresh();
   }
 
   async function confirmDelete() {
@@ -96,6 +107,8 @@ export function NotesPanel({
       } else {
         toast.success('Note deleted');
       }
+    } catch {
+      toast.error("Couldn't delete note", 'Network error. Try again.');
     } finally {
       setConfirmBusy(false);
       setPendingId(null);

@@ -287,6 +287,20 @@ function NewInvoiceDialog({
     over_by_cents: number;
   } | null>(null);
 
+  // Each open starts clean — a warning (and its armed "Bill anyway") from an
+  // abandoned attempt doesn't carry over to the next invoice.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) {
+      setDescription('');
+      setAmountDollars('');
+      setDaysUntilDue('14');
+      setError(null);
+      setOverContract(null);
+    }
+  }
+
   // Override Dialog's default autofocus (close button is first focusable
   // in DOM) so the form's first field gets focus instead.
   useEffect(() => {

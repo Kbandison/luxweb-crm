@@ -11,6 +11,9 @@ import { formatDateLong, formatDateTimeLongTz } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import type { ContractStatus } from '@/lib/types/contract';
 
+const NETWORK_ERROR =
+  "Couldn't reach the server — check your connection and try again.";
+
 export function PrintBar() {
   return (
     <div className="flex justify-end print:hidden">
@@ -156,6 +159,9 @@ function SignBar({
       setSignedInvoiceId(j.deposit_invoice_id ?? null);
       setDepositStatus(j.deposit_status ?? null);
       setConfirmOpen(true);
+    } catch {
+      setError(NETWORK_ERROR);
+      toast.error("Couldn't sign agreement", NETWORK_ERROR);
     } finally {
       setBusy(false);
     }
@@ -183,7 +189,15 @@ function SignBar({
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <RequestChangesButton contractId={contractId} />
-            <Button type="button" onClick={() => setOpen(true)} className="shrink-0">
+            <Button
+              type="button"
+              onClick={() => {
+                // Don't greet a fresh attempt with the last one's error.
+                setError(null);
+                setOpen(true);
+              }}
+              className="shrink-0"
+            >
               Sign agreement
             </Button>
           </div>
@@ -365,6 +379,8 @@ function RequestChangesButton({ contractId }: { contractId: string }) {
       setMessage('');
       toast.success('Request sent', "We'll follow up with an updated agreement.");
       router.refresh();
+    } catch {
+      setError(NETWORK_ERROR);
     } finally {
       setBusy(false);
     }
@@ -372,7 +388,14 @@ function RequestChangesButton({ contractId }: { contractId: string }) {
 
   return (
     <>
-      <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
+      >
         Request changes
       </Button>
       <Dialog

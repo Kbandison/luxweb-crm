@@ -1,4 +1,20 @@
 import { z } from 'zod';
+import { isValidEmail } from './email';
+
+/**
+ * An email cell that isn't one is stored as null rather than failing the row:
+ * a bad value in the source sheet/tool shouldn't sink the whole push, and
+ * kept as-is it later fails booking (the appointment schema wants a real
+ * address). Shared by ingest and CSV import.
+ */
+export const lenientEmail = z
+  .string()
+  .optional()
+  .nullable()
+  .transform((v) => {
+    const t = v?.trim();
+    return t && t.length <= 200 && isValidEmail(t) ? t : null;
+  });
 
 /**
  * Payload for POST /api/outreach/ingest — leads pushed in from an external
@@ -13,7 +29,7 @@ export const IngestLeadSchema = z.object({
   /** The person who answers, when the tool knows one. */
   contact_name: z.string().max(200).optional().nullable(),
   phone: z.string().max(60).optional().nullable(),
-  email: z.string().max(200).optional().nullable(),
+  email: lenientEmail,
   website: z.string().max(500).optional().nullable(),
   industry: z.string().max(120).optional().nullable(),
   /** Why they need a rebuild — lands in the setter's "Angle" field. */

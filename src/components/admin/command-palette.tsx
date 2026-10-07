@@ -209,7 +209,11 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
-  const [results, setResults] = useState<SearchResponse | null>(null);
+  // Tagged with the query they answer — see visibleResults.
+  const [results, setResults] = useState<{
+    q: string;
+    data: SearchResponse;
+  } | null>(null);
   const [rawSelectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
@@ -308,7 +312,7 @@ export function CommandPalette() {
     })
       .then((r) => (r.ok ? (r.json() as Promise<SearchResponse>) : null))
       .then((j) => {
-        if (j) setResults(j);
+        if (j) setResults({ q: debounced, data: j });
       })
       .catch(() => {
         /* aborted or failed — leave previous results in place */
@@ -318,8 +322,13 @@ export function CommandPalette() {
 
   /* ----------------------------- compose items ----------------------------- */
 
-  // Results only belong to a live query; with none, nothing is shown.
-  const visibleResults = debounced ? results : null;
+  // Results only show while they answer exactly what's typed. During the
+  // debounce + fetch the previous query's matches would otherwise stay
+  // listed, and Enter would open one of them.
+  const visibleResults =
+    results && query.trim() !== '' && results.q === query.trim()
+      ? results.data
+      : null;
 
   const items = useMemo<CommandItem[]>(() => {
     const q = query.trim().toLowerCase();

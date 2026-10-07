@@ -49,6 +49,11 @@ export function LeadOwnerControl({
     }
   }
 
+  // An owner who's been deactivated (or lost the role) isn't in `owners`; list
+  // them anyway, or the select falls back to "Unassign" and misreports.
+  const ownerMissing =
+    currentOwnerId !== null && !owners.some((o) => o.userId === currentOwnerId);
+
   return (
     <label className="inline-flex items-center gap-2">
       <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
@@ -64,6 +69,11 @@ export function LeadOwnerControl({
         <option value="">
           {currentOwnerName ? 'Unassign' : 'Unassigned'}
         </option>
+        {ownerMissing ? (
+          <option value={currentOwnerId ?? ''}>
+            {currentOwnerName ?? 'Former owner'} (inactive)
+          </option>
+        ) : null}
         {owners.map((o) => (
           <option key={o.userId} value={o.userId}>
             {o.name}

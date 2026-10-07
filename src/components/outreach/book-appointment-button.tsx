@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import type { ProspectRow } from '@/lib/queries/outreach';
+import { isValidEmail } from '@/lib/validation/email';
 
 type Slot = { startIso: string; label: string };
 
@@ -28,15 +29,22 @@ export function BookAppointmentButton({ prospect }: { prospect: ProspectRow }) {
   // and what's showing isn't for the duration asked for yet.
   const [slotsFor, setSlotsFor] = useState<string | null>(null);
   const loadingSlots = open && slotsFor !== duration;
+  const [selectedIso, setSelectedIso] = useState('');
+  const [customWhen, setCustomWhen] = useState('');
   // Each open fetches fresh availability; until it lands, show loading
-  // rather than the last visit's (possibly stale) slots.
+  // rather than the last visit's (possibly stale) slots. A pick or notes
+  // left from a closed-without-booking visit are dropped too — a stale
+  // selection kept Book enabled for a slot that may be gone.
   const [wasOpen, setWasOpen] = useState(open);
   if (wasOpen !== open) {
     setWasOpen(open);
-    if (open) setSlotsFor(null);
+    if (open) {
+      setSlotsFor(null);
+      setSelectedIso('');
+      setCustomWhen('');
+      setNotes('');
+    }
   }
-  const [selectedIso, setSelectedIso] = useState('');
-  const [customWhen, setCustomWhen] = useState('');
 
   // Load open slots when the drawer opens or the duration changes.
   useEffect(() => {
@@ -59,6 +67,11 @@ export function BookAppointmentButton({ prospect }: { prospect: ProspectRow }) {
     };
   }, [open, duration]);
 
+  // Imported/pushed rows can carry a malformed email; sending it would fail
+  // the whole booking. Book without an invite instead.
+  const email = prospect.email?.trim() ?? '';
+  const inviteEmail = email && isValidEmail(email) ? email : null;
+
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const scheduledAt = selectedIso || (customWhen ? new Date(customWhen).toISOString() : '');
@@ -76,7 +89,7 @@ export function BookAppointmentButton({ prospect }: { prospect: ProspectRow }) {
           business_name: prospect.company,
           contact_name: prospect.fullName,
           phone: prospect.phone,
-          email: prospect.email,
+          email: inviteEmail,
           scheduled_at: scheduledAt,
           duration_min: Number(duration) || 30,
           notes: notes.trim() || null,
@@ -120,6 +133,11 @@ export function BookAppointmentButton({ prospect }: { prospect: ProspectRow }) {
             {prospect.fullName}
             {prospect.email ? ` · ${prospect.email}` : ''}
           </p>
+          {email && !inviteEmail ? (
+            <p className="mt-1 font-sans text-xs text-warning">
+              That email doesn&apos;t look valid — no invite will be sent. Fix it on the prospect to include one.
+            </p>
+          ) : null}
         </header>
         <form onSubmit={submit} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-5 overflow-y-auto px-6 py-6">

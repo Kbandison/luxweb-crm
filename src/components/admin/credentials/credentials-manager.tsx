@@ -13,6 +13,7 @@ import {
   CREDENTIAL_KIND_LABEL,
   type CredentialKind,
 } from '@/lib/types/credential';
+import { credentialHref } from '@/lib/credentials/fields';
 import { cn } from '@/lib/utils';
 
 /**
@@ -344,6 +345,8 @@ function CredentialRow({
   const [revealed, setRevealed] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // SFTP hosts (and anything that isn't a safe http(s) link) stay plain text.
+  const href = credentialHref(item.kind, item.url);
 
   async function handleReveal() {
     setError(null);
@@ -399,16 +402,18 @@ function CredentialRow({
             <p className="mt-1 truncate font-mono text-xs text-ink-muted">
               {item.username}
               {item.username && item.url ? ' · ' : ''}
-              {item.url ? (
+              {href ? (
                 <a
-                  href={item.url}
+                  href={href}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-copper hover:underline"
                 >
                   {item.url}
                 </a>
-              ) : null}
+              ) : (
+                item.url
+              )}
             </p>
           ) : null}
           {item.notes ? (
@@ -555,9 +560,13 @@ function CredentialFormDialog({
               {cfg.showUrl ? (
                 <div className="space-y-1.5">
                   <Label htmlFor="cred_url">{cfg.urlLabel ?? 'URL'}</Label>
+                  {/* Plain text, not type="url": the browser would block
+                      bare domains (example.com) and SFTP hosts that the
+                      server accepts. */}
                   <Input
                     id="cred_url"
-                    type={form.kind === 'url' ? 'url' : 'text'}
+                    type="text"
+                    inputMode="url"
                     required={cfg.urlRequired}
                     maxLength={2000}
                     placeholder={cfg.urlPlaceholder}

@@ -26,8 +26,9 @@ import { useToast } from '@/components/ui/toast';
 import { ProposalStatusPill } from './proposal-status-pill';
 import { AgreementSummary } from '@/components/contract/agreement-summary';
 import { ContractBody } from '@/components/contract/contract-body';
-import { formatDate, formatDateTime } from '@/lib/formatters';
+import { formatDate, formatDateTime, todayInStudioTz } from '@/lib/formatters';
 import { CURRENT_AGREEMENT_VERSION } from '@/lib/contracts/versions';
+import { percentsOf, rescaleSchedule } from '@/lib/proposals/schedule';
 import { DEFAULT_EXPIRY_DAYS } from '@/lib/agreements/expiry';
 import { OFFLINE_PAYMENT_METHODS } from '@/lib/invoices/payment-methods';
 import { cn } from '@/lib/utils';
@@ -114,9 +115,27 @@ export function ProposalEditor({
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectBusy, setRejectBusy] = useState(false);
 
+  // A send, revise or decline changes the record under the form. When the
+  // refreshed props arrive, show it as the server now has it — and only as
+  // a preview once it's locked — rather than keeping a stale, still-editable
+  // copy that a later save would write back.
+  const recordKey = `${status}:${revision}`;
+  const [shownRecordKey, setShownRecordKey] = useState(recordKey);
+  if (shownRecordKey !== recordKey) {
+    setShownRecordKey(recordKey);
+    setTitle(initialTitle);
+    setContent(pairTimelineAndMilestones(withCarePlanDefaults(initialContent)));
+    if (isLocked) setMode('preview');
+  }
+
   const totalCents = content.investment.total_cents;
 
   async function save(opts: { silent?: boolean } = {}): Promise<boolean> {
+    if (!title.trim()) {
+      setError('Give the agreement a title.');
+      toast.error("Couldn't save proposal", 'Give the agreement a title.');
+      return false;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -199,14 +218,15 @@ export function ProposalEditor({
         method: 'DELETE',
       });
       if (!res.ok) {
-        toast.error("Couldn't delete proposal");
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error("Couldn't delete proposal", j.error ?? '');
         return;
       }
       toast.success('Proposal deleted');
+      router.push(backHref);
     } finally {
       setDeleteBusy(false);
       setDeleteOpen(false);
-      router.push(backHref);
     }
   }
 
@@ -372,8 +392,13 @@ export function ProposalEditor({
             variant="secondary"
             size="sm"
             onClick={() => setDeleteOpen(true)}
-            disabled={isAccepted}
-            title={isAccepted ? 'Accepted proposals cannot be deleted' : undefined}
+            // Once sent, a contract exists and the agreement stays with it.
+            disabled={isAccepted || Boolean(existingContract)}
+            title={
+              isAccepted || existingContract
+                ? 'A contract was issued from this agreement, so it stays on record'
+                : undefined
+            }
           >
             Delete
           </Button>
@@ -392,7 +417,11 @@ export function ProposalEditor({
             <Button
               type="button"
               size="sm"
-              onClick={() => setSendOpen(true)}
+              onClick={() => {
+                // Each send is its own review — never carry the tick over.
+                setSignAgreed(false);
+                setSendOpen(true);
+              }}
               disabled={sendBusy}
             >
               {revision > 1 ? 'Sign & re-send' : 'Sign & send'}
@@ -881,26 +910,15 @@ function EditorForm({
       <FormSection title="Scope">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Pages count">
-            <Input
-              type="number"
-              min={0}
-              value={String(content.scope.pages_count)}
-              onChange={(e) =>
-                patchScope('pages_count', Number(e.target.value) || 0)
-              }
+            <WholeNumberInput
+              value={content.scope.pages_count}
+              onChange={(n) => patchScope('pages_count', n)}
             />
           </Field>
           <Field label="Post-launch support (months)">
-            <Input
-              type="number"
-              min={0}
-              value={String(content.scope.post_launch_support_months)}
-              onChange={(e) =>
-                patchScope(
-                  'post_launch_support_months',
-                  Number(e.target.value) || 0,
-                )
-              }
+            <WholeNumberInput
+              value={content.scope.post_launch_support_months}
+              onChange={(n) => patchScope('post_launch_support_months', n)}
             />
           </Field>
           <Field
@@ -1085,17 +1103,12 @@ function EditorForm({
           </button>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Total weeks">
-              <Input
-                type="number"
-                min={0}
-                value={String(content.timeline.total_weeks)}
-                onChange={(e) =>
+              <WholeNumberInput
+                value={content.timeline.total_weeks}
+                onChange={(n) =>
                   setContent((c) => ({
                     ...c,
-                    timeline: {
-                      ...c.timeline,
-                      total_weeks: Number(e.target.value) || 0,
-                    },
+                    timeline: { ...c.timeline, total_weeks: n },
                   }))
                 }
               />
@@ -1235,16 +1248,6 @@ function EditorForm({
 
 /* ----------------------------- tiny helpers ----------------------------- */
 
-/** Today as YYYY-MM-DD in the studio's timezone — what a date input wants. */
-function todayInStudioTz(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/New_York',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-}
-
 // Unique id for a freshly added phase ↔ milestone pair. Runs only in a
 // click handler (client), so crypto.randomUUID is available; the fallback
 // keeps it working in any odd environment.
@@ -1301,8 +1304,11 @@ function CurrencyInput({
 
   function commit() {
     const newCents = dollarStrToCents(text);
-    lastCentsRef.current = newCents;
     setText(centsToDollarStr(newCents));
+    // Tabbing through without a change isn't an edit — committing it
+    // anyway rebuilt everything downstream of the field.
+    if (newCents === cents) return;
+    lastCentsRef.current = newCents;
     onCommit(newCents);
   }
 
@@ -1324,6 +1330,47 @@ function CurrencyInput({
   );
 }
 
+/**
+ * Whole-number input that can sit empty while it's retyped. Parsing each
+ * keystroke with `Number(v) || 0` put a "0" back under the cursor the
+ * moment the box was cleared. Empty commits 0, and shows it on blur.
+ */
+function WholeNumberInput({
+  value,
+  onChange,
+  max,
+  placeholder,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  max?: number;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState(() => String(value));
+  // Show changes made elsewhere (a recalculated percent, a reset) —
+  // during render, when the box no longer reads as the value.
+  const [shownValue, setShownValue] = useState(value);
+  if (shownValue !== value) {
+    setShownValue(value);
+    if ((Number(text) || 0) !== value) setText(String(value));
+  }
+  return (
+    <Input
+      type="text"
+      inputMode="numeric"
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => {
+        const digits = e.target.value.replace(/[^0-9]/g, '');
+        const n = Math.min(max ?? Number.MAX_SAFE_INTEGER, Number(digits) || 0);
+        setText(digits === '' ? '' : String(n));
+        onChange(n);
+      }}
+      onBlur={() => setText(String(value))}
+    />
+  );
+}
+
 function InvestmentSection({
   content,
   setContent,
@@ -1332,18 +1379,22 @@ function InvestmentSection({
   setContent: (updater: (c: ProposalContent) => ProposalContent) => void;
 }) {
   function setTotalCents(newTotalCents: number) {
-    setContent((c) => ({
-      ...c,
-      investment: {
-        ...c.investment,
-        total_cents: newTotalCents,
-        // Preserve each milestone's percent; recompute amount from new total.
-        milestones: c.investment.milestones.map((m) => ({
-          ...m,
-          amount_cents: Math.round((newTotalCents * m.percent) / 100),
-        })),
-      },
-    }));
+    setContent((c) =>
+      newTotalCents === c.investment.total_cents
+        ? c
+        : {
+            ...c,
+            investment: {
+              ...c.investment,
+              total_cents: newTotalCents,
+              milestones: rescaleSchedule(
+                c.investment.milestones,
+                c.investment.total_cents,
+                newTotalCents,
+              ),
+            },
+          },
+    );
   }
 
   function setMilestonePercent(index: number, percentRaw: number) {
@@ -1369,15 +1420,18 @@ function InvestmentSection({
 
   function setMilestoneAmountCents(index: number, amount_cents: number) {
     setContent((c) => {
-      const total = c.investment.total_cents;
-      const percent = total > 0 ? Math.round((amount_cents / total) * 100) : 0;
+      const milestones = c.investment.milestones.map((m, i) =>
+        i === index ? { ...m, amount_cents } : m,
+      );
+      const percents = percentsOf(
+        milestones.map((m) => m.amount_cents),
+        c.investment.total_cents,
+      );
       return {
         ...c,
         investment: {
           ...c.investment,
-          milestones: c.investment.milestones.map((m, i) =>
-            i === index ? { ...m, amount_cents, percent } : m,
-          ),
+          milestones: milestones.map((m, i) => ({ ...m, percent: percents[i] })),
         },
       };
     });
@@ -1525,18 +1579,12 @@ function InvestmentSection({
           <CurrencyInput cents={total} onCommit={setTotalCents} />
         </Field>
         <Field label="Net days">
-          <Input
-            type="text"
-            inputMode="numeric"
-            value={String(content.investment.net_days)}
-            onChange={(e) =>
+          <WholeNumberInput
+            value={content.investment.net_days}
+            onChange={(n) =>
               setContent((c) => ({
                 ...c,
-                investment: {
-                  ...c.investment,
-                  net_days:
-                    Math.max(0, Math.floor(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)),
-                },
+                investment: { ...c.investment, net_days: n },
               }))
             }
           />
@@ -1554,7 +1602,9 @@ function InvestmentSection({
         </Field>
         <Field label="Hourly rate" hint="Out-of-scope and post-support work (§ 1.2)">
           <CurrencyInput
-            cents={hourlyRateCents(content)}
+            // What's stored, $0 included — showing the default over a $0
+            // hid why Sign & send asks for a rate.
+            cents={content.investment.hourly_rate_cents ?? hourlyRateCents(content)}
             onCommit={setHourlyRateCents}
           />
         </Field>
@@ -1628,15 +1678,11 @@ function InvestmentSection({
                   onChange={(e) => setMilestoneField(i, 'label', e.target.value)}
                 />
               </div>
-              <Input
-                type="text"
-                inputMode="numeric"
-                value={String(m.percent)}
+              <WholeNumberInput
+                value={m.percent}
+                max={100}
                 placeholder="%"
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                  setMilestonePercent(i, Number(cleaned) || 0);
-                }}
+                onChange={(n) => setMilestonePercent(i, n)}
               />
               <CurrencyInput
                 cents={m.amount_cents}
@@ -1985,23 +2031,36 @@ function LineArea({
   onChange: (lines: string[]) => void;
   placeholder?: string;
 }) {
-  const joined = value.join('\n');
+  // The box keeps exactly what was typed; the draft gets clean lines.
+  // Trimming the box itself on every keystroke ate the space after each
+  // word and any blank line opened mid-list.
+  const [text, setText] = useState(() => value.join('\n'));
+  // When the lines change from outside (a reset, a loaded draft), show
+  // them — during render, when they no longer match what's in the box.
+  const [shownValue, setShownValue] = useState(value);
+  if (shownValue !== value) {
+    setShownValue(value);
+    if (cleanLines(text).join('\n') !== value.join('\n')) setText(value.join('\n'));
+  }
   return (
     <textarea
       rows={rows}
-      value={joined}
-      onChange={(e) =>
-        onChange(
-          e.target.value
-            .split('\n')
-            .map((l) => l.trim())
-            .filter((l, i, arr) => (i === arr.length - 1 ? true : l.length > 0)),
-        )
-      }
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(cleanLines(e.target.value));
+      }}
       placeholder={placeholder}
       className="block w-full rounded-md border border-border bg-surface px-3 py-2 font-sans text-sm text-ink placeholder:text-ink-subtle focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30"
     />
   );
+}
+
+function cleanLines(text: string): string[] {
+  return text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
 }
 
 function RepeatingList<T>({

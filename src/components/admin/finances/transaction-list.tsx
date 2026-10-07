@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/components/ui/toast';
 import { formatUSD, formatDate } from '@/lib/formatters';
 import { EXPENSE_CATEGORIES, isInternalTransfer } from '@/lib/finances/categories';
-import type { BankTransactionRow } from '@/lib/queries/finances';
+import type { BankTransactionRow, PayableMember } from '@/lib/queries/finances';
 
 type Flow = 'all' | 'in' | 'out' | 'pending';
 
@@ -27,8 +27,8 @@ export function TransactionList({
   members = [],
 }: {
   transactions: BankTransactionRow[];
-  /** Active team members, for attributing a payout. */
-  members?: Array<{ id: string; name: string }>;
+  /** Team members, for attributing a payout. */
+  members?: PayableMember[];
 }) {
   const [flow, setFlow] = useState<Flow>('all');
   const [search, setSearch] = useState('');
@@ -134,7 +134,7 @@ export function TransactionList({
                               value={t.category}
                               hint={t.mercuryCategory}
                             />
-                            {members.length > 0 ? (
+                            {members.some((m) => m.active || m.id === t.teamMemberId) ? (
                               <MemberPicker
                                 id={t.id}
                                 value={t.teamMemberId}
@@ -187,9 +187,11 @@ function CategoryPicker({
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const [shown, setChosen] = useShownChoice(value);
 
   async function set(next: string) {
     setBusy(true);
+    setChosen(next);
     try {
       const res = await fetch(`/api/admin/finances/transactions/${id}`, {
         method: 'PATCH',
@@ -199,11 +201,13 @@ function CategoryPicker({
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         toast.error("Couldn't categorize", body.error ?? 'Try again.');
+        setChosen(null);
         return;
       }
       router.refresh();
     } catch {
       toast.error("Couldn't categorize", 'Network error.');
+      setChosen(null);
     } finally {
       setBusy(false);
     }
@@ -211,7 +215,7 @@ function CategoryPicker({
 
   return (
     <select
-      value={value ?? ''}
+      value={shown}
       disabled={busy}
       onChange={(e) => void set(e.target.value)}
       aria-label="Expense category"
@@ -238,14 +242,19 @@ function MemberPicker({
 }: {
   id: string;
   value: string | null;
-  members: Array<{ id: string; name: string }>;
+  members: PayableMember[];
 }) {
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const [shown, setChosen] = useShownChoice(value);
+  // Inactive members only appear on payouts already theirs — otherwise the
+  // select had no matching option and read "Not a payout".
+  const options = members.filter((m) => m.active || m.id === value);
 
   async function set(next: string) {
     setBusy(true);
+    setChosen(next);
     try {
       const res = await fetch(`/api/admin/finances/transactions/${id}`, {
         method: 'PATCH',
@@ -255,11 +264,13 @@ function MemberPicker({
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         toast.error("Couldn't attribute", body.error ?? 'Try again.');
+        setChosen(null);
         return;
       }
       router.refresh();
     } catch {
       toast.error("Couldn't attribute", 'Network error.');
+      setChosen(null);
     } finally {
       setBusy(false);
     }
@@ -267,18 +278,33 @@ function MemberPicker({
 
   return (
     <select
-      value={value ?? ''}
+      value={shown}
       disabled={busy}
       onChange={(e) => void set(e.target.value)}
       aria-label="Paid to"
       className="h-7 rounded-md border border-border bg-surface px-1.5 text-xs text-ink-muted focus-visible:border-copper focus-visible:outline-none disabled:opacity-50"
     >
       <option value="">Not a payout</option>
-      {members.map((m) => (
+      {options.map((m) => (
         <option key={m.id} value={m.id}>
-          {m.name}
+          {m.active ? m.name : `${m.name} (inactive)`}
         </option>
       ))}
     </select>
   );
+}
+
+/**
+ * What a picker shows: the choice being saved, until the refreshed row
+ * arrives carrying it. Without this the select snapped back to the old
+ * value for the length of the save.
+ */
+function useShownChoice(value: string | null) {
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [lastValue, setLastValue] = useState(value);
+  if (lastValue !== value) {
+    setLastValue(value);
+    setChosen(null);
+  }
+  return [chosen ?? value ?? '', setChosen] as const;
 }

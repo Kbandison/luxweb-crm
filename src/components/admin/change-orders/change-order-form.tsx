@@ -47,6 +47,9 @@ export function ChangeOrderForm({
   const [agreed, setAgreed] = useState(false);
 
   const dollars = Number(amount.replace(/[^0-9.]/g, '')) || 0;
+  // Whole weeks, ±52. Anything else is shown back as typed and flagged —
+  // stripping the "." turned 1.5 into 15.
+  const weeksValid = /^-?\d*$/.test(weeks.trim()) && Math.abs(Number(weeks) || 0) <= 52;
   const amountCents =
     priceKind === 'none' ? 0 : Math.round(dollars * 100) * (priceKind === 'credit' ? -1 : 1);
 
@@ -61,12 +64,14 @@ export function ChangeOrderForm({
     };
   }
 
-  // Any change makes the preview stale; sending needs a fresh one.
+  // Any change makes the preview stale; sending needs a fresh one, and a
+  // fresh review — the tick doesn't carry over to a changed draft.
   function edit<T>(setter: (v: T) => void) {
     return (v: T) => {
       setter(v);
       setPreview(null);
       setError(null);
+      setAgreed(false);
     };
   }
 
@@ -89,6 +94,8 @@ export function ChangeOrderForm({
         return;
       }
       setPreview({ body: j.body_md, newTotal: j.new_total ?? '' });
+    } catch {
+      setError("Couldn't reach the server — check your connection and try again.");
     } finally {
       setBusy(null);
     }
@@ -111,11 +118,15 @@ export function ChangeOrderForm({
       const j = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
       if (!res.ok || !j.id) {
         setError(j.error ?? "Couldn't send the change order.");
+        setBusy(null);
         return;
       }
       toast.success(`Change order #${nextNumber} sent`, `The client has ${expiryDays} days to sign.`);
+      // Stay busy while the page changes — a second click here would sign
+      // and send the next change order.
       router.push(`/admin/projects/${projectId}/change-orders/${j.id}`);
-    } finally {
+    } catch {
+      setError("Couldn't reach the server — check your connection and try again.");
       setBusy(null);
     }
   }
@@ -123,7 +134,8 @@ export function ChangeOrderForm({
   const canPreview =
     title.trim().length > 0 &&
     description.trim().length > 0 &&
-    (priceKind === 'none' || dollars > 0);
+    (priceKind === 'none' || dollars > 0) &&
+    weeksValid;
 
   return (
     <div className="space-y-8">
@@ -236,9 +248,13 @@ export function ChangeOrderForm({
             id="co-weeks"
             inputMode="numeric"
             value={weeks}
-            onChange={(e) => edit(setWeeks)(e.target.value.replace(/[^0-9-]/g, ''))}
+            onChange={(e) => edit(setWeeks)(e.target.value.replace(/[^0-9.-]/g, ''))}
           />
-          <p className="font-sans text-xs text-ink-subtle">+ extends, − shortens, 0 for none.</p>
+          {weeksValid ? (
+            <p className="font-sans text-xs text-ink-subtle">+ extends, − shortens, 0 for none.</p>
+          ) : (
+            <p className="font-sans text-xs text-danger">Whole weeks only, up to 52 either way.</p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="co-expiry">Open for signature</Label>

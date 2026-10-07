@@ -24,6 +24,13 @@ export function ProjectPreviewLink({
   const [value, setValue] = useState(previewUrl ?? '');
   const [busy, setBusy] = useState(false);
 
+  // Seed the draft from the saved link on every open — Escape and Remove
+  // used to leave the old URL in the input for the next "add link".
+  function startEditing() {
+    setValue(previewUrl ?? '');
+    setEditing(true);
+  }
+
   async function commit(next: string | null) {
     setBusy(true);
     try {
@@ -54,6 +61,8 @@ export function ProjectPreviewLink({
           placeholder="staging.vercel.app or https://…"
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
+            // Mirror the disabled buttons: no double submit while saving.
+            if (busy) return;
             if (e.key === 'Enter') commit(value.trim() || null);
             if (e.key === 'Escape') setEditing(false);
           }}
@@ -71,10 +80,7 @@ export function ProjectPreviewLink({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => {
-            setValue(previewUrl ?? '');
-            setEditing(false);
-          }}
+          onClick={() => setEditing(false)}
           disabled={busy}
         >
           Cancel
@@ -98,7 +104,7 @@ export function ProjectPreviewLink({
     return (
       <button
         type="button"
-        onClick={() => setEditing(true)}
+        onClick={startEditing}
         className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border bg-surface px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-meta text-ink-muted transition-colors hover:border-copper/40 hover:text-copper"
       >
         <svg
@@ -146,7 +152,7 @@ export function ProjectPreviewLink({
       </a>
       <button
         type="button"
-        onClick={() => setEditing(true)}
+        onClick={startEditing}
         className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle transition-colors hover:text-copper"
       >
         Edit

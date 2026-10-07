@@ -4,10 +4,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ACTIONS, ENTITY_TYPES } from '@/lib/audit-meta';
+import { todayInStudioTz } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
+/**
+ * YYYY-MM-DD `days` before today, in the studio's timezone — the audit
+ * query reads from/to as America/New_York days. A UTC slice jumped to
+ * tomorrow every evening.
+ */
 function isoDateDaysAgo(days: number): string {
-  const d = new Date();
+  const d = new Date(`${todayInStudioTz()}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() - days);
   return d.toISOString().slice(0, 10);
 }
@@ -22,7 +28,7 @@ const PRESETS: readonly Preset[] = [
   {
     key: 'today',
     label: 'Today',
-    params: () => ({ from: new Date().toISOString().slice(0, 10) }),
+    params: () => ({ from: todayInStudioTz() }),
   },
   {
     key: 'week',
@@ -121,7 +127,11 @@ export function AuditFilters() {
         })}
       </div>
 
+    {/* Keyed by the URL so every field re-reads it after a preset or Clear —
+        the uncontrolled selects otherwise kept their old choice, and Apply
+        then dropped or resurrected filters. */}
     <form
+      key={sp.toString()}
       onSubmit={onSubmit}
       className="grid gap-4 rounded-xl border border-border bg-surface p-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
     >

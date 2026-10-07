@@ -147,3 +147,26 @@ export const ADMIN_EMAIL_PREFS = [
     hint: 'Email when a client files a revision or replies on one.',
   },
 ] as const satisfies readonly EmailPrefEntry[];
+
+/** Every toggle either catalogue offers. */
+export const ALL_EMAIL_PREF_KEYS: readonly string[] = [
+  ...new Set([...CLIENT_EMAIL_PREFS, ...ADMIN_EMAIL_PREFS].map((p) => p.key)),
+];
+
+/**
+ * The toggles to store from a settings save: only keys the catalogue
+ * renders. Stale keys already in the stored prefs (types since renamed or
+ * retired) are dropped rather than failing the save — a closed allow-list
+ * that lagged the catalogue rejected every save that touched a newer
+ * toggle.
+ */
+export function pickEmailPrefs(
+  raw: Record<string, boolean>,
+  catalogue: readonly EmailPrefEntry[],
+): Record<string, boolean> {
+  const picked: Record<string, boolean> = {};
+  for (const { key } of catalogue) {
+    if (typeof raw[key] === 'boolean') picked[key] = raw[key];
+  }
+  return picked;
+}
