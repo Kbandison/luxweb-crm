@@ -1985,23 +1985,36 @@ function LineArea({
   onChange: (lines: string[]) => void;
   placeholder?: string;
 }) {
-  const joined = value.join('\n');
+  // The box keeps exactly what was typed; the draft gets clean lines.
+  // Trimming the box itself on every keystroke ate the space after each
+  // word and any blank line opened mid-list.
+  const [text, setText] = useState(() => value.join('\n'));
+  // When the lines change from outside (a reset, a loaded draft), show
+  // them — during render, when they no longer match what's in the box.
+  const [shownValue, setShownValue] = useState(value);
+  if (shownValue !== value) {
+    setShownValue(value);
+    if (cleanLines(text).join('\n') !== value.join('\n')) setText(value.join('\n'));
+  }
   return (
     <textarea
       rows={rows}
-      value={joined}
-      onChange={(e) =>
-        onChange(
-          e.target.value
-            .split('\n')
-            .map((l) => l.trim())
-            .filter((l, i, arr) => (i === arr.length - 1 ? true : l.length > 0)),
-        )
-      }
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(cleanLines(e.target.value));
+      }}
       placeholder={placeholder}
       className="block w-full rounded-md border border-border bg-surface px-3 py-2 font-sans text-sm text-ink placeholder:text-ink-subtle focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30"
     />
   );
+}
+
+function cleanLines(text: string): string[] {
+  return text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
 }
 
 function RepeatingList<T>({
