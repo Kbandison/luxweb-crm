@@ -1,4 +1,5 @@
 import 'server-only';
+import { appBaseUrl } from '@/lib/app-url';
 import { createElement } from 'react';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { sendEmail, type EmailCategory } from '@/lib/resend';
@@ -112,7 +113,7 @@ export type NotifyEvent =
       proposalId: string;
       title: string;
       totalCents: number | null;
-      /** absolute or relative URL; resolved against NEXT_PUBLIC_APP_URL */
+      /** absolute or relative URL; resolved against appBaseUrl() */
       proposalPath: string;
     }
   | {
@@ -598,7 +599,7 @@ export async function notify(
  * ------------------------------------------------------------------------- */
 
 function appUrl(path: string): string {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
+  const base = appBaseUrl();
   if (!base) return path;
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   return `${base}${path.startsWith('/') ? '' : '/'}${path}`;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { appBaseUrl } from '@/lib/app-url';
 import { requireCapability } from '@/lib/auth/guards';
 import { revalidateProject } from '@/lib/cache/revalidate-project';
 import { supabaseAdmin } from '@/lib/supabase/admin';
@@ -222,8 +223,7 @@ export async function POST(
     } else {
       const origin =
         req.headers.get('origin') ??
-        process.env.NEXT_PUBLIC_APP_URL ??
-        'http://localhost:3000';
+        (appBaseUrl() || 'http://localhost:3000');
       const invite = await sendPortalInvite({ contactId, origin, actorId: session.userId });
       if (!invite.ok) {
         console.warn(`[agreement send] auto-invite failed for contact=${contactId}: ${invite.error}`);

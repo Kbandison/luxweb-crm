@@ -1,5 +1,6 @@
 import 'server-only';
 import { createElement } from 'react';
+import { appBaseUrl } from '@/lib/app-url';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
 import { createAndSendInvoice } from '@/lib/invoices/create';
@@ -519,7 +520,7 @@ export async function sendChangeOrderExecutedCopy(changeOrderId: string): Promis
     const pdf = await renderAgreementPdf(copy.pdfInput);
     const filename = `luxweb-change-order-${copy.pdfInput.documentLabel.replace(/\D+/g, '')}.pdf`;
     const attachments = [{ filename, content: pdf }];
-    const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
+    const base = appBaseUrl();
     const common = { title: copy.title, clientName: copy.clientName, bodySha256: copy.bodySha256, documentNoun: 'change order' as const };
     if (copy.clientEmail) {
       const props = { ...common, recipientName: copy.clientName, audience: 'client' as const, agreementUrl: `${base}/portal/change-orders/${changeOrderId}` };

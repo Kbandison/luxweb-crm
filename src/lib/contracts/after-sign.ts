@@ -1,5 +1,6 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
+import { appBaseUrl } from '@/lib/app-url';
 import { createElement } from 'react';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit';
@@ -433,7 +434,7 @@ export async function sendExecutedCopy(contractId: string): Promise<boolean> {
     const attachments = [
       { filename: executedCopyFilename(copy.title, copy.pdfInput.agreementVersion), content: pdf },
     ];
-    const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
+    const base = appBaseUrl();
 
     // The signed record goes to the client regardless of email preferences —
     // it's their copy of a contract, not a notification.

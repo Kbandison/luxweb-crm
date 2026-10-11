@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { appBaseUrl } from '@/lib/app-url';
 import { sendEmail } from '@/lib/resend';
 import { resolveSetterNames } from '@/lib/queries/outreach';
 import CallbackReminderEmail, {
@@ -68,7 +69,7 @@ export async function GET(req: Request) {
     ((users ?? []) as { id: string; email: string }[]).map((u) => [u.id, u.email]),
   );
 
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
+  const base = appBaseUrl();
   let sent = 0;
   const failed: string[] = [];
 

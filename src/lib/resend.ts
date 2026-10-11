@@ -1,4 +1,5 @@
 import 'server-only';
+import { appBaseUrl } from '@/lib/app-url';
 import { Resend } from 'resend';
 import type { ReactElement } from 'react';
 
@@ -22,7 +23,7 @@ function client(): Resend {
 export type EmailAudience = 'client' | 'admin';
 
 function unsubscribeUrl(audience: EmailAudience): string | null {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
+  const base = appBaseUrl();
   if (!base) return null;
   const path =
     audience === 'admin'

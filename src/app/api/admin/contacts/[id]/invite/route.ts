@@ -1,4 +1,5 @@
 import { requireCapability } from '@/lib/auth/guards';
+import { appBaseUrl } from '@/lib/app-url';
 import { sendPortalInvite } from '@/lib/invites';
 import { safeError } from '@/lib/safe-error';
 import { limitByKey, rateLimitResponse } from '@/lib/rate-limit';
@@ -28,8 +29,7 @@ export async function POST(
 
     const origin =
       req.headers.get('origin') ??
-      process.env.NEXT_PUBLIC_APP_URL ??
-      'http://localhost:3000';
+      (appBaseUrl() || 'http://localhost:3000');
 
     const result = await sendPortalInvite({
       contactId: id,
