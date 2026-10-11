@@ -38,6 +38,16 @@ describe('rescaleSchedule', () => {
     expect(amounts(next)).toEqual([100000, 200000, 200000]);
   });
 
+  it("fills a new agreement's seeded split from its percents", () => {
+    const next = rescaleSchedule(
+      [m(0, { percent: 50 }), m(0, { percent: 25 }), m(0, { percent: 0 }), m(0, { percent: 25 })],
+      0,
+      500000,
+    );
+    expect(amounts(next)).toEqual([250000, 125000, 0, 125000]);
+    expect(next.map((x) => x.percent)).toEqual([50, 25, 0, 25]);
+  });
+
   it('keeps typed amounts when there was no total to scale from', () => {
     const next = rescaleSchedule([m(50000), m(50000)], 0, 400000);
     expect(amounts(next)).toEqual([50000, 50000]);

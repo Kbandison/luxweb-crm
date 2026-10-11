@@ -36,8 +36,10 @@ export function percentsOf(amounts: number[], total: number): number[] {
  * share of what's left, worked out from their exact amounts (the
  * whole-number percent beside them is rounded, and rebuilding from it
  * rewrote amounts nobody typed). A schedule that covered the old total
- * covers the new one to the cent. With nothing to scale from — an old total
- * of $0, or nothing left after collected payments — amounts stay as typed.
+ * covers the new one to the cent. A schedule with no amounts yet (a new
+ * agreement's seeded 50/25/25) is filled from its percents instead. With
+ * nothing to scale from — an old total of $0, or nothing left after
+ * collected payments — typed amounts stay as typed.
  */
 export function rescaleSchedule(
   milestones: Milestone[],
@@ -50,6 +52,16 @@ export function rescaleSchedule(
   const amounts = milestones.map((m) => m.amount_cents);
 
   const open = milestones.flatMap((m, i) => (m.collected ? [] : [i]));
+  if (open.length > 0 && open.every((i) => milestones[i].amount_cents === 0)) {
+    const filled = roundKeepingSum(
+      open.map((i) => (newTotalCents * milestones[i].percent) / 100),
+    );
+    open.forEach((i, k) => {
+      amounts[i] = filled[k];
+    });
+    // The percents are what was set; the amounts now follow them.
+    return milestones.map((m, i) => ({ ...m, amount_cents: amounts[i] }));
+  }
   if (open.length > 0 && oldRest > 0 && newRest >= 0) {
     const scaled = roundKeepingSum(
       open.map((i) => (milestones[i].amount_cents * newRest) / oldRest),
