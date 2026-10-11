@@ -1,6 +1,8 @@
 'use client';
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
+import { useIsClient } from '@/lib/hooks/use-client-value';
 
 /**
  * Selector matching every focusable element we want the focus trap to
@@ -58,6 +60,7 @@ export function Dialog({
 }: DialogProps) {
   const panelRef = React.useRef<HTMLDivElement | null>(null);
   const previouslyFocusedRef = React.useRef<HTMLElement | null>(null);
+  const isClient = useIsClient();
 
   // Mirror the latest handler + closeOnEscape in refs so the autofocus +
   // keydown effect can read them WITHOUT subscribing as dependencies.
@@ -155,7 +158,7 @@ export function Dialog({
 
   if (!open) return null;
 
-  return (
+  const overlay = (
     <div
       role="dialog"
       aria-modal="true"
@@ -195,4 +198,11 @@ export function Dialog({
       </div>
     </div>
   );
+
+  // Rendered into <body>, so where the trigger sits can't trap it: a fixed
+  // overlay inside a sticky, blurred toolbar (backdrop-filter) or a
+  // transformed card is laid out against that box, not the viewport — the
+  // dialog opened squeezed into the toolbar. React events still bubble to
+  // the component tree as before.
+  return isClient ? createPortal(overlay, document.body) : overlay;
 }
