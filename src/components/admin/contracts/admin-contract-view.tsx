@@ -4,6 +4,7 @@ import { ContractBody } from '@/components/contract/contract-body';
 import { PrintButton } from '@/components/contract/print-button';
 import { SignaturePair } from '@/components/contract/signature-block';
 import { VoidContractButton } from '@/components/admin/contracts/void-contract-button';
+import { ResendAgreementButton } from '@/components/admin/contracts/resend-agreement-button';
 import { FinishSetupButton } from '@/components/admin/contracts/finish-setup-button';
 import { StatusPill } from '@/components/ui/status-pill';
 import { formatDate, formatDateTime, formatUSD } from '@/lib/formatters';
@@ -75,6 +76,9 @@ export function AdminContractView({
           ) : null}
         </div>
         <div className="flex items-center gap-2">
+          {contract.status === 'pending_client_signature' ? (
+            <ResendAgreementButton contractId={contract.id} clientName={contract.clientName} />
+          ) : null}
           {contract.status !== 'void' ? (
             <VoidContractButton contractId={contract.id} />
           ) : null}

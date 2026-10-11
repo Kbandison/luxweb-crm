@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast';
 import { ProposalStatusPill } from './proposal-status-pill';
+import { ResendAgreementButton } from '@/components/admin/contracts/resend-agreement-button';
 import { AgreementSummary } from '@/components/contract/agreement-summary';
 import { ContractBody } from '@/components/contract/contract-body';
 import { formatDate, formatDateTime, todayInStudioTz } from '@/lib/formatters';
@@ -429,6 +430,12 @@ export function ProposalEditor({
           ) : null}
           {isSent || isExpired ? (
             <>
+              {isSent && existingContract?.status === 'pending_client_signature' ? (
+                <ResendAgreementButton
+                  contractId={existingContract.id}
+                  clientName={content.client?.name}
+                />
+              ) : null}
               {isSent ? (
                 <Button
                   type="button"
