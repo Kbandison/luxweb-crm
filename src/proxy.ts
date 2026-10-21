@@ -37,8 +37,15 @@ const API_KEY_PATHS = new Set([
   '/api/outreach/setters',
 ]);
 
+/**
+ * The assistant's routes. Every handler under this prefix calls
+ * requireAgentKey first — that check is the only gate on them.
+ */
+const AGENT_API_PREFIX = '/api/agent/';
+
 export async function proxy(request: NextRequest) {
-  if (API_KEY_PATHS.has(request.nextUrl.pathname)) {
+  const { pathname: path } = request.nextUrl;
+  if (API_KEY_PATHS.has(path) || path.startsWith(AGENT_API_PREFIX)) {
     return NextResponse.next({ request });
   }
 

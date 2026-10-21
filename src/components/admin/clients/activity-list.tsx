@@ -12,6 +12,9 @@ const ACTION_COLORS: Record<string, string> = {
   send: 'bg-copper/15 text-copper',
   accept: 'bg-success/15 text-success',
   reject: 'bg-danger/10 text-danger',
+  // Emails the assistant sent or read, logged from Gmail.
+  email_sent: 'bg-copper/15 text-copper',
+  email_received: 'bg-info/10 text-info',
 };
 
 export function ActivityList({ rows }: { rows: ClientActivity[] }) {

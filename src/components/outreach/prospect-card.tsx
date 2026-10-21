@@ -191,6 +191,11 @@ function CallHistory({ calls }: { calls: ProspectRow['history'] }) {
               {formatDate(c.calledAt)}
             </span>
             <span className="text-ink-muted">{STATUS_LABEL[c.disposition]}</span>
+            {c.channel === 'email' ? (
+              <span className="font-mono text-[10px] uppercase tracking-meta text-ink-subtle">
+                email
+              </span>
+            ) : null}
             {c.spokeWithDm ? (
               <span className="font-mono text-[10px] uppercase tracking-meta text-copper">
                 spoke w/ DM

@@ -259,6 +259,45 @@ export async function freeBusy(
   }
 }
 
+/**
+ * Move a previously-created event. Unlike create/delete this reports failure:
+ * a reschedule that didn't reach the calendar would leave the invitee holding
+ * the old time, so the caller must not record the move.
+ */
+export async function updateCalendarEventTime(
+  userId: string,
+  eventId: string,
+  startIso: string,
+  endIso: string,
+): Promise<boolean> {
+  try {
+    const token = await accessTokenFor(userId);
+    if (!token) return false;
+    const res = await fetch(
+      `${CAL_BASE}/calendars/primary/events/${encodeURIComponent(eventId)}?sendUpdates=all`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          start: { dateTime: startIso },
+          end: { dateTime: endIso },
+        }),
+      },
+    );
+    if (!res.ok) {
+      console.warn('[google] update event failed:', res.status, await res.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[google] update event error:', err);
+    return false;
+  }
+}
+
 /** Delete a previously-created event (best-effort). */
 export async function deleteCalendarEvent(
   userId: string,

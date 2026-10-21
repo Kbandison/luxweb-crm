@@ -223,6 +223,37 @@ ByteBoundless (the lead-finding tool) pushes businesses straight onto a setter's
 
 ---
 
+## 6d-2. The LuxWeb assistant → CRM (`/api/agent/*`)
+
+The assistant (Kevin's Claude project) emails prospects and leads from Gmail and records it here, books discovery calls, and keeps prospects and deals current — through the same logic the setter and admin screens use, never raw database writes. It acts as the studio owner: its rows are attributed to Kevin, and every audit row it writes carries `via: 'agent'`.
+
+1. **Migration:** apply `crm-master/crm_prospect_calls_channel.sql`. Adds `channel` (`call` | `email`, default `call`) to `crm.prospect_calls`, so emails show as emails in a prospect's history and stay out of the setter scorecard. Apply it **before** deploying this code: the scorecard and history queries select the column.
+
+2. **Key:**
+   ```bash
+   openssl rand -base64 32
+   vercel env add AGENT_API_KEY production
+   ```
+   In the Claude project, add it under the environment's **Network secrets**: website `portal.luxwebstudio.dev`, header `Authorization`, prefix `Bearer`, the key as the value. The ingest route accepts this key too, so the assistant can add prospects with it.
+
+3. **Routes** (all take `Authorization: Bearer <key>`; times must carry an offset):
+
+   | Route | Does |
+   |---|---|
+   | `POST /api/agent/prospects/{id}/log` | Record a touch: `{channel: "email"\|"call", disposition, note, occurred_at, next_action, next_action_at}`. Dispositions: contacted, no_answer, callback, interested, not_interested, bad_number, dnc. An email never downgrades a prospect further along; do-not-contact prospects are refused (409). |
+   | `PATCH /api/agent/prospects/{id}` | Status (not booked/converted), next follow-up, contact details, `append_note`. |
+   | `GET /api/agent/availability?duration=30&days=10` | Open slots, the same ones a setter's booking drawer offers. |
+   | `POST /api/agent/appointments` | Book: calendar event + invite, appointment, `booked` history row, promotion to contact + deal. Refuses a busy slot (409); a retry returns the existing booking. |
+   | `PATCH /api/agent/appointments/{id}` | Move (`scheduled_at`, `duration_min`), cancel (`status: "canceled"`), or `notes`. A move that can't reach the calendar isn't recorded (502). |
+   | `POST /api/agent/notes` | Private note on a contact or deal; with `activity: "email_sent"\|"email_received"` and `subject`, also on the contact's Activity tab. |
+   | `PATCH /api/agent/deals/{id}/stage` | `lead` / `discovery` / `proposal` only, and only from those stages. |
+
+   Not exposed: agreements, invoices, payments, portal invites, milestones, revisions, deletes.
+
+4. **Verify:** `curl -s -o /dev/null -w '%{http_code}' https://portal.luxwebstudio.dev/api/agent/availability` → `401`. With the key → `200` and a `slots` list.
+
+---
+
 ## 6e. Mercury — banking & finances
 
 The finance pages mirror your Mercury accounts and transactions into `crm.bank_accounts` / `crm.bank_transactions` so they can report history without hitting the API on every render.

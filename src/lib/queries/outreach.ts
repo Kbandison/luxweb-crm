@@ -90,6 +90,8 @@ export async function getOutreachSettings(): Promise<OutreachSettings> {
 /** One logged dial — the history behind a prospect's attempt count. */
 export type ProspectCall = {
   id: string;
+  /** 'email' for touches the assistant logged from Gmail. */
+  channel: 'call' | 'email';
   disposition: ProspectStatus;
   spokeWithDm: boolean;
   note: string | null;
@@ -216,7 +218,7 @@ async function getCallHistory(
   try {
     const { data } = await supabaseAdmin()
       .from('prospect_calls')
-      .select('id, prospect_id, setter_id, disposition, spoke_with_dm, note, called_at')
+      .select('id, prospect_id, setter_id, channel, disposition, spoke_with_dm, note, called_at')
       .in('prospect_id', prospectIds)
       .order('called_at', { ascending: false });
     const rows = (data ?? []) as Array<{ setter_id: string | null }>;
@@ -231,6 +233,7 @@ async function getCallHistory(
       id: string;
       prospect_id: string;
       setter_id: string | null;
+      channel: 'call' | 'email' | null;
       disposition: ProspectStatus;
       spoke_with_dm: boolean | null;
       note: string | null;
@@ -240,6 +243,7 @@ async function getCallHistory(
       if (list.length >= HISTORY_PER_PROSPECT) continue;
       list.push({
         id: r.id,
+        channel: r.channel ?? 'call',
         disposition: r.disposition,
         spokeWithDm: !!r.spoke_with_dm,
         note: r.note,
@@ -328,6 +332,7 @@ export async function getProspect(id: string): Promise<ProspectRow | null> {
 /* -------------------------------------------------------------------------
  * Scorecard — Daily Numbers / weekly stats from prospect_calls.
  *   Dial = any logged call · Conversation = spoke_with_dm · Booked = disposition 'booked'
+ * Emails the assistant logs (channel 'email') aren't dials and don't count.
  * ------------------------------------------------------------------------- */
 
 export type PeriodStats = {
@@ -377,6 +382,7 @@ async function fetchCalls(fromIso: string, setterId?: string): Promise<CallRow[]
     let q = supabaseAdmin()
       .from('prospect_calls')
       .select('setter_id, spoke_with_dm, disposition')
+      .eq('channel', 'call')
       .gte('called_at', fromIso);
     if (setterId) q = q.eq('setter_id', setterId);
     const { data } = await q;
