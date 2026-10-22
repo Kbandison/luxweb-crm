@@ -247,8 +247,10 @@ The assistant (Kevin's Claude project) emails prospects and leads from Gmail and
    | `PATCH /api/agent/appointments/{id}` | Move (`scheduled_at`, `duration_min`), cancel (`status: "canceled"`), or `notes`. A move that can't reach the calendar isn't recorded (502). |
    | `POST /api/agent/notes` | Private note on a contact or deal; with `activity: "email_sent"\|"email_received"` and `subject`, also on the contact's Activity tab. |
    | `PATCH /api/agent/deals/{id}/stage` | `lead` / `discovery` / `proposal` only, and only from those stages. |
+   | `POST /api/agent/proposals` | Draft an agreement: `{contact_id, title, content}`, where `content` is any part of the agreement (client and party, scope, timeline phases, payment plan, care plan, assumptions) laid over the editor's defaults. Draft only, one open draft per contact (409 returns its id). Moves the contact's lead/discovery deals to `proposal`, like a draft started in the editor. Returns the editor link and what still blocks Sign & send. |
+   | `PATCH /api/agent/proposals/{id}` | Edit a draft's `title` and `content` (laid over what's stored). Anything past draft is refused (409). |
 
-   Not exposed: agreements, invoices, payments, portal invites, milestones, revisions, deletes.
+   Not exposed: sending, signing, or voiding agreements; marking payments collected; invoices, payments, portal invites, milestones, revisions, deletes. Kevin sends every agreement himself with Sign & send.
 
 4. **Verify:** `curl -s -o /dev/null -w '%{http_code}' https://portal.luxwebstudio.dev/api/agent/availability` → `401`. With the key → `200` and a `slots` list.
 
