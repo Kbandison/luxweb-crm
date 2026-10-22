@@ -4,13 +4,13 @@ import { getSession } from '@/lib/supabase/session';
 import {
   getClientProject,
   getClientProjectCarePlan,
-  getClientProjectReview,
   type ClientMilestone,
 } from '@/lib/queries/client';
+import { getClientGoogleReview } from '@/lib/queries/google-reviews';
 import { CarePlanCard } from '@/components/client/care-plan/care-plan-card';
 import { CarePlanBillingHistory } from '@/components/care-plan/billing-history';
 import { getCarePlanInvoiceHistory } from '@/lib/care-plan/billing-history';
-import { ClientReviewCard } from '@/components/client/reviews/client-review-card';
+import { GoogleReviewCard } from '@/components/client/reviews/google-review-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SectionHead } from '@/components/ui/section-head';
 import { StatusPill } from '@/components/ui/status-pill';
@@ -69,7 +69,7 @@ export default async function ClientProjectOverviewPage({
   const [project, carePlan, review] = await Promise.all([
     getClientProject(id, session.userId),
     getClientProjectCarePlan(id, session.userId),
-    getClientProjectReview(id, session.userId),
+    getClientGoogleReview(id, session.userId),
   ]);
   if (!project) notFound();
   const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
@@ -111,10 +111,8 @@ export default async function ClientProjectOverviewPage({
         </div>
       </section>
 
-      {/* Review prompt / read-only review — only on completed projects */}
-      {project.status === 'completed' ? (
-        <ClientReviewCard projectId={id} review={review} />
-      ) : null}
+      {/* The Google review ask, or thanks for one — only on completed projects */}
+      {project.status === 'completed' ? <GoogleReviewCard review={review} /> : null}
 
       {/* Care Plan — only show if enrolled or pending */}
       {carePlan && publishableKey ? (

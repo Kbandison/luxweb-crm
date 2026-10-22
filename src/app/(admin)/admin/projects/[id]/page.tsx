@@ -13,6 +13,7 @@ import { getCarePlanInvoiceHistory } from '@/lib/care-plan/billing-history';
 import { AdminCarePlanSection } from '@/components/admin/care-plan/care-plan-section';
 import { CarePlanBillingHistory } from '@/components/care-plan/billing-history';
 import { AdminReviewCard } from '@/components/admin/reviews/admin-review-card';
+import { getGoogleReviewForContact } from '@/lib/queries/google-reviews';
 import {
   MILESTONE_STATUS_LABEL,
   MILESTONE_STATUS_TONE,
@@ -37,9 +38,10 @@ export default async function ProjectOverviewPage({
     getNotesForEntity('project', id),
   ]);
   if (!project) notFound();
-  const billingHistory = carePlan
-    ? await getCarePlanInvoiceHistory(carePlan.stripeSubscriptionId)
-    : [];
+  const [billingHistory, googleReview] = await Promise.all([
+    carePlan ? getCarePlanInvoiceHistory(carePlan.stripeSubscriptionId) : [],
+    getGoogleReviewForContact(project.contactId),
+  ]);
 
   const paidCents = invoices
     .filter((i) => i.status === 'paid')
@@ -58,7 +60,7 @@ export default async function ProjectOverviewPage({
     .slice(0, 3);
 
   const showCarePlan = carePlan != null;
-  const showReview = review != null || project.status === 'completed';
+  const showReview = review != null || googleReview != null || project.status === 'completed';
 
   const sections: ReadonlyArray<{ visible: boolean; key: string; render: (n: string) => React.ReactNode }> = [
     {
@@ -194,7 +196,7 @@ export default async function ProjectOverviewPage({
         <section key="review">
           <SectionHead number={n} title="Review" />
           <div className="mt-5">
-            <AdminReviewCard projectId={project.id} review={review} />
+            <AdminReviewCard projectId={project.id} review={review} googleReview={googleReview} />
           </div>
         </section>
       ),

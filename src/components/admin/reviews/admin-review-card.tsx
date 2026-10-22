@@ -7,40 +7,38 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 import { StarInput, StarDisplay } from '@/components/reviews/star-input';
 import { formatDateLong } from '@/lib/formatters';
+import type { GoogleReview } from '@/lib/queries/google-reviews';
 
 export type AdminReviewCardProps = {
   projectId: string;
   review: {
-    clientRating: number | null;
-    clientReview: string | null;
-    clientConsentToPublish: boolean;
-    clientSubmittedAt: string | null;
     adminRating: number | null;
     adminNotes: string | null;
     adminSubmittedAt: string | null;
   } | null;
+  googleReview: GoogleReview | null;
 };
 
-export function AdminReviewCard({ projectId, review }: AdminReviewCardProps) {
+export function AdminReviewCard({ projectId, review, googleReview }: AdminReviewCardProps) {
   return (
     <div className="space-y-4">
-      <ClientReviewBlock review={review} />
+      <GoogleReviewBlock review={googleReview} />
       <AdminPrivateBlock projectId={projectId} review={review} />
     </div>
   );
 }
 
-function ClientReviewBlock({ review }: { review: AdminReviewCardProps['review'] }) {
-  if (!review?.clientSubmittedAt) {
+function GoogleReviewBlock({ review }: { review: GoogleReview | null }) {
+  if (!review) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-surface p-5">
         <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
-          Client review
+          Google review
         </p>
         <p className="mt-2 font-sans text-sm text-ink-muted">
-          The client hasn&apos;t submitted a review yet. They&apos;ll be
-          prompted on their project page once the project is marked
-          completed.
+          No Google review from this client yet. Their portal asks for one
+          once the project is marked completed, and a review shows up here
+          within a day of being posted.
         </p>
       </div>
     );
@@ -49,30 +47,28 @@ function ClientReviewBlock({ review }: { review: AdminReviewCardProps['review'] 
     <Card padding="md" rounded="xl">
       <div className="flex items-center justify-between gap-3">
         <p className="font-mono text-[10px] uppercase tracking-meta text-ink-muted">
-          Client review
+          Google review
         </p>
         <p className="font-mono text-[10px] uppercase tracking-meta-tight text-ink-subtle">
-          {formatDateLong(review.clientSubmittedAt)}
+          {formatDateLong(review.reviewedAt)}
         </p>
       </div>
-      {review.clientRating ? (
-        <div className="mt-3">
-          <StarDisplay value={review.clientRating} size="md" />
-        </div>
-      ) : null}
-      {review.clientReview ? (
+      <div className="mt-3">
+        <StarDisplay value={review.rating} size="md" />
+      </div>
+      {review.body ? (
         <blockquote className="mt-3 border-l-2 border-copper pl-4 font-sans text-sm italic text-ink">
-          “{review.clientReview}”
+          “{review.body}”
         </blockquote>
       ) : null}
       <p className="mt-3 font-mono text-[10px] uppercase tracking-meta-tight">
-        {review.clientConsentToPublish ? (
+        {review.onSite ? (
           <span className="rounded bg-success/15 px-1.5 py-0.5 text-success">
-            Consent to publish
+            On the site
           </span>
         ) : (
           <span className="rounded bg-ink/5 px-1.5 py-0.5 text-ink-muted">
-            Private
+            Not on the site
           </span>
         )}
       </p>

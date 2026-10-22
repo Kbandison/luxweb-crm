@@ -256,6 +256,47 @@ The assistant (Kevin's Claude project) emails prospects and leads from Gmail and
 
 ---
 
+## 6d-3. Google reviews (`crm.google_reviews`)
+
+Clients review the studio on Google, never in the CRM. Once a day the assistant reads the studio's Google reviews (through Metricool, which has the Google Business Profile connected) and copies them here. Each one lands on the Reviews page; a reviewer whose name matches exactly one contact gets the review as a private note and a `google_review` line on their Activity tab. The rest wait on the Reviews page for Kevin to link. Nothing is ever written to Google.
+
+1. **Migration** (applied 2026-10-22 as `crm_google_reviews`):
+   ```sql
+   create table crm.google_reviews (
+     id uuid primary key default gen_random_uuid(),
+     google_review_id text not null unique,
+     reviewer_name text not null,
+     reviewer_photo_url text,
+     rating smallint not null check (rating between 1 and 5),
+     body text,
+     reviewed_at timestamptz not null,
+     replied boolean not null default false,
+     contact_id uuid references crm.contacts(id) on delete set null,
+     show_on_site boolean,   -- Kevin's switch; null = 4-5 stars with text
+     removed_at timestamptz, -- gone from Google; never shown
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   );
+   create index google_reviews_contact_idx on crm.google_reviews (contact_id);
+   alter table crm.google_reviews enable row level security;
+   revoke all on crm.google_reviews from anon, authenticated;
+   grant select, insert, update, delete on crm.google_reviews to service_role;
+   create trigger google_reviews_touch before update on crm.google_reviews
+     for each row execute function crm.touch_updated_at();
+   ```
+
+2. **Routes:**
+
+   | Route | Does |
+   |---|---|
+   | `POST /api/agent/google-reviews` | `{reviews: [{google_review_id, reviewer_name, reviewer_photo_url?, rating, body?, reviewed_at, replied?}], complete?: boolean}`. Stores new reviews (matching the reviewer to a contact), updates what changed on Google, and with `complete` marks stored reviews missing from the list as removed (skipped for an empty list). Never touches Kevin's site switch or client links. Returns each review as `new` / `updated` / `unchanged` with `contact_id` and `on_site`, plus `removed`. Agent key. |
+   | `PATCH /api/admin/google-reviews/{id}` | Kevin's controls from the Reviews page: `show_on_site` (true, false, or null for the default rule) and `contact_id` (linking adds the note on that client). `manage_reviews`. |
+   | `GET /api/public/reviews` | The site's feed: reviews on the site with written text, newest first, named "Jane S.", plus `summary: {count, average}` over every review still on Google and `reviewUrl`. No key. |
+
+3. **Portal:** a completed project shows every client the same "Leave a Google review" button (sending only happy clients to Google is review gating, which Google forbids), or a thank-you once their review is in. The old in-portal review form is gone; Kevin's private rating and notes on a project stay.
+
+---
+
 ## 6e. Mercury — banking & finances
 
 The finance pages mirror your Mercury accounts and transactions into `crm.bank_accounts` / `crm.bank_transactions` so they can report history without hitting the API on every render.
