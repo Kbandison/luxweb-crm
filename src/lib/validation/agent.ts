@@ -88,3 +88,25 @@ export const AgentNoteSchema = z.object({
 export const AgentDealStageSchema = z.object({
   stage: z.enum(AGENT_DEAL_STAGES),
 });
+
+/** One review as Google shows it, read from the studio's profile. */
+const GoogleReviewSchema = z.object({
+  /** Stable per review: Google's review id, or reviewer + time when there's none. */
+  google_review_id: z.string().min(1).max(500),
+  reviewer_name: z.string().min(1).max(200),
+  reviewer_photo_url: z.string().url().max(2000).optional().nullable(),
+  rating: z.number().int().min(1).max(5),
+  body: z.string().max(10000).optional().nullable(),
+  reviewed_at: datetime,
+  replied: z.boolean().optional(),
+});
+
+export const AgentGoogleReviewsSchema = z.object({
+  reviews: z.array(GoogleReviewSchema).max(500),
+  /**
+   * The list is every review Google shows right now, so a stored review
+   * missing from it was taken down and leaves the site. Ignored for an empty
+   * list, so a failed read can never empty the site.
+   */
+  complete: z.boolean().default(false),
+});

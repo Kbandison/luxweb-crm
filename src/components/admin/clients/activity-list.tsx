@@ -15,6 +15,8 @@ const ACTION_COLORS: Record<string, string> = {
   // Emails the assistant sent or read, logged from Gmail.
   email_sent: 'bg-copper/15 text-copper',
   email_received: 'bg-info/10 text-info',
+  // A Google review from this client, copied in from the studio's profile.
+  google_review: 'bg-success/15 text-success',
 };
 
 export function ActivityList({ rows }: { rows: ClientActivity[] }) {

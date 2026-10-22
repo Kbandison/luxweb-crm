@@ -15,6 +15,7 @@ export const ENTITY_TYPES = [
   'project',
   'project_assignment',
   'project_review',
+  'google_review',
   'milestone',
   'file',
   'note',
@@ -53,4 +54,5 @@ export const ACTIONS = [
   'send',
   'accept',
   'reject',
+  'google_review',
 ] as const;

@@ -2728,97 +2728,36 @@ export async function getRevision(
 
 export type ProjectReview = {
   projectId: string;
-  clientRating: number | null;
-  clientReview: string | null;
-  clientConsentToPublish: boolean;
-  clientSubmittedAt: string | null;
   adminRating: number | null;
   adminNotes: string | null;
   adminSubmittedAt: string | null;
 };
 
-export type ProjectReviewWithContext = ProjectReview & {
-  projectName: string;
-  contactName: string;
-};
-
-type ReviewSelectRow = {
-  project_id: string;
-  client_rating: number | null;
-  client_review: string | null;
-  client_consent_to_publish: boolean;
-  client_submitted_at: string | null;
-  admin_rating: number | null;
-  admin_notes: string | null;
-  admin_submitted_at: string | null;
-};
-
-function toProjectReview(r: ReviewSelectRow): ProjectReview {
-  return {
-    projectId: r.project_id,
-    clientRating: r.client_rating,
-    clientReview: r.client_review,
-    clientConsentToPublish: r.client_consent_to_publish,
-    clientSubmittedAt: r.client_submitted_at,
-    adminRating: r.admin_rating,
-    adminNotes: r.admin_notes,
-    adminSubmittedAt: r.admin_submitted_at,
-  };
-}
-
+/** Kevin's private take on a project. Client reviews live on Google. */
 export async function getProjectReview(
   projectId: string,
 ): Promise<ProjectReview | null> {
   try {
     const { data } = await supabaseAdmin()
       .from('project_reviews')
-      .select(
-        'project_id, client_rating, client_review, client_consent_to_publish, client_submitted_at, admin_rating, admin_notes, admin_submitted_at',
-      )
+      .select('project_id, admin_rating, admin_notes, admin_submitted_at')
       .eq('project_id', projectId)
       .maybeSingle();
     if (!data) return null;
-    return toProjectReview(data as ReviewSelectRow);
+    const r = data as {
+      project_id: string;
+      admin_rating: number | null;
+      admin_notes: string | null;
+      admin_submitted_at: string | null;
+    };
+    return {
+      projectId: r.project_id,
+      adminRating: r.admin_rating,
+      adminNotes: r.admin_notes,
+      adminSubmittedAt: r.admin_submitted_at,
+    };
   } catch {
     return null;
-  }
-}
-
-export async function getAllProjectReviews(): Promise<
-  ProjectReviewWithContext[]
-> {
-  try {
-    const { data } = await supabaseAdmin()
-      .from('project_reviews')
-      .select(
-        'project_id, client_rating, client_review, client_consent_to_publish, client_submitted_at, admin_rating, admin_notes, admin_submitted_at, projects!inner(name, contacts!inner(full_name))',
-      )
-      .order('client_submitted_at', { ascending: false, nullsFirst: false });
-    type Row = ReviewSelectRow & {
-      projects:
-        | {
-            name: string;
-            contacts: { full_name: string } | { full_name: string }[];
-          }
-        | {
-            name: string;
-            contacts: { full_name: string } | { full_name: string }[];
-          }[];
-    };
-    const rows = (data ?? []) as Row[];
-    return rows.map((r) => {
-      const project = flattenJoin(r.projects);
-      const contact = Array.isArray(project?.contacts)
-        ? project.contacts[0]
-        : project?.contacts;
-      return {
-        ...toProjectReview(r),
-        projectName: project?.name ?? '—',
-        contactName: contact?.full_name ?? '—',
-      };
-    });
-  } catch {
-    return [];
   }
 }
 
