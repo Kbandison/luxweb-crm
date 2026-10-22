@@ -20,7 +20,7 @@ function table(name: string) {
       return {
         select: () => ({
           single: async () => ({
-            data: { id: `row-${h.inserts.length}`, show_on_site: null, removed_at: null, ...row },
+            data: { id: `row-${h.inserts.length}`, contact_id: null, show_on_site: null, removed_at: null, ...row },
             error: null,
           }),
         }),
@@ -111,13 +111,25 @@ describe('POST /api/agent/google-reviews', () => {
     expect(body.results).toEqual([
       expect.objectContaining({ status: 'new', contact_id: 'contact-1', on_site: true }),
     ]);
-    expect(h.inserts[0]).toMatchObject({ google_review_id: 'g-1', contact_id: 'contact-1' });
+    expect(h.inserts[0]).toMatchObject({ google_review_id: 'g-1' });
     expect(h.record).toHaveBeenCalledWith(
       'contact-1',
       expect.objectContaining({ rating: 5 }),
       'owner-1',
       { via: 'agent' },
     );
+    expect(h.updates).toEqual([{ patch: { contact_id: 'contact-1' }, where: 'row-1' }]);
+  });
+
+  it('leaves the review unlinked when the client note fails', async () => {
+    h.record.mockRejectedValueOnce(new Error('Google review note: db down'));
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = await send({ reviews: [review()] });
+    quiet.mockRestore();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0]).toMatchObject({ status: 'new', contact_id: null });
+    expect(h.updates).toEqual([]);
   });
 
   it('leaves an unmatched reviewer for Kevin and a 3-star review off the site', async () => {

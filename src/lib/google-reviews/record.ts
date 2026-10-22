@@ -20,7 +20,8 @@ export type ReviewForNote = {
  * Put a Google review on the client it came from: a private note with the
  * stars and words, and a `google_review` line on the contact's Activity tab.
  * Runs when the assistant matches a new review, and when Kevin links one by
- * hand on the Reviews page.
+ * hand on the Reviews page. Throws if the note isn't saved, so callers save
+ * the client link only after this succeeds.
  */
 export async function recordReviewOnContact(
   contactId: string,
@@ -30,7 +31,7 @@ export async function recordReviewOnContact(
 ): Promise<void> {
   const date = STUDIO_DATE.format(new Date(review.reviewed_at));
   const words = review.body?.trim() ? `"${review.body.trim()}"` : '(stars only, no written review)';
-  const { data } = await supabaseAdmin()
+  const { data, error } = await supabaseAdmin()
     .from('notes')
     .insert({
       entity_type: 'contact',
@@ -41,6 +42,9 @@ export async function recordReviewOnContact(
     })
     .select('id')
     .single();
+  if (error || !data) {
+    throw new Error(`Google review note: ${error?.message ?? 'insert failed'}`);
+  }
 
   await writeAudit({
     actor_id: actorId,
@@ -50,7 +54,7 @@ export async function recordReviewOnContact(
     diff: {
       rating: review.rating,
       google_review: review.id,
-      note_id: (data as { id: string } | null)?.id ?? null,
+      note_id: (data as { id: string }).id,
       ...via,
     },
   });

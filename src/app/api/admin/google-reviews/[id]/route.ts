@@ -66,6 +66,12 @@ export async function PATCH(
     if (d.show_on_site !== undefined) patch.show_on_site = d.show_on_site;
     if (d.contact_id !== undefined) patch.contact_id = d.contact_id;
 
+    // The client's note goes in before the link is saved, so a failed note
+    // links nothing and saving the client again retries both.
+    if (d.contact_id && d.contact_id !== current.contact_id) {
+      await recordReviewOnContact(d.contact_id, current, session.userId, { via: 'admin' });
+    }
+
     const { error } = await sb.from('google_reviews').update(patch).eq('id', id);
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
@@ -78,9 +84,6 @@ export async function PATCH(
       entity_id: id,
       diff: patch,
     });
-    if (d.contact_id && d.contact_id !== current.contact_id) {
-      await recordReviewOnContact(d.contact_id, current, session.userId, { via: 'admin' });
-    }
 
     return Response.json({ ok: true });
   } catch (err) {

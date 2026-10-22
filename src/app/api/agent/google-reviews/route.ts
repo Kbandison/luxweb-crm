@@ -107,7 +107,6 @@ export async function POST(req: Request) {
           .insert({
             google_review_id: r.google_review_id,
             reviewed_at: r.reviewed_at,
-            contact_id: contactId,
             ...fields,
           })
           .select(COLUMNS)
@@ -115,8 +114,7 @@ export async function POST(req: Request) {
         if (error || !data) {
           return Response.json({ error: error?.message ?? 'Insert failed' }, { status: 500 });
         }
-        const row = data as StoredReview;
-        byKey.set(row.google_review_id, row);
+        let row = data as StoredReview;
         await writeAudit({
           actor_id: gate.ownerId,
           action: 'create',
@@ -124,9 +122,23 @@ export async function POST(req: Request) {
           entity_id: row.id,
           diff: { rating: row.rating, matched: contactId !== null, ...VIA_AGENT },
         });
+        // The client's note goes in before the link is saved. If either fails,
+        // the review comes back unlinked and Kevin links it on the Reviews
+        // page, which writes the note, rather than it sitting linked with none.
         if (contactId) {
-          await recordReviewOnContact(contactId, row, gate.ownerId, VIA_AGENT);
+          try {
+            await recordReviewOnContact(contactId, row, gate.ownerId, VIA_AGENT);
+            const { error: linkError } = await sb
+              .from('google_reviews')
+              .update({ contact_id: contactId })
+              .eq('id', row.id);
+            if (linkError) throw new Error(linkError.message);
+            row = { ...row, contact_id: contactId };
+          } catch (err) {
+            console.error('[agent/google-reviews] client note or link failed:', err);
+          }
         }
+        byKey.set(row.google_review_id, row);
         results.push(result(row, 'new'));
         continue;
       }
