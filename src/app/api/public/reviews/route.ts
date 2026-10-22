@@ -1,21 +1,20 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { clientIp, limitByKey, rateLimitResponse } from '@/lib/rate-limit';
-import { flattenJoin } from '@/lib/array-join';
+import { GOOGLE_REVIEW_URL, publicName, showsOnSite } from '@/lib/google-reviews/rules';
 
 export const runtime = 'nodejs';
 
 /**
  * Public, unauthenticated testimonials feed.
  *
- * Consumed by the luxwebstudio.dev marketing site (and anywhere else that
- * wants to render social proof). Returns only reviews the client has
- * explicitly consented to publish, attached to projects that are actually
- * completed — we don't want in-progress work surfaced as a testimonial.
+ * Consumed by the luxwebstudio.dev marketing site. Serves the studio's Google
+ * reviews that are on the site (Kevin's switch, or by default 4 and 5 stars
+ * with written text) and still on Google, newest first, plus the count and
+ * average of every review still on Google, so the site's rating is honest
+ * even though it only shows some of them.
  *
- * Privacy:
- *   · Strips email, contact ids, project ids beyond the review itself, etc.
- *   · Splits the client's full name into first + last initial so we never
- *     publish someone's full identity without a deliberate flag.
+ * Privacy: first name and last initial only; no contact, client, or project
+ * details ever leave the CRM.
  *
  * Performance:
  *   · CORS open for GET (this is meant to be hit from any origin).
@@ -39,59 +38,19 @@ type PublicReview = {
   id: string;
   rating: number;
   review: string;
-  clientFirstName: string;
-  clientLastInitial: string;
-  projectName: string;
-  submittedAt: string;
+  name: string;
+  reviewedAt: string;
 };
 
-type ReviewRow = {
-  project_id: string;
-  client_rating: number | null;
-  client_review: string | null;
-  client_submitted_at: string | null;
-  projects:
-    | {
-        name: string | null;
-        status: string | null;
-        contacts:
-          | { full_name: string | null }
-          | { full_name: string | null }[]
-          | null;
-      }
-    | {
-        name: string | null;
-        status: string | null;
-        contacts:
-          | { full_name: string | null }
-          | { full_name: string | null }[]
-          | null;
-      }[]
-    | null;
+type Row = {
+  id: string;
+  reviewer_name: string;
+  rating: number;
+  body: string | null;
+  reviewed_at: string;
+  show_on_site: boolean | null;
+  removed_at: string | null;
 };
-
-/**
- * "Smith" -> { first: "Smith", initial: "" }
- * "Jane Smith" -> { first: "Jane", initial: "S." }
- * "Jane Q. Smith" -> { first: "Jane", initial: "S." } (uses the LAST token)
- * "" / null -> { first: "Anonymous", initial: "" }
- */
-function splitName(full: string | null | undefined): {
-  first: string;
-  initial: string;
-} {
-  const trimmed = (full ?? '').trim();
-  if (!trimmed) return { first: 'Anonymous', initial: '' };
-  const parts = trimmed.split(/\s+/);
-  const first = parts[0] ?? 'Anonymous';
-  if (parts.length < 2) return { first, initial: '' };
-  const last = parts[parts.length - 1] ?? '';
-  const firstChar = last.charAt(0);
-  return {
-    first,
-    initial: firstChar ? `${firstChar.toUpperCase()}.` : '',
-  };
-}
 
 export function OPTIONS() {
   return new Response(null, { status: 204, headers: PUBLIC_HEADERS });
@@ -115,14 +74,10 @@ export async function GET(req: Request) {
 
   try {
     const { data, error } = await supabaseAdmin()
-      .from('project_reviews')
-      .select(
-        'project_id, client_rating, client_review, client_submitted_at, projects!inner(name, status, contacts!inner(full_name))',
-      )
-      .eq('client_consent_to_publish', true)
-      .not('client_submitted_at', 'is', null)
-      .eq('projects.status', 'completed')
-      .order('client_submitted_at', { ascending: false, nullsFirst: false });
+      .from('google_reviews')
+      .select('id, reviewer_name, rating, body, reviewed_at, show_on_site, removed_at')
+      .is('removed_at', null)
+      .order('reviewed_at', { ascending: false });
 
     if (error) {
       return Response.json(
@@ -131,37 +86,36 @@ export async function GET(req: Request) {
       );
     }
 
-    const rows = (data ?? []) as ReviewRow[];
-    const reviews: PublicReview[] = [];
-    for (const r of rows) {
-      const project = flattenJoin(r.projects);
-      if (!project) continue;
-      // Belt-and-suspenders: even with the eq filter, refuse to publish
-      // anything that isn't explicitly completed.
-      if (project.status !== 'completed') continue;
+    const rows = (data ?? []) as Row[];
+    const reviews: PublicReview[] = rows
+      .filter((r) =>
+        showsOnSite({
+          rating: r.rating,
+          body: r.body,
+          showOnSite: r.show_on_site,
+          removedAt: r.removed_at,
+        }),
+      )
+      // A card needs words; a stars-only review still counts in the summary.
+      .filter((r) => !!r.body?.trim())
+      .map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        review: (r.body ?? '').trim(),
+        name: publicName(r.reviewer_name),
+        reviewedAt: r.reviewed_at,
+      }));
 
-      const rating = r.client_rating;
-      const body = (r.client_review ?? '').trim();
-      const submittedAt = r.client_submitted_at;
-      if (rating == null || rating < 1 || rating > 5) continue;
-      if (!body) continue;
-      if (!submittedAt) continue;
+    const count = rows.length;
+    const average =
+      count > 0
+        ? Math.round((rows.reduce((s, r) => s + r.rating, 0) / count) * 10) / 10
+        : null;
 
-      const contact = flattenJoin(project.contacts);
-      const { first, initial } = splitName(contact?.full_name);
-
-      reviews.push({
-        id: r.project_id,
-        rating: Math.round(rating),
-        review: body,
-        clientFirstName: first,
-        clientLastInitial: initial,
-        projectName: (project.name ?? '').trim() || 'Project',
-        submittedAt,
-      });
-    }
-
-    return Response.json({ reviews }, { status: 200, headers });
+    return Response.json(
+      { reviews, summary: { count, average }, reviewUrl: GOOGLE_REVIEW_URL },
+      { status: 200, headers },
+    );
   } catch {
     return Response.json(
       { error: 'Unexpected error' },
