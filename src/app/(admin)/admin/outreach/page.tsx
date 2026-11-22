@@ -11,7 +11,7 @@ import {
   getCommissionSummary,
   getOwnerUserId,
 } from '@/lib/queries/outreach';
-import { getGoogleConnection, googleConfigured } from '@/lib/google/calendar';
+import { getGoogleConnection, googleConfigured } from '@/lib/google/oauth';
 import { formatUSD } from '@/lib/formatters';
 import { ProspectList } from '@/components/outreach/prospect-list';
 import { ProspectLookup } from '@/components/outreach/prospect-lookup';
@@ -44,7 +44,9 @@ export default async function AdminOutreachPage({
       getOwnerScorecard(),
       getAppointments({ setterId }),
       getCommissionSummary(),
-      ownerId ? getGoogleConnection(ownerId) : Promise.resolve({ connected: false, email: null }),
+      ownerId
+        ? getGoogleConnection(ownerId)
+        : Promise.resolve({ connected: false, email: null, canSendEmail: false }),
     ]);
   // Server-rendered so due badges and prospect local times stay hydration-safe.
   const nowIso = new Date().toISOString();
@@ -78,6 +80,7 @@ export default async function AdminOutreachPage({
         <GoogleConnect
           connected={gcal.connected}
           email={gcal.email}
+          canSendEmail={gcal.canSendEmail}
           configured={googleConfigured()}
           canConnect={session.role === 'admin'}
         />
