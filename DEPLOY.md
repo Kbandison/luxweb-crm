@@ -153,7 +153,7 @@ Powers the outreach module: the **owner connects their Google Calendar once**, t
 
 2. **In the Calendar OAuth client** (Google Cloud Console → Credentials):
    - Authorized **redirect URI**: `https://portal.luxwebstudio.dev/api/admin/google/callback`
-   - Scopes requested by the app: `https://www.googleapis.com/auth/calendar.events`, `https://www.googleapis.com/auth/calendar.freebusy`, and `https://www.googleapis.com/auth/gmail.send` (outreach email, §6d-4)
+   - Scopes requested by the app: `https://www.googleapis.com/auth/userinfo.email` (the connected address), `https://www.googleapis.com/auth/calendar.events`, `https://www.googleapis.com/auth/calendar.freebusy`, and `https://www.googleapis.com/auth/gmail.send` (outreach email, §6d-4)
 
 3. **Consent screen** — leave it **External + "In production."**
    - The owner sees a one-time **"Google hasn't verified this app"** screen (sensitive scope) → **Advanced → Continue**. That's fine — only the owner ever sees it.

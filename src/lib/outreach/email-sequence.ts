@@ -83,15 +83,18 @@ export function planTouch(
   if (existing?.status === 'sent') {
     return { ok: false, code: 'already_sent', error: `This prospect's ${touch} email already went out (${existing.sent_at}).` };
   }
-  if (existing?.status === 'sending') {
-    const stale = now - new Date(existing.updated_at).getTime() > STALE_SENDING_MS;
+  // Any send still in flight, this touch or another, may yet land, so
+  // nothing else goes to this address until it's settled.
+  const pending = rows.find((r) => r.status === 'sending');
+  if (pending) {
+    const stale = now - new Date(pending.updated_at).getTime() > STALE_SENDING_MS;
     return stale
       ? {
           ok: false,
           code: 'unknown_result',
-          error: `A ${touch} send started at ${existing.updated_at} and its result was never recorded. Check Gmail Sent for ${existing.to_email} before anything else goes to them.`,
+          error: `A ${pending.touch} send started at ${pending.updated_at} and its result was never recorded. Check Gmail Sent for ${pending.to_email} before anything else goes to them.`,
         }
-      : { ok: false, code: 'in_progress', error: `A ${touch} send for this prospect is already in progress.` };
+      : { ok: false, code: 'in_progress', error: `A ${pending.touch} send for this prospect is already in progress.` };
   }
   const retry = existing?.status === 'failed' ? existing : null;
 

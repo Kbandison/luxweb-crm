@@ -66,6 +66,16 @@ describe('planTouch', () => {
     expect(b.ok === false && b.code).toBe('unknown_result');
   });
 
+  it('sends nothing else while another touch is unsettled', () => {
+    const first = row('first');
+    const fu1Fresh = row('follow_up_1', { status: 'sending', updated_at: new Date(NOW - 60_000).toISOString() });
+    const fu1Stale = row('follow_up_1', { status: 'sending', updated_at: new Date(NOW - STALE_SENDING_MS - 1).toISOString() });
+    const a = planTouch('follow_up_2', [first, fu1Fresh], NOW);
+    const b = planTouch('follow_up_2', [first, fu1Stale], NOW);
+    expect(a.ok === false && a.code).toBe('in_progress');
+    expect(b.ok === false && b.code).toBe('unknown_result');
+  });
+
   it('retries a failed attempt in place', () => {
     const failed = row('first', { status: 'failed', sent_at: null });
     expect(planTouch('first', [failed], NOW)).toEqual({ ok: true, parent: null, retry: failed });

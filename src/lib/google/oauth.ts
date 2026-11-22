@@ -22,6 +22,8 @@ export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
 export const OAUTH_STATE_COOKIE = 'google_oauth_state';
 
 const SCOPES = [
+  // The address the connection sends from; without it userinfo returns none.
+  'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/calendar.freebusy',
   GMAIL_SEND_SCOPE,
