@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth/guards';
-import { disconnectGoogle } from '@/lib/google/calendar';
+import { disconnectGoogle } from '@/lib/google/oauth';
 import { safeError } from '@/lib/safe-error';
 
 export const runtime = 'nodejs';

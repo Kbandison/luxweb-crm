@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/auth/guards';
-import { connectFromCode } from '@/lib/google/calendar';
+import { connectFromCode, OAUTH_STATE_COOKIE } from '@/lib/google/oauth';
 
 export const runtime = 'nodejs';
 
@@ -10,13 +10,18 @@ export const runtime = 'nodejs';
  * then returns to the outreach page.
  */
 export async function GET(req: NextRequest) {
-  const done = (status: string) =>
-    NextResponse.redirect(new URL(`/admin/outreach?google=${status}`, req.url));
+  const done = (status: string) => {
+    const res = NextResponse.redirect(new URL(`/admin/outreach?google=${status}`, req.url));
+    res.cookies.delete({ name: OAUTH_STATE_COOKIE, path: '/api/admin/google' });
+    return res;
+  };
   try {
     const session = await requireAdmin();
     const code = req.nextUrl.searchParams.get('code');
     const err = req.nextUrl.searchParams.get('error');
     if (err || !code) return done('denied');
+    const state = req.nextUrl.searchParams.get('state');
+    if (!state || state !== req.cookies.get(OAUTH_STATE_COOKIE)?.value) return done('error');
 
     await connectFromCode(session.userId, code, req.nextUrl.origin);
     return done('connected');

@@ -153,7 +153,7 @@ Powers the outreach module: the **owner connects their Google Calendar once**, t
 
 2. **In the Calendar OAuth client** (Google Cloud Console → Credentials):
    - Authorized **redirect URI**: `https://portal.luxwebstudio.dev/api/admin/google/callback`
-   - Scopes requested by the app: `https://www.googleapis.com/auth/calendar.events` and `https://www.googleapis.com/auth/calendar.freebusy`
+   - Scopes requested by the app: `https://www.googleapis.com/auth/userinfo.email` (the connected address), `https://www.googleapis.com/auth/calendar.events`, `https://www.googleapis.com/auth/calendar.freebusy`, and `https://www.googleapis.com/auth/gmail.send` (outreach email, §6d-4)
 
 3. **Consent screen** — leave it **External + "In production."**
    - The owner sees a one-time **"Google hasn't verified this app"** screen (sensitive scope) → **Advanced → Continue**. That's fine — only the owner ever sees it.
@@ -250,7 +250,7 @@ The assistant (Kevin's Claude project) emails prospects and leads from Gmail and
    | `POST /api/agent/proposals` | Draft an agreement: `{contact_id, title, content}`, where `content` is any part of the agreement (client and party, scope, timeline phases, payment plan, care plan, assumptions) laid over the editor's defaults. Draft only, one open draft per contact (409 returns its id). Moves the contact's lead/discovery deals to `proposal`, like a draft started in the editor. Returns the editor link and what still blocks Sign & send. |
    | `PATCH /api/agent/proposals/{id}` | Edit a draft's `title` and `content` (laid over what's stored). Anything past draft is refused (409). |
 
-   Not exposed: sending, signing, or voiding agreements; marking payments collected; invoices, payments, portal invites, milestones, revisions, deletes. Kevin sends every agreement himself with Sign & send.
+   Not exposed: sending, signing, or voiding agreements; marking payments collected; invoices, payments, portal invites, milestones, revisions, deletes. Kevin sends every agreement himself with Sign & send. The one email the assistant can send is prospect outreach from Kevin's own Gmail (§6d-4).
 
 4. **Verify:** `curl -s -o /dev/null -w '%{http_code}' https://portal.luxwebstudio.dev/api/agent/availability` → `401`. With the key → `200` and a `slots` list.
 
@@ -294,6 +294,61 @@ Clients review the studio on Google, never in the CRM. Once a day the assistant 
    | `GET /api/public/reviews` | The site's feed: reviews on the site with written text, newest first, named "Jane S.", plus `summary: {count, average}` over every review still on Google and `reviewUrl`. No key. |
 
 3. **Portal:** a completed project shows every client the same "Leave a Google review" button (sending only happy clients to Google is review gating, which Google forbids), or a thank-you once their review is in. The old in-portal review form is gone; Kevin's private rating and notes on a project stay.
+
+---
+
+## 6d-4. Outreach email from the owner's Gmail (`/api/agent/prospects/{id}/email`)
+
+Cold emails and their two follow-ups go out from the owner's own mailbox through the Gmail API, using the same Google connection as the calendar (§6b). They land in that mailbox's Sent folder and threads, replies and bounces come back there, and links stay exactly as written.
+
+**Never through Resend.** Resend's acceptable use policy bans cold outreach and scraped contact data, and the Resend account carries every agreement, invoice, and portal invite. Resend stays transactional only.
+
+1. **Migration** (applied 2026-11-22 as `crm_outreach_emails`):
+   ```sql
+   create table crm.outreach_emails (
+     id uuid primary key default gen_random_uuid(),
+     prospect_id uuid not null references crm.prospects(id) on delete cascade,
+     touch text not null check (touch in ('first', 'follow_up_1', 'follow_up_2')),
+     status text not null default 'sending' check (status in ('sending', 'sent', 'failed')),
+     source text not null default 'crm' check (source in ('crm', 'imported')),
+     to_email text not null,
+     subject text not null,
+     html text not null,          -- exactly what went out, quote included
+     message_id text not null,    -- the Message-ID header we set
+     references_header text,
+     gmail_message_id text,
+     gmail_thread_id text,
+     error text,
+     sent_at timestamptz,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now(),
+     unique (prospect_id, touch)
+   );
+   create index outreach_emails_sent_idx on crm.outreach_emails (sent_at);
+   alter table crm.outreach_emails enable row level security;
+   revoke all on crm.outreach_emails from anon, authenticated;
+   grant select, insert, update, delete on crm.outreach_emails to service_role;
+   create trigger outreach_emails_touch before update on crm.outreach_emails
+     for each row execute function crm.touch_updated_at();
+   ```
+
+2. **Google Cloud** (the project that holds the Calendar OAuth client from §6b):
+   - **APIs & Services → Library → Gmail API → Enable.**
+   - **Google Auth Platform → Data Access → Add or remove scopes:** add `https://www.googleapis.com/auth/gmail.send` ("Send email on your behalf"). It's a *sensitive* scope, the same tier as `calendar.events`, so the consent screen stays External + In production and the owner sees the same one-time "Google hasn't verified this app" screen.
+
+3. **Reconnect:** `/admin/outreach` → the Google card says "Reconnect to let outreach email send from this account" → **Reconnect** → approve. The card then reads "outreach email sends from this account." Until then the route answers `409 gmail_not_connected` and nothing is sent. The connect flow now checks OAuth `state` against a short-lived cookie, so a stray callback link can't attach a different Google account.
+
+4. **Route** (agent key):
+
+   | Route | Does |
+   |---|---|
+   | `POST /api/agent/prospects/{id}/email` | `{touch: "first" \| "follow_up_1" \| "follow_up_2", subject (first only), html, previous?}`. `html` is the body the caller wrote (greeting through footer). The CRM sends it from the connected mailbox as `LuxWeb Studio <that address>`, as multipart text + HTML. A follow-up goes into the earlier email's Gmail thread as `Re: <subject>` with `In-Reply-To`/`References` and the earlier email quoted under it the way Gmail quotes a reply (follow-up 2 answers follow-up 1, or the first email when follow-up 1 was skipped). `previous` (`{touch, gmail_thread_id, message_id, references?, subject, html, sent_at}`) lets a follow-up answer an earlier email that went out from Gmail itself; it's recorded as `source: 'imported'`. Returns `{to, subject, sent_at, gmail_message_id, gmail_thread_id, message_id}`. |
+
+   Refusals (409, with a `code`): `closed` (dnc, not_interested, bad_number, booked, converted), `not_new` (a first email needs status `new`), `not_awaiting` (a follow-up needs `contacted` or `no_answer`, so log the earlier email first), `already_sent`, `in_progress`, `unknown_result` (a send whose result was never recorded; check Gmail Sent before anything else goes to that address), `no_earlier_email`, `out_of_order`, `no_email`, `gmail_not_connected`. Gmail errors come back as `502 send_failed` (the attempt is marked failed and may be retried) or `502 unknown_result` (the request died in flight; the claim stays so nothing resends it blind).
+
+   It sends and records the email; it does **not** log the touch. The caller checks for a bounce and logs it with `POST /api/agent/prospects/{id}/log` as before, so a bounced first email never shows as contacted. Bounces and replies arrive in Gmail, which the CRM can't read.
+
+5. **Verify:** `curl -s -o /dev/null -w '%{http_code}' -X POST https://portal.luxwebstudio.dev/api/agent/prospects/00000000-0000-0000-0000-000000000000/email` → `401`. After reconnecting, send a first email and a follow-up to a test prospect whose address is your own inbox, and check the links, the thread, the quote, and the `Message-ID` header Gmail kept.
 
 ---
 
